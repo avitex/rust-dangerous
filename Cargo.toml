@@ -1,0 +1,12 @@
+[package]
+name = "dangerous"
+version = "0.1.0"
+authors = ["avitex <theavitex@gmail.com>"]
+edition = "2018"
+description = "Safely and explicitly handle user-generated data"
+categories = ["no-std", "parsing"]
+documentation = "https://docs.rs/dangerous"
+homepage = "https://github.com/avitex/rust-dangerous"
+repository = "https://github.com/avitex/rust-dangerous"
+license = "MIT"
+readme = "README.md"
