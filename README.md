@@ -13,21 +13,50 @@ dangerous = "0.1"
 
 ## TODO
 
+- [ ] Documentation
+- [ ] Unit test coverage
+- [ ] Fuzzing test coverage
+- [ ] Error display
+- [ ] Input display wrapping
+- [ ] Terminal support
 - [ ] Enable `missing_docs`
-- [ ] Review `must_use` usage
+- [ ] Review `must_use` and `inline` usage
 - [ ] Finish impl error system
 - [ ] Stabilize `Reader` interface
-- [ ] More documentation and tests
 
 ## Goals
 
 - Fast.
 - Zero panics.
-- Zero dependencies.
 - Zero heap-allocations.
 - Zero-cost abstractions.
+- Minimal dependencies \[1].
 - Primitive type support.
 - Optional verbose errors.
+
+\[1] Zero-dependencies if the `unicode` feature is disabled.
+
+This library intentions are to provide a simple interface for explicitly handling user-generated data safely.
+It tries to achieve this by providing useful primitives for parsing data and an optional, but solid, debugging
+interface with sane input formatting and errors to weed out problems before, or after they arise in production.
+
+Passing down errors as simple as `core::str::Utf8Error` may be useful enough to debug while in development,
+however when just written into logs without the input/context, often amount to noise. At this stage 
+you are almost better off with a simple input error.
+
+Ever tried working backwards from something like this?
+
+```
+[ERRO]: ahhh!: Utf8Error { valid_up_to: 42, error_len: Some(1) }
+```
+
+Wouldn't it be better if this was the alternative?
+
+```
+[ERRO]: ahhh!: invalid utf-8 code point
+> [.. "aaaa" ff "aaaa" ..]
+             ^^
+```
 
 ## Safety
 

@@ -12,7 +12,7 @@ macro_rules! impl_read_num {
         /// Returns an error if there is not sufficient input left to read.
         pub fn $read_le(&mut self) -> Result<$ty, E>
         where
-            E: From<EndOfInput<'i>>,
+            E: FromError<ExpectedLength<'i>>,
         {
             read_arr!(self, core::mem::size_of::<$ty>()).map(<$ty>::from_le_bytes)
         }
@@ -26,7 +26,7 @@ macro_rules! impl_read_num {
         /// Returns an error if there is not sufficient input left to read.
         pub fn $read_be(&mut self) -> Result<$ty, E>
         where
-            E: From<EndOfInput<'i>>,
+            E: FromError<ExpectedLength<'i>>,
         {
             read_arr!(self, core::mem::size_of::<$ty>()).map(<$ty>::from_be_bytes)
         }
@@ -44,4 +44,17 @@ macro_rules! read_arr {
             })
             .map(Clone::clone)
     }};
+}
+
+macro_rules! impl_error {
+    ($name:ident) => {
+        impl<'i> fmt::Display for $name<'i> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.display().fmt(f)
+            }
+        }
+
+        #[cfg(feature = "std")]
+        impl<'i> std::error::Error for $name<'i> {}
+    };
 }

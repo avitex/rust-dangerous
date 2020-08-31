@@ -1,7 +1,7 @@
 [package]
 name = "dangerous"
 version = "0.1.0"
-authors = ["avitex <theavitex@gmail.com>"]
+authors = ["avitex <avitex@wfxlabs.com>"]
 edition = "2018"
 description = "Safely and explicitly handle user-generated data"
 categories = ["no-std", "parsing"]
@@ -10,3 +10,20 @@ homepage = "https://github.com/avitex/rust-dangerous"
 repository = "https://github.com/avitex/rust-dangerous"
 license = "MIT"
 readme = "README.md"
+
+[features]
+default = ["unicode"]
+# If enabled, implements `std::error::Error` on errors.
+std = []
+# If enabled, improves unicode printing support.
+unicode = ["unicode-width"]
+# If enabled, implements error terminal printing support.
+terminal = ["std", "termcolor"]
+
+[dependencies]
+termcolor = { version = "~1", optional = true }
+unicode-width = { version = "0.1", optional = true }
+
+[[example]]
+name = "streaming"
+required-features = ["std"]

@@ -1,10 +1,10 @@
 use core::marker::PhantomData;
 
-use crate::error::{EndOfInput, Expected, InputError, TrailingInput, UnexpectedInput};
+use crate::error::{ExpectedLength, ExpectedValue, FromError, Invalid, SealedContext};
 use crate::input::Input;
 
 /// A `Reader` is created from and consumes a [`Input`].
-pub struct Reader<'i, E = InputError> {
+pub struct Reader<'i, E = Invalid> {
     input: &'i Input,
     error: PhantomData<E>,
 }
@@ -31,7 +31,7 @@ impl<'i, E> Reader<'i, E> {
     #[inline(always)]
     pub fn skip(&mut self, len: usize) -> Result<(), E>
     where
-        E: From<EndOfInput<'i>>,
+        E: FromError<ExpectedLength<'i>>,
     {
         self.take(len).map(drop)
     }
@@ -42,9 +42,9 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// Returns an error if the required length cannot be fullfilled.
     #[inline(always)]
-    pub fn take(&mut self, len: usize) -> Result<&Input, E>
+    pub fn take(&mut self, len: usize) -> Result<&'i Input, E>
     where
-        E: From<EndOfInput<'i>>,
+        E: FromError<ExpectedLength<'i>>,
     {
         let (head, tail) = self.input.split_at(len)?;
         self.input = tail;
@@ -74,7 +74,7 @@ impl<'i, E> Reader<'i, E> {
     pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         F: FnOnce(&Input) -> Result<O, E>,
-        E: From<EndOfInput<'i>>,
+        E: FromError<ExpectedLength<'i>>,
         O: 'static,
     {
         let (head, _) = self.input.split_at(len)?;
@@ -89,7 +89,7 @@ impl<'i, E> Reader<'i, E> {
     #[inline(always)]
     pub fn peek_u8(&self) -> Result<u8, E>
     where
-        E: From<EndOfInput<'i>>,
+        E: FromError<ExpectedLength<'i>>,
     {
         Ok(self.input.first()?)
     }
@@ -97,7 +97,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns `true` if `bytes` is next in the input.
     #[inline(always)]
     pub fn peek_eq(&self, bytes: &[u8]) -> bool {
-        match self.input.split_at(bytes.len()) {
+        match self.input.split_at::<Invalid>(bytes.len()) {
             Ok((input, _)) => bytes == input,
             Err(_) => false,
         }
@@ -113,21 +113,29 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if the bytes could not be consumed from the input.
     pub fn consume(&mut self, bytes: &'static [u8]) -> Result<(), E>
     where
-        E: From<EndOfInput<'i>>,
-        E: From<UnexpectedInput<'i>>,
+        E: FromError<ExpectedLength<'i>>,
+        E: FromError<ExpectedValue<'i>>,
     {
-        match self.input.split_at(bytes.len()) {
+        match self.input.split_at::<Invalid>(bytes.len()) {
             Ok((input, tail)) if input == bytes => {
                 self.input = tail;
                 Ok(())
             }
-            Ok((input, _)) => Err(E::from(UnexpectedInput {
-                input,
-                expected: Expected::Bytes(bytes),
+            Ok((input, _)) => Err(E::from_err(ExpectedValue {
+                span: input,
+                value: crate::input(bytes),
+                context: SealedContext {
+                    input: self.input,
+                    operation: "consume value",
+                },
             })),
-            Err(err) => Err(E::from(EndOfInput {
-                expected: Expected::Bytes(bytes),
-                ..err
+            Err(_) => Err(E::from_err(ExpectedValue {
+                span: self.input.end(),
+                value: crate::input(bytes),
+                context: SealedContext {
+                    input: self.input,
+                    operation: "consume value",
+                },
             })),
         }
     }
@@ -140,7 +148,7 @@ impl<'i, E> Reader<'i, E> {
     #[inline(always)]
     pub fn read_u8(&mut self) -> Result<u8, E>
     where
-        E: From<EndOfInput<'i>>,
+        E: FromError<ExpectedLength<'i>>,
     {
         let (byte, tail) = self.input.split_first()?;
         self.input = tail;
@@ -148,7 +156,7 @@ impl<'i, E> Reader<'i, E> {
     }
 
     /// Run a function with the reader with the expectation
-    /// all of the input is read.Input
+    /// all of the input is read.
     ///
     /// # Errors
     ///
@@ -157,16 +165,30 @@ impl<'i, E> Reader<'i, E> {
     pub fn read_all<F, O>(&mut self, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Self) -> Result<O, E>,
-        E: From<TrailingInput<'i>>,
+        E: FromError<E>,
+        E: FromError<ExpectedLength<'i>>,
     {
-        let before = self.input;
-        let ok = f(self)?;
+        let complete = self.input;
+        let ok = f(self).map_err(|err| {
+            E::from_err_ctx(
+                err,
+                SealedContext {
+                    input: complete,
+                    operation: "confirm all read",
+                },
+            )
+        })?;
         if self.at_end() {
             Ok(ok)
         } else {
-            Err(E::from(TrailingInput {
-                before,
-                trailing: self.input,
+            Err(E::from_err(ExpectedLength {
+                min: 0,
+                max: Some(0),
+                span: self.input,
+                context: SealedContext {
+                    input: complete,
+                    operation: "confirm all read",
+                },
             }))
         }
     }

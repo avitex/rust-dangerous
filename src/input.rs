@@ -1,7 +1,8 @@
-use core::fmt::{self, Write};
-use core::str;
+use core::ops::Range;
+use core::{fmt, str};
 
-use crate::error::{EndOfInput, Expected, Utf8Error};
+use crate::error::{ExpectedLength, ExpectedValid, FromError, SealedContext};
+use crate::input_display::InputDisplay;
 use crate::reader::Reader;
 
 /// Constructs a new `Input` from a byte slice.
@@ -25,23 +26,23 @@ pub fn input(slice: &[u8]) -> &Input {
 
 /// `Input` is an immutable wrapper around bytes to be processed.
 ///
-/// It can only be created via [`dangerous::input`] as so to clearly
+/// It can only be created via [`dangerous::input()`](crate::input()) as so to clearly
 /// point out where user-generated / dangerous input is consumed.
 ///
-/// It is used along with [`dangerous::Reader`] to process the input.
+/// It is used along with [`Reader`] to process the input.
 ///
 /// # Formatting
 ///
 /// `Input` implements both [`fmt::Debug`] and [`fmt::Display`] with
 /// support for pretty printing as shown below.
 ///
-/// | [`fmt::Display`] | `"hello ♥"`                    | `&[0xFF, b'a', 0xFF]` |
+/// | [`fmt::Display`] | `"hello ♥"`                    | `&[0xFF, 0xFF, b'a']` |
 /// | ---------------- | ------------------------------ | --------------------- |
-/// | `"{}"`           | `<68 65 6c 6c 6f 20 e2 99 a5>` | `<ff 61 ff>`          |
-/// | `"{:#}"`         | `"hello ♥"`                    | `<ff 'a' ff>`         |
-/// | `"{:.2}"`        | `<68 65 ..>`                   | `<ff 61 ..>`          |
-/// | `"{:#.2}"`       | `"he.." (truncated)`           | `<ff 'a' ..>`         |
-#[derive(PartialEq, Eq)]
+/// | `"{}"`           | `[68 65 6c 6c 6f 20 e2 99 a5]` | `[ff ff 61]`          |
+/// | `"{:#}"`         | `"hello ♥"`                    | `[ff ff 'a']`         |
+/// | `"{:.2}"`        | `[68 .. a5]`                   | `[ff .. 61]`          |
+/// | `"{:#.2}"`       | `"h".."♥"`                     | `[ff .. 'a']`         |
+#[derive(Eq, PartialEq)]
 #[must_use = "input must be consumed"]
 pub struct Input([u8]);
 
@@ -58,9 +59,22 @@ impl Input {
         self.as_dangerous().is_empty()
     }
 
+    /// Returns a [`Reader`] for parsing.
     #[inline(always)]
     pub const fn reader<E>(&self) -> Reader<'_, E> {
         Reader::new(self)
+    }
+
+    /// Returns a [`InputDisplay`] for formatting.
+    #[inline(always)]
+    pub const fn display(&self) -> InputDisplay<'_> {
+        InputDisplay::new(self)
+    }
+
+    /// Returns `true` if the underlying byte slice for `parent` contains that
+    /// of `self` in the same section of memory with no bounds out of range.
+    pub fn within(&self, parent: &Input) -> bool {
+        parent.inclusive_range(self).is_some()
     }
 
     /// Returns the underlying byte slice.
@@ -81,16 +95,21 @@ impl Input {
     ///
     /// # Errors
     ///
-    /// Returns [`EndOfInput`] if the the input is empty.
+    /// Returns [`ExpectedLength`] if the the input is empty.
     #[inline(always)]
-    pub fn to_dangerous_non_empty(&self) -> Result<&[u8], EndOfInput<'_>> {
+    pub fn to_dangerous_non_empty(&self) -> Result<&[u8], ExpectedLength<'_>> {
         if self.is_empty() {
-            Ok(self.as_dangerous())
-        } else {
-            Err(EndOfInput {
-                input: self,
-                expected: Expected::LengthMin(1),
+            Err(ExpectedLength {
+                min: 1,
+                max: None,
+                span: self,
+                context: SealedContext {
+                    input: self,
+                    operation: "extract non-empty byte slice",
+                },
             })
+        } else {
+            Ok(self.as_dangerous())
         }
     }
 
@@ -100,10 +119,54 @@ impl Input {
     ///
     /// # Errors
     ///
-    /// Returns [`Utf8Error`] if the the input was not valid UTF-8.
-    #[inline(always)]
-    pub fn to_dangerous_str(&self) -> Result<&str, Utf8Error<'_>> {
-        str::from_utf8(self.as_dangerous()).map_err(|error| Utf8Error { input: self, error })
+    /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short. This is useful when
+    /// parsing potentially incomplete buffers.
+    #[inline]
+    pub fn to_dangerous_str<'i, E>(&'i self) -> Result<&'i str, E>
+    where
+        E: FromError<ExpectedValid<'i>>,
+        E: FromError<ExpectedLength<'i>>,
+    {
+        match str::from_utf8(self.as_dangerous()) {
+            Ok(s) => Ok(s),
+            Err(utf8_err) => match utf8_err.error_len() {
+                None => {
+                    let invalid = &self.as_dangerous()[utf8_err.valid_up_to()..];
+                    // As the first byte in a UTF-8 code point encodes its length as
+                    // shown below, and as we never reach this branch if the code point
+                    // only spans one byte, we just count the leading ones of the first
+                    // byte to work out the expected length.
+                    //
+                    // 0ZZZZZZZ (1 byte) - unreachable
+                    // 110YYYYY (2 bytes), 1110XXXX (3 bytes), 11110VVV (4 bytes) - valid
+                    // 11110XXX (invalid) - unreachable
+                    Err(E::from_err(ExpectedLength {
+                        min: invalid[0].leading_ones() as usize,
+                        max: None,
+                        span: input(invalid),
+                        context: SealedContext {
+                            input: self,
+                            operation: "decode utf-8 code point",
+                        },
+                    }))
+                }
+                Some(error_len) => {
+                    let bytes = self.as_dangerous();
+                    let error_start = utf8_err.valid_up_to();
+                    let error_end = error_start + error_len;
+                    Err(E::from_err(ExpectedValid {
+                        expected: "utf-8 code point",
+                        found: "invalid value",
+                        span: input(&bytes[error_start..error_end]),
+                        context: SealedContext {
+                            input: self,
+                            operation: "decode utf-8 code point",
+                        },
+                    }))
+                }
+            },
+        }
     }
 
     /// Parses the underlying byte slice as str slice.
@@ -112,21 +175,27 @@ impl Input {
     ///
     /// # Errors
     ///
-    /// Returns [`EndOfInput`] if the the input is empty or [`Utf8Error`]
-    /// if the the input was not valid UTF-8.
-    #[inline(always)]
+    /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short or the str slice is
+    /// empty. This is useful when parsing potentially incomplete buffers.
+    #[inline]
     pub fn to_dangerous_non_empty_str<'i, E>(&'i self) -> Result<&'i str, E>
     where
-        E: From<Utf8Error<'i>>,
-        E: From<EndOfInput<'i>>,
+        E: FromError<ExpectedValid<'i>>,
+        E: FromError<ExpectedLength<'i>>,
     {
         if self.is_empty() {
-            Ok(self.to_dangerous_str()?)
-        } else {
-            Err(E::from(EndOfInput {
-                input: self,
-                expected: Expected::LengthMin(1),
+            Err(E::from_err(ExpectedLength {
+                min: 1,
+                max: None,
+                span: self,
+                context: SealedContext {
+                    input: self,
+                    operation: "extract non-empty utf-8 slice",
+                },
             }))
+        } else {
+            self.to_dangerous_str()
         }
     }
 
@@ -135,15 +204,28 @@ impl Input {
     /// # Errors
     ///
     /// Returns an error if the input is empty.
-    #[inline(always)]
-    pub(crate) fn first(&self) -> Result<u8, EndOfInput<'_>> {
-        self.as_dangerous()
-            .first()
-            .copied()
-            .ok_or_else(|| EndOfInput {
-                input: self,
-                expected: Expected::Length(1),
+    #[inline]
+    pub(crate) fn first<'i, E>(&'i self) -> Result<u8, E>
+    where
+        E: FromError<ExpectedLength<'i>>,
+    {
+        self.as_dangerous().first().copied().ok_or_else(|| {
+            E::from_err(ExpectedLength {
+                min: 1,
+                max: None,
+                span: self,
+                context: SealedContext {
+                    input: self,
+                    operation: "extract first byte",
+                },
             })
+        })
+    }
+
+    /// Returns an empty `Input` pointing the end of `self`.
+    #[inline]
+    pub(crate) fn end(&self) -> &Input {
+        input(&self.as_dangerous()[self.len()..])
     }
 
     /// Splits the input into the first byte and whatever remains.
@@ -151,8 +233,11 @@ impl Input {
     /// # Errors
     ///
     /// Returns an error if the input is empty.
-    #[inline(always)]
-    pub(crate) fn split_first(&self) -> Result<(u8, &Input), EndOfInput<'_>> {
+    #[inline]
+    pub(crate) fn split_first<'i, E>(&'i self) -> Result<(u8, &'i Input), E>
+    where
+        E: FromError<ExpectedLength<'i>>,
+    {
         let (head, tail) = self.split_at(1)?;
         Ok((head.first()?, tail))
     }
@@ -162,13 +247,21 @@ impl Input {
     /// # Errors
     ///
     /// Returns an error if `mid > self.len()`.
-    #[inline(always)]
-    pub(crate) fn split_at(&self, mid: usize) -> Result<(&Input, &Input), EndOfInput<'_>> {
+    #[inline]
+    pub(crate) fn split_at<'i, E>(&'i self, mid: usize) -> Result<(&'i Input, &'i Input), E>
+    where
+        E: FromError<ExpectedLength<'i>>,
+    {
         if mid > self.len() {
-            Err(EndOfInput {
-                input: self,
-                expected: Expected::Length(mid),
-            })
+            Err(E::from_err(ExpectedLength {
+                min: mid,
+                max: None,
+                span: self,
+                context: SealedContext {
+                    input: self,
+                    operation: "split length",
+                },
+            }))
         } else {
             let (head, tail) = self.as_dangerous().split_at(mid);
             Ok((input(head), input(tail)))
@@ -176,18 +269,28 @@ impl Input {
     }
 
     /// Splits the input into two at `max`.
-    #[inline(always)]
+    #[inline]
     pub(crate) fn split_max(&self, max: usize) -> (&Input, &Input) {
         if max > self.len() {
-            (self, input(&[]))
+            (self, self.end())
         } else {
             let (head, tail) = self.as_dangerous().split_at(max);
             (input(head), input(tail))
         }
     }
 
+    #[inline]
+    pub(crate) fn split_sub(&self, sub: &Input) -> Option<(&Input, &Input)> {
+        self.inclusive_range(sub).map(|range| {
+            let bytes = self.as_dangerous();
+            let head = &bytes[..range.start];
+            let tail = &bytes[range.end..];
+            (input(head), input(tail))
+        })
+    }
+
     /// Splits the input when the provided function returns `false`.
-    #[inline(always)]
+    #[inline]
     pub(crate) fn split_while<'i, F, E>(&'i self, f: F) -> Result<(&'i Input, &'i Input), E>
     where
         F: Fn(&'i Input, u8) -> Result<bool, E>,
@@ -200,7 +303,28 @@ impl Input {
                 return Ok((input(head), tail));
             }
         }
-        Ok((self, input(&[])))
+        Ok((self, self.end()))
+    }
+
+    pub(crate) fn inclusive_range(&self, sub: &Input) -> Option<Range<usize>> {
+        let self_bounds = self.as_dangerous_ptr_range();
+        let sub_bounds = sub.as_dangerous_ptr_range();
+        if self_bounds.contains(&sub_bounds.start) && self_bounds.contains(&sub_bounds.end) {
+            let start = sub_bounds.start as usize - self_bounds.start as usize;
+            let end = start + sub.len();
+            Some(start..end)
+        } else {
+            None
+        }
+    }
+
+    // TODO: use https://github.com/rust-lang/rust/issues/65807 when stable
+    fn as_dangerous_ptr_range(&self) -> Range<*const u8> {
+        let bytes = self.as_dangerous();
+        let start = bytes.as_ptr();
+        // Note: will never wrap, but we are just escaping the use of unsafe
+        let end = bytes.as_ptr().wrapping_add(bytes.len());
+        start..end
     }
 }
 
@@ -236,66 +360,13 @@ impl PartialEq<Input> for [u8] {
 
 impl fmt::Debug for Input {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Input")
-            .field(&format_args!("{}", &self))
-            .finish()
+        let display = InputDisplay::from_formatter(self, f);
+        f.debug_tuple("Input").field(&display).finish()
     }
 }
 
 impl fmt::Display for Input {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            if let Ok(s) = self.to_dangerous_str() {
-                f.write_char('"')?;
-                if let Some(max) = f.precision() {
-                    for c in s.chars().take(max) {
-                        f.write_char(c)?;
-                    }
-                    f.write_str("..\" (truncated)")
-                } else {
-                    f.write_str(s)?;
-                    f.write_char('"')
-                }
-            } else {
-                fmt_byte_str(f, self, |f, b| {
-                    f.write_char('\'')?;
-                    f.write_char(b as char)?;
-                    f.write_char('\'')
-                })
-            }
-        } else {
-            fmt_byte_str(f, self, |f, b| write!(f, "{:x}", b))
-        }
+        InputDisplay::from_formatter(self, f).fmt(f)
     }
-}
-
-fn fmt_byte_str<F>(f: &mut fmt::Formatter<'_>, input: &Input, ascii_graphic: F) -> fmt::Result
-where
-    F: Fn(&mut fmt::Formatter<'_>, u8) -> fmt::Result,
-{
-    let (input, has_more) = if let Some(max) = f.precision() {
-        (input.split_max(max).0, max < input.len())
-    } else {
-        (input, false)
-    };
-    let mut byte_iter = input.as_dangerous().iter();
-    let fmt_byte = |f: &mut fmt::Formatter<'_>, b: u8| {
-        if b.is_ascii_graphic() {
-            ascii_graphic(f, b)
-        } else {
-            write!(f, "{:x}", b)
-        }
-    };
-    f.write_char('<')?;
-    if let Some(byte) = byte_iter.next() {
-        fmt_byte(f, *byte)?;
-    }
-    for byte in byte_iter {
-        f.write_char(' ')?;
-        fmt_byte(f, *byte)?;
-    }
-    if has_more {
-        f.write_str(" ..")?;
-    }
-    f.write_char('>')
 }

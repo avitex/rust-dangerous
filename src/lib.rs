@@ -3,10 +3,10 @@
 //! # Basic usage
 //!
 //! ```rust
-//! use dangerous::InputError;
+//! use dangerous::Invalid;
 //!
 //! let input = dangerous::input(b"hello");
-//! let mut reader = input.reader::<InputError>();
+//! let mut reader = input.reader::<Invalid>();
 //!
 //! assert_eq!(reader.read_u8(), Ok(b'h'));
 //! ```
@@ -25,7 +25,7 @@
 //!
 //! **No other instances of `unsafe` are permitted.**
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     // For byte slice to `Input` cast.
     unsafe_code,
@@ -57,9 +57,13 @@
 mod macros;
 
 mod error;
+mod error_display;
 mod input;
+mod input_display;
 mod reader;
 
 pub use self::error::*;
+pub use self::error_display::ErrorDisplay;
 pub use self::input::{input, Input};
+pub use self::input_display::InputDisplay;
 pub use self::reader::Reader;
