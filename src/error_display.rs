@@ -5,7 +5,7 @@ use crate::error::Error;
 const INPUT_PREFIX: &str = "> ";
 const DEFAULT_MAX_WIDTH: usize = 80;
 
-/// Provides configurable error formatting.
+/// Provides configurable [`Error`] formatting.
 #[derive(Clone)]
 pub struct ErrorDisplay<'a, T: ?Sized> {
     error: &'a T,
@@ -33,7 +33,7 @@ where
         self
     }
 
-    /// Writes a given error to a writer with the choosen format.
+    /// Writes the [`Error`] to a writer with the choosen format.
     ///
     /// # Errors
     ///

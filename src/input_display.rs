@@ -27,7 +27,7 @@ pub struct InputDisplay<'i> {
 }
 
 impl<'i> InputDisplay<'i> {
-    /// Create a new `Formatter` given `Input`.
+    /// Create a new `InputDisplay` given [`Input`].
     pub const fn new(input: &'i Input) -> Self {
         Self {
             input,
@@ -36,10 +36,10 @@ impl<'i> InputDisplay<'i> {
         }
     }
 
-    /// Derive an `Display` from a [`fmt::Formatter`] with defaults.
+    /// Derive an `InputDisplay` from a [`fmt::Formatter`] with defaults.
     ///
     /// - Precision (eg. `{:.2}`) formatting sets the element limit.
-    /// - Alternate/pretty (eg. `{:#}`) formatting enables UTF-8 hinting.
+    /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
     pub fn from_formatter(input: &'i Input, f: &fmt::Formatter) -> Self {
         let format = Self::new(input).str_hint(f.alternate());
         match f.precision() {
@@ -48,14 +48,14 @@ impl<'i> InputDisplay<'i> {
         }
     }
 
-    /// Hint to the formatter that the `Input` is a UTF-8 `str`.
+    /// Hint to the formatter that the [`Input`] is a UTF-8 `str`.
     pub fn str_hint(mut self, value: bool) -> Self {
         self.str_hint = value;
         self
     }
 
-    /// Limit the `Input` to show `max` elements at the head of the input and at
-    /// the tail.
+    /// Limit the [`Input`] to show `max` elements at the head of the input and
+    /// at the tail.
     ///
     /// # Example
     ///
@@ -70,7 +70,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the `Input` to show `max` elements at the head of the input.
+    /// Limit the [`Input`] to show `max` elements at the head of the input.
     ///
     /// # Example
     ///
@@ -85,7 +85,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the `Input` to show `max` elements at the tail of the input.
+    /// Limit the [`Input`] to show `max` elements at the tail of the input.
     ///
     /// # Example
     ///
@@ -100,7 +100,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Shows the all of the elements in the `Input`.
+    /// Shows the all of the elements in the [`Input`].
     ///
     /// # Example
     ///
@@ -115,7 +115,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Writes a given input to a writer with the choosen format.
+    /// Writes the [`Input`] to a writer with the choosen format.
     ///
     /// # Errors
     ///
