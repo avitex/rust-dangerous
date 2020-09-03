@@ -1,13 +1,11 @@
-//! This example demonstrates a simple protocol being
-//! read from a buffer growning from a stream.
+//! This example demonstrates a protocol being read from a stream.
 //!
-//! This simple protocol encodes messages with a single
-//! byte for versioning followed by a single byte that
-//! denotes the the utf-8 body length we need to read.
-//!
-//! Our protocol expects a version of `1`.
+//! The simple protocol encodes messages with a single byte for versioning
+//! followed by a single byte that denotes the the utf-8 body length we need
+//! to read. Our protocol expects a version of `1`.
 
-// FIXME: This example requires `RUSTFLAGS=-Zpolonius` to run.
+// FIXME: This example requires `RUSTFLAGS=-Zpolonius` to run do to the mut ref
+// reuse within the a loop.
 // RUSTFLAGS=-Zpolonius cargo run --example streaming --features std
 
 use std::error::Error;
@@ -56,7 +54,7 @@ where
     let mut written_cur = 0;
     let mut expects_cur = 0;
     loop {
-        // Read bytes into
+        // Read bytes into buffer
         written_cur += read.read(&mut buf[written_cur..])?;
         // Only decode the buffer if we have enough bytes to try again
         if expects_cur > written_cur {
