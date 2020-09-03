@@ -1,12 +1,15 @@
 //! This example demonstrates a protocol being read from a stream.
 //!
 //! The simple protocol encodes messages with a single byte for versioning
-//! followed by a single byte that denotes the the utf-8 body length we need
-//! to read. Our protocol expects a version of `1`.
+//! followed by a single byte that denotes the the utf-8 body length we need to
+//! read. Our protocol expects a version of `1`.
 
 // FIXME: This example requires `RUSTFLAGS=-Zpolonius` to run do to the mut ref
 // reuse within the a loop.
+//
+// ```
 // RUSTFLAGS=-Zpolonius cargo run --example streaming --features std
+// ```
 
 use std::error::Error;
 use std::io;

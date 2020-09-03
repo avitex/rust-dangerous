@@ -13,35 +13,36 @@ pub fn input(slice: &[u8]) -> &Input {
     // Cast the slice reference to a pointer.
     let slice_ptr: *const [u8] = slice;
     // Cast the slice pointer to a `Input` pointer.
-    // The compiler allows this as the types are compatible.
-    // This cast is safe as `Input` is a wrapper around [u8].
-    // As with std::path::Path, `Input` is not marked
-    // repr(transparent) or repr(C).
+    //
+    // The compiler allows this as the types are compatible. This cast is safe
+    // as `Input` is a wrapper around [u8]. As with std::path::Path, `Input` is
+    // not marked repr(transparent) or repr(C).
     let input_ptr = slice_ptr as *const Input;
     // Re-borrow the `Input` pointer as a `Input` reference.
-    // This is safe as the lifetime from the slice is carried
-    // from the slice reference to the `Input` reference.
+    //
+    // This is safe as the lifetime from the slice is carried from the slice
+    // reference to the `Input` reference.
     unsafe { &*input_ptr }
 }
 
 /// `Input` is an immutable wrapper around bytes to be processed.
 ///
-/// It can only be created via [`dangerous::input()`](crate::input()) as so to clearly
-/// point out where user-generated / dangerous input is consumed.
+/// It can only be created via [`dangerous::input()`](crate::input()) as so to
+/// clearly point out where user-generated / dangerous input is consumed.
 ///
 /// It is used along with [`Reader`] to process the input.
 ///
 /// # Formatting
 ///
-/// `Input` implements both [`fmt::Debug`] and [`fmt::Display`] with
-/// support for pretty printing as shown below.
+/// `Input` implements both [`fmt::Debug`] and [`fmt::Display`] with support for
+/// pretty printing as shown below.
 ///
-/// | [`fmt::Display`] | `"hello ♥"`                    | `&[0xFF, 0xFF, b'a']` |
-/// | ---------------- | ------------------------------ | --------------------- |
-/// | `"{}"`           | `[68 65 6c 6c 6f 20 e2 99 a5]` | `[ff ff 61]`          |
-/// | `"{:#}"`         | `"hello ♥"`                    | `[ff ff 'a']`         |
-/// | `"{:.2}"`        | `[68 .. a5]`                   | `[ff .. 61]`          |
-/// | `"{:#.2}"`       | `"h".."♥"`                     | `[ff .. 'a']`         |
+/// | [`fmt::Display`] | `"heya ♥"`                  | `&[0xFF, 0xFF, b'a']` |
+/// | ---------------- | --------------------------- | --------------------- |
+/// | `"{}"`           | `[68 65 79 61 20 e2 99 a5]` | `[ff ff 61]`          |
+/// | `"{:#}"`         | `"heya ♥"`                  | `[ff ff 'a']`         |
+/// | `"{:.2}"`        | `[68 .. a5]`                | `[ff .. 61]`          |
+/// | `"{:#.2}"`       | `"h".."♥"`                  | `[ff .. 'a']`         |
 #[derive(Eq, PartialEq)]
 #[must_use = "input must be consumed"]
 pub struct Input([u8]);
@@ -79,11 +80,10 @@ impl Input {
 
     /// Returns the underlying byte slice.
     ///
-    /// The naming of this function is to a degree hyperbole,
-    /// and should not be necessarily taken as proof of something
-    /// dangerous or memory unsafe. It is named this way simply
-    /// for users to clearly note where the panic-free guarantees
-    /// end when handling the input.
+    /// The naming of this function is to a degree hyperbole, and should not be
+    /// necessarily taken as proof of something dangerous or memory unsafe. It
+    /// is named this way simply for users to clearly note where the panic-free
+    /// guarantees end when handling the input.
     #[inline(always)]
     pub const fn as_dangerous(&self) -> &[u8] {
         &self.0
@@ -119,9 +119,9 @@ impl Input {
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8 and
-    /// [`ExpectedLength`] if a UTF-8 code point was cut short. This is useful when
-    /// parsing potentially incomplete buffers.
+    /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8
+    /// and [`ExpectedLength`] if a UTF-8 code point was cut short. This is
+    /// useful when parsing potentially incomplete buffers.
     #[inline]
     pub fn to_dangerous_str<'i, E>(&'i self) -> Result<&'i str, E>
     where
@@ -133,14 +133,19 @@ impl Input {
             Err(utf8_err) => match utf8_err.error_len() {
                 None => {
                     let invalid = &self.as_dangerous()[utf8_err.valid_up_to()..];
-                    // As the first byte in a UTF-8 code point encodes its length as
-                    // shown below, and as we never reach this branch if the code point
-                    // only spans one byte, we just count the leading ones of the first
-                    // byte to work out the expected length.
+                    // As the first byte in a UTF-8 code point encodes its
+                    // length as shown below, and as we never reach this branch
+                    // if the code point only spans one byte, we just count the
+                    // leading ones of the first byte to work out the expected
+                    // length.
                     //
-                    // 0ZZZZZZZ (1 byte) - unreachable
-                    // 110YYYYY (2 bytes), 1110XXXX (3 bytes), 11110VVV (4 bytes) - valid
-                    // 11110XXX (invalid) - unreachable
+                    // | format   | len | description         |
+                    // | -------- | --- | ------------------- |
+                    // | 0ZZZZZZZ | 1   | unreachable         |
+                    // | 110YYYYY | 2   | valid               |
+                    // | 1110XXXX | 3   | valid               |
+                    // | 11110VVV | 4   | valid               |
+                    // | 11110XXX | N/A | invalid/unreachable |
                     Err(E::from_err(ExpectedLength {
                         min: invalid[0].leading_ones() as usize,
                         max: None,

@@ -8,8 +8,7 @@ const DEFAULT_SECTION: Section = Section::HeadTail { max: 1024 };
 
 /// Provides configurable [`Input`] formatting.
 ///
-/// Defaults to formatting an `Input` to max `1024` bytes
-/// or UTF-8 code points.
+/// Defaults to formatting an `Input` to max `1024` bytes or UTF-8 code points.
 ///
 /// # Example
 ///
@@ -55,8 +54,8 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the `Input` to show `max` elements at the head of
-    /// the input and at the tail.
+    /// Limit the `Input` to show `max` elements at the head of the input and at
+    /// the tail.
     ///
     /// # Example
     ///
@@ -71,8 +70,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the `Input` to show `max` elements at the head of
-    /// the input.
+    /// Limit the `Input` to show `max` elements at the head of the input.
     ///
     /// # Example
     ///
@@ -87,8 +85,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the `Input` to show `max` elements at the tail of
-    /// the input.
+    /// Limit the `Input` to show `max` elements at the tail of the input.
     ///
     /// # Example
     ///

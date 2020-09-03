@@ -105,8 +105,7 @@ impl<'i, E> Reader<'i, E> {
 
     /// Consume expected bytes from the input.
     ///
-    /// Doesn't effect the internal state if the input couldn't
-    /// be consumed.
+    /// Doesn't effect the internal state if the input couldn't be consumed.
     ///
     /// # Errors
     ///
@@ -155,13 +154,13 @@ impl<'i, E> Reader<'i, E> {
         Ok(byte)
     }
 
-    /// Run a function with the reader with the expectation
-    /// all of the input is read.
+    /// Run a function with the reader with the expectation all of the input is
+    /// read.
     ///
     /// # Errors
     ///
-    /// Returns an error if either the function does, or there
-    /// is trailing input.
+    /// Returns an error if either the function does, or there is trailing
+    /// input.
     pub fn read_all<F, O>(&mut self, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Self) -> Result<O, E>,

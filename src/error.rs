@@ -8,10 +8,10 @@ use crate::input::Input;
 /// An error produced when attempting to process input, providing all the
 /// properties required to produce a verbose report on what happened.
 ///
-/// If you're not interested in errors of this nature and only wish to
-/// know whether or not the input was correctly processed, you'll wish
-/// to use the concrete type `Invalid` and all of the computations
-/// around verbose erroring will be removed in compilation.
+/// If you're not interested in errors of this nature and only wish to know
+/// whether or not the input was correctly processed, you'll wish to use the
+/// concrete type `Invalid` and all of the computations around verbose erroring
+/// will be removed in compilation.
 pub trait Error {
     /// The specific section of input that caused an error.
     fn span(&self) -> &Input;
@@ -36,8 +36,8 @@ pub trait Error {
 
     /// The description of what was expected as opposed to what was found.
     ///
-    /// Descriptions should be simple and written in lowercase. They should
-    /// not contain the literal value expected, that is to be left to
+    /// Descriptions should be simple and written in lowercase. They should not
+    /// contain the literal value expected, that is to be left to
     /// [`Error::expected_value()`].
     ///
     /// # Errors
@@ -48,16 +48,17 @@ pub trait Error {
     /// Returns the number of bytes required to continue processing the input,
     /// if applicable.
     ///
-    /// Although the value produces allows you to estimate how much more input you
-    /// need till you can continue processing the input, it is a very granular
-    /// value and may result in a lot of wasted reprocessing of input if not
-    /// handled correctly.
+    /// Although the value produces allows you to estimate how much more input
+    /// you need till you can continue processing the input, it is a very
+    /// granular value and may result in a lot of wasted reprocessing of input
+    /// if not handled correctly.
     fn can_continue_after(&self) -> Option<usize>;
 }
 
 /// The context surrounding an error.
 pub trait Context {
-    /// The input in its entirety that was being processed when an error occured.
+    /// The input in its entirety that was being processed when an error
+    /// occured.
     ///
     /// The error itself will have the details and the specific section of input
     /// that caused the error. This value simply allows us to see the bigger
@@ -84,8 +85,8 @@ pub trait Context {
     /// `decode name`. The `inner` context would be that of
     /// [`Input::to_dangerous_str()`].
     ///
-    /// This would allow us to walk the contexts, so we can present the following
-    /// information for use in debugging:
+    /// This would allow us to walk the contexts, so we can present the
+    /// following information for use in debugging:
     ///
     /// ```text
     /// UTF-8 error occured while attempting to decode name from the input.
@@ -99,8 +100,8 @@ pub trait Context {
 
 /// Conversion trait for errors.
 ///
-/// This is used in place of `From<T>` to get around specialization
-/// and to support creating an error from another with context.
+/// This is used in place of `From<T>` to get around specialization and to
+/// support creating an error from another with context.
 pub trait FromError<T> {
     /// Create `Self` from an error with no associated context.
     fn from_err(err: T) -> Self;
