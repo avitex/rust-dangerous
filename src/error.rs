@@ -370,11 +370,11 @@ impl_error!(Expected);
 ///////////////////////////////////////////////////////////////////////////////
 // Basic input error
 
-/// `Invalid` contains no details about what happened,
-/// only that the input was unable to be processed.
+/// `Invalid` contains no details about what happened, only that the input was
+/// unable to be processed.
 ///
-/// This is the most performant and simplistic catch-all error,
-/// but it doesn't provide any context to debug problems well.
+/// This is the most performant and simplistic catch-all error, but it doesn't
+/// provide any context to debug problems well.
 ///
 /// # Example
 ///
