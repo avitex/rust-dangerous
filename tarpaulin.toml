@@ -1,2 +1,2 @@
 [dangerous]
-exclude-files = ["fuzz/*"]
+exclude-files = ["tests/*", "fuzz/*"]

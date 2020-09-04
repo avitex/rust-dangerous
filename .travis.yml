@@ -1,9 +1,5 @@
 language: rust
 dist: bionic
-addons:
-  apt:
-    packages:
-      - libssl-dev
 rust:
   - stable
   - nightly

@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/avitex/rust-dangerous.svg?branch=master)](https://travis-ci.com/avitex/rust-dangerous)
+[![Coverage Status](https://coveralls.io/repos/github/avitex/rust-dangerous/badge.svg)](https://coveralls.io/github/avitex/rust-dangerous)
 [![Crate](https://img.shields.io/crates/v/dangerous.svg)](https://crates.io/crates/dangerous)
 [![Docs](https://docs.rs/dangerous/badge.svg)](https://docs.rs/dangerous)
 
