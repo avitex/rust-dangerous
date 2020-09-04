@@ -6,6 +6,15 @@ use crate::input_display::InputDisplay;
 use crate::reader::Reader;
 
 /// Constructs a new `Input` from a byte slice.
+/// 
+/// It is recommended to use this directly from the crate as `dangerous::input()`,
+/// not as an import via `use` as shown below, as you lose the discoverability.
+/// 
+/// ```
+/// use dangerous::input; // bad
+/// 
+/// dangerous::input(b"hello") // do this instead
+/// ```
 #[inline(always)]
 #[allow(unsafe_code)]
 #[must_use = "input must be consumed"]
@@ -35,14 +44,7 @@ pub fn input(slice: &[u8]) -> &Input {
 /// # Formatting
 ///
 /// `Input` implements both [`fmt::Debug`] and [`fmt::Display`] with support for
-/// pretty printing as shown below.
-///
-/// | [`fmt::Display`] | `"heya ♥"`                  | `&[0xFF, 0xFF, b'a']` |
-/// | ---------------- | --------------------------- | --------------------- |
-/// | `"{}"`           | `[68 65 79 61 20 e2 99 a5]` | `[ff ff 61]`          |
-/// | `"{:#}"`         | `"heya ♥"`                  | `[ff ff 'a']`         |
-/// | `"{:.2}"`        | `[68 .. a5]`                | `[ff .. 61]`          |
-/// | `"{:#.2}"`       | `"h".."♥"`                  | `[ff .. 'a']`         |
+/// pretty printing. See [`InputDisplay`] for formatting options.
 #[derive(Eq, PartialEq)]
 #[must_use = "input must be consumed"]
 pub struct Input([u8]);

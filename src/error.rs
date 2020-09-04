@@ -282,7 +282,7 @@ pub struct ExpectedValid<'i> {
 }
 
 impl<'i> ExpectedValid<'i> {
-    /// A description of what was expected.
+    /// A description of what was expected in a context.
     ///
     /// Descriptions follow the conventions in [`Error::expected_description()`].
     pub fn expected(&self) -> &'static str {
@@ -333,8 +333,11 @@ impl_error!(ExpectedValid);
 /// A catch-all error for all expected errors supported in this crate.
 #[derive(Debug, Clone)]
 pub enum Expected<'i> {
+    /// An exact value was expected in a context.
     Value(ExpectedValue<'i>),
+    /// A valid value was expected in a context.
     Valid(ExpectedValid<'i>),
+    /// A length was expected in a context.
     Length(ExpectedLength<'i>),
 }
 

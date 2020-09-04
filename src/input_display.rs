@@ -10,6 +10,15 @@ const DEFAULT_SECTION: Section = Section::HeadTail { max: 1024 };
 ///
 /// Defaults to formatting an `Input` to max `1024` bytes or UTF-8 code points.
 ///
+/// # Format string options
+///  
+/// | Option     | `"heya ♥"`                  | `&[0xFF, 0xFF, b'a']` |
+/// | ---------- | --------------------------- | --------------------- |
+/// | `"{}"`     | `[68 65 79 61 20 e2 99 a5]` | `[ff ff 61]`          |
+/// | `"{:#}"`   | `"heya ♥"`                  | `[ff ff 'a']`         |
+/// | `"{:.2}"`  | `[68 .. a5]`                | `[ff .. 61]`          |
+/// | `"{:#.2}"` | `"h".."♥"`                  | `[ff .. 'a']`         |
+///
 /// # Example
 ///
 /// ```

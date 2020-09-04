@@ -16,6 +16,7 @@ impl<'a, T> ErrorDisplay<'a, T>
 where
     T: ?Sized + Error,
 {
+     /// Create a new `ErrorDisplay` given an [`Error`].
     pub fn new(error: &'a T) -> Self {
         Self {
             error,
@@ -23,11 +24,13 @@ where
         }
     }
 
+    /// Derive an `ErrorDisplay` from a [`fmt::Formatter`] with defaults.
     pub fn from_formatter(error: &'a T, f: &fmt::Formatter<'_>) -> Self {
         let _ = f;
         Self::new(error)
     }
 
+    /// Set the `max-width` for wrapping error output.
     pub fn max_width(mut self, value: Option<usize>) -> Self {
         self.max_width = value;
         self
