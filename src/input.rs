@@ -13,7 +13,7 @@ use crate::reader::Reader;
 /// ```
 /// use dangerous::input; // bad
 ///
-/// dangerous::input(b"hello") // do this instead
+/// dangerous::input(b"hello"); // do this instead
 /// ```
 #[inline(always)]
 #[allow(unsafe_code)]
@@ -76,7 +76,7 @@ impl Input {
 
     /// Returns `true` if the underlying byte slice for `parent` contains that
     /// of `self` in the same section of memory with no bounds out of range.
-    pub fn within(&self, parent: &Input) -> bool {
+    pub fn is_within(&self, parent: &Input) -> bool {
         parent.inclusive_range(self).is_some()
     }
 
@@ -316,7 +316,9 @@ impl Input {
     pub(crate) fn inclusive_range(&self, sub: &Input) -> Option<Range<usize>> {
         let self_bounds = self.as_dangerous_ptr_range();
         let sub_bounds = sub.as_dangerous_ptr_range();
-        if self_bounds.contains(&sub_bounds.start) && self_bounds.contains(&sub_bounds.end) {
+        if (self_bounds.start == sub_bounds.start || self_bounds.contains(&sub_bounds.start))
+            && (self_bounds.end == sub_bounds.end || self_bounds.contains(&sub_bounds.end))
+        {
             let start = sub_bounds.start as usize - self_bounds.start as usize;
             let end = start + sub.len();
             Some(start..end)
