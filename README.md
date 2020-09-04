@@ -15,7 +15,6 @@ dangerous = "0.1"
 
 - [ ] Documentation
 - [ ] Unit test coverage
-- [ ] Fuzzing test coverage
 - [ ] Review `must_use` and `inline` usage
 - [ ] Error display
 - [ ] Input display
