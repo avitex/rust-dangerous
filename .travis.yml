@@ -1,3 +1,24 @@
 language: rust
+dist: bionic
+addons:
+  apt:
+    packages:
+      - libssl-dev
 rust:
   - stable
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+before_script: |
+  if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+    cargo install cargo-tarpaulin
+  fi
+script:
+  - cargo clean
+  - cargo build
+  - cargo test
+after_success: |
+  if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+    cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
+  fi
