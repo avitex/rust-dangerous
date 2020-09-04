@@ -6,6 +6,9 @@ use core::num::NonZeroUsize;
 use crate::error_display::ErrorDisplay;
 use crate::input::Input;
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+
 /// The the core error that collects contexts.
 pub trait Error {
     /// Return `Self` with context.
@@ -480,6 +483,55 @@ impl Default for Invalid {
 
 #[cfg(feature = "std")]
 impl std::error::Error for Invalid {}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Additional context
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub struct AdditionalContext<'a> {
+    input: &'a Input,
+    operation: &'a str,
+    inner: Option<Box<dyn Context + 'a>>,
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+impl<'a> AdditionalContext<'a> {
+    pub fn new(input: &'a Input, operation: &'a str) -> Self {
+        Self {
+            input,
+            operation,
+            inner: None,
+        }
+    }
+
+    pub fn with_inner<C>(mut self, ctx: C) -> Self
+    where
+        C: Context + 'a,
+    {
+        self.inner = Some(Box::new(ctx));
+        self
+    }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+impl<'a> Context for AdditionalContext<'a> {
+    fn input(&self) -> &Input {
+        self.input
+    }
+
+    fn operation(&self) -> &str {
+        self.operation
+    }
+
+    fn child(&self) -> Option<&dyn Context> {
+        self.inner.as_ref().map(AsRef::as_ref)
+    }
+
+    fn additional(&self) -> &dyn Any {
+        &()
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Error support

@@ -15,6 +15,8 @@ readme = "README.md"
 default = ["unicode"]
 # If enabled, implements `std::error::Error` on errors.
 std = []
+# If enabled, implements `AdditionalContext`.
+alloc = []
 # If enabled, improves unicode printing support.
 unicode = ["unicode-width"]
 # If enabled, implements error terminal printing support.
@@ -27,3 +29,7 @@ unicode-width = { version = "0.1", optional = true }
 [[example]]
 name = "streaming"
 required-features = ["std"]
+
+[[example]]
+name = "context"
+required-features = ["alloc"]

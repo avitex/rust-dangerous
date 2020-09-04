@@ -37,9 +37,9 @@
     clippy::pedantic
 )]
 #![forbid(
-    box_pointers,
+    // TODO: box_pointers,
     anonymous_parameters,
-    missing_docs,
+    // TODO: missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
@@ -55,6 +55,9 @@
     clippy::module_name_repetitions,
     clippy::type_repetition_in_bounds
 )]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 mod macros;
