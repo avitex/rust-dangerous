@@ -10,13 +10,6 @@ pub struct Reader<'i, E = Invalid> {
 }
 
 impl<'i, E> Reader<'i, E> {
-    pub(crate) const fn new(input: &'i Input) -> Self {
-        Self {
-            input,
-            error: PhantomData,
-        }
-    }
-
     /// Returns `true` if the reader has no more input to consume.
     #[inline(always)]
     pub fn at_end(&self) -> bool {
@@ -56,6 +49,7 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns any error the provided function does.
+    #[inline(always)]
     pub fn take_while<F>(&mut self, f: F) -> Result<&'i Input, E>
     where
         F: Fn(&'i Input, u8) -> Result<bool, E>,
@@ -204,10 +198,19 @@ impl<'i, E> Reader<'i, E> {
     impl_read_num!(f32, le: read_f32_le, be: read_f32_be);
     impl_read_num!(f64, le: read_f64_le, be: read_f64_be);
 
+    /// Create a sub reader with  given error type.
     #[inline(always)]
     pub fn with_error<'r: 'i, T>(&'r mut self) -> Reader<'r, T> {
         Reader {
             input: self.input,
+            error: PhantomData,
+        }
+    }
+
+    /// Create a `Reader` given `Input`.
+    pub(crate) const fn new(input: &'i Input) -> Self {
+        Self {
+            input,
             error: PhantomData,
         }
     }

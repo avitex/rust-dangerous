@@ -16,13 +16,13 @@ dangerous = "0.1"
 - [ ] Documentation
 - [ ] Unit test coverage
 - [ ] Fuzzing test coverage
-- [ ] Error display
-- [ ] Input display wrapping
-- [ ] Terminal support
 - [ ] Enable `missing_docs`
 - [ ] Review `must_use` and `inline` usage
-- [ ] Finish impl error system
+- [ ] Error display
+- [ ] Input display
+- [ ] Stabilize errors
 - [ ] Stabilize `Reader` interface
+- [ ] Terminal support
 
 ## Goals
 

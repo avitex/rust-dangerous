@@ -66,7 +66,7 @@ impl Input {
         Reader::new(self)
     }
 
-    /// Returns a [`InputDisplay`] for formatting.
+    /// Returns an [`InputDisplay`] for formatting.
     #[inline(always)]
     pub const fn display(&self) -> InputDisplay<'_> {
         InputDisplay::new(self)
@@ -113,7 +113,7 @@ impl Input {
         }
     }
 
-    /// Parses the underlying byte slice as str slice.
+    /// Decodes the underlying byte slice into a UTF-8 `str` slice.
     ///
     /// See `as_dangerous` for naming.
     ///
@@ -152,7 +152,7 @@ impl Input {
                         span: input(invalid),
                         context: SealedContext {
                             input: self,
-                            operation: "decode utf-8 code point",
+                            operation: "decode utf-8 str",
                         },
                     }))
                 }
@@ -166,7 +166,7 @@ impl Input {
                         span: input(&bytes[error_start..error_end]),
                         context: SealedContext {
                             input: self,
-                            operation: "decode utf-8 code point",
+                            operation: "decode utf-8 str",
                         },
                     }))
                 }
@@ -174,14 +174,14 @@ impl Input {
         }
     }
 
-    /// Parses the underlying byte slice as str slice.
+    /// Decodes the underlying byte slice into a UTF-8 `str` slice.
     ///
     /// See `as_dangerous` for naming.
     ///
     /// # Errors
     ///
     /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8 and
-    /// [`ExpectedLength`] if a UTF-8 code point was cut short or the str slice is
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short or the input is
     /// empty. This is useful when parsing potentially incomplete buffers.
     #[inline]
     pub fn to_dangerous_non_empty_str<'i, E>(&'i self) -> Result<&'i str, E>
@@ -196,7 +196,7 @@ impl Input {
                 span: self,
                 context: SealedContext {
                     input: self,
-                    operation: "extract non-empty utf-8 slice",
+                    operation: "decode non-empty utf-8 str",
                 },
             }))
         } else {

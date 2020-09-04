@@ -1,7 +1,7 @@
 //! This example demonstrates a protocol being read from a stream.
 //!
 //! The simple protocol encodes messages with a single byte for versioning
-//! followed by a single byte that denotes the the utf-8 body length we need to
+//! followed by a single byte that denotes the the UTF-8 body length we need to
 //! read. Our protocol expects a version of `1`.
 
 // FIXME: This example requires `RUSTFLAGS=-Zpolonius` to run do to the mut ref
@@ -25,7 +25,7 @@ const VALID_MESSAGE: &[u8] = &[
 const INVALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
     0x05, // body length: 5
-    b'h', b'e', 0xff, b'l', b'o', // the body value with invalid utf-8
+    b'h', b'e', 0xff, b'l', b'o', // the body value with invalid UTF-8
 ];
 
 #[derive(Debug)]

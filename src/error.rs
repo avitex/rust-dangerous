@@ -135,6 +135,7 @@ where
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
 
+/// An error representing a failed exact value requirement of [`Input`].
 #[derive(Debug, Clone)]
 pub struct ExpectedValue<'i> {
     pub(crate) value: &'i Input,
@@ -143,6 +144,12 @@ pub struct ExpectedValue<'i> {
 }
 
 impl<'i> ExpectedValue<'i> {
+    /// The [`Input`] value that was expected.
+    pub fn expected(&self) -> &Input {
+        self.value
+    }
+
+    /// Returns an `ErrorDisplay` for formatting.
     pub fn display(&self) -> ErrorDisplay<'_, Self> {
         ErrorDisplay::new(self)
     }
@@ -183,6 +190,7 @@ impl_error!(ExpectedValue);
 ///////////////////////////////////////////////////////////////////////////////
 // Expected length error
 
+/// An error representing a failed requirement for a length of [`Input`].
 #[derive(Debug, Clone)]
 pub struct ExpectedLength<'i> {
     pub(crate) min: usize,
@@ -192,6 +200,32 @@ pub struct ExpectedLength<'i> {
 }
 
 impl<'i> ExpectedLength<'i> {
+    /// The minimum length that was expected in a context.
+    ///
+    /// This doesn't not take into account the section of input being processed
+    /// when this error occurred. If you wish to work out the requirement to
+    /// continue processing input use [`Error::can_continue_after()`].
+    pub fn min(&self) -> usize {
+        self.min
+    }
+
+    /// The maximum length that was expected in a context, if applicable.
+    pub fn max(&self) -> Option<usize> {
+        self.max
+    }
+
+    /// The exact length that was expected in a context, if applicable.
+    ///
+    /// Will only return a value if both `min` and `max` are equal.
+    pub fn exact(&self) -> Option<usize> {
+        if Some(self.min) == self.max {
+            self.max
+        } else {
+            None
+        }
+    }
+
+    /// Returns an `ErrorDisplay` for formatting.
     pub fn display(&self) -> ErrorDisplay<'_, Self> {
         ErrorDisplay::new(self)
     }
@@ -238,6 +272,7 @@ impl_error!(ExpectedLength);
 ///////////////////////////////////////////////////////////////////////////////
 // Expected valid error
 
+/// An error representing a failed requirement for a valid [`Input`].
 #[derive(Debug, Clone)]
 pub struct ExpectedValid<'i> {
     pub(crate) span: &'i Input,
@@ -247,6 +282,14 @@ pub struct ExpectedValid<'i> {
 }
 
 impl<'i> ExpectedValid<'i> {
+    /// A description of what was expected.
+    ///
+    /// Descriptions follow the conventions in [`Error::expected_description()`].
+    pub fn expected(&self) -> &'static str {
+        self.expected
+    }
+
+    /// Returns an `ErrorDisplay` for formatting.
     pub fn display(&self) -> ErrorDisplay<'_, Self> {
         ErrorDisplay::new(self)
     }
@@ -296,11 +339,12 @@ pub enum Expected<'i> {
 }
 
 impl<'i> Expected<'i> {
+    /// Returns an `ErrorDisplay` for formatting.
     pub fn display(&self) -> ErrorDisplay<'_, Self> {
         ErrorDisplay::new(self)
     }
 
-    pub fn inner(&self) -> &(dyn Error + 'i) {
+    fn inner(&self) -> &(dyn Error + 'i) {
         match self {
             Self::Value(ref err) => err,
             Self::Valid(ref err) => err,
