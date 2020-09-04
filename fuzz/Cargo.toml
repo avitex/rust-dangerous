@@ -9,6 +9,7 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
+rand = { version = "0.7", default-features = false, features = ["small_rng"] }
 libfuzzer-sys = "0.3"
 
 [dependencies.dangerous]

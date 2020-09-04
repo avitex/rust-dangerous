@@ -52,7 +52,7 @@ impl<'i, E> Reader<'i, E> {
     #[inline(always)]
     pub fn take_while<F>(&mut self, f: F) -> Result<&'i Input, E>
     where
-        F: Fn(&'i Input, u8) -> Result<bool, E>,
+        F: FnMut(&'i Input, u8) -> Result<bool, E>,
     {
         let (head, tail) = self.input.split_while(f)?;
         self.input = tail;
@@ -104,7 +104,7 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the bytes could not be consumed from the input.
-    pub fn consume(&mut self, bytes: &'static [u8]) -> Result<(), E>
+    pub fn consume(&mut self, bytes: &'i [u8]) -> Result<(), E>
     where
         E: FromError<ExpectedLength<'i>>,
         E: FromError<ExpectedValue<'i>>,
