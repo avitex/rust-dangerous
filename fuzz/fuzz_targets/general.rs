@@ -32,8 +32,10 @@ fuzz_target!(|data: &[u8]| {
     let _ = input_full.reader::<Expected>().peek_eq(single_slice);
     let _ = input_full.reader::<Expected>().take(rng.gen());
     let _ = input_full.reader::<Expected>().skip(rng.gen());
-    let _ = input_full.reader::<Expected>().take_while(|_, c| Ok(c == rng.gen()));
-    let _ = input_full.reader::<Expected>().peek(1, |i| Ok(i == single_slice));
+    let _ = input_full.reader::<Expected>().take_while(|_, c| c == rng.gen());
+    let _ = input_full.reader::<Expected>().try_take_while(|_, c| Ok(c == rng.gen()));
+    let _ = input_full.reader::<Expected>().peek(1, |i| i == single_slice);
+    let _ = input_full.reader::<Expected>().try_peek(1, |i| Ok(i == single_slice));
     let _ = input_full.reader::<Expected>().consume(single_slice);
 });
 

@@ -11,7 +11,7 @@ pub struct Reader<'i, E = Invalid> {
 
 impl<'i, E> Reader<'i, E> {
     /// Returns `true` if the reader has no more input to consume.
-    #[inline(always)]
+    #[inline]
     pub fn at_end(&self) -> bool {
         self.input.is_empty()
     }
@@ -21,7 +21,7 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the input was not long enough.
-    #[inline(always)]
+    #[inline]
     pub fn skip(&mut self, len: usize) -> Result<(), E>
     where
         E: FromError<ExpectedLength<'i>>,
@@ -34,7 +34,6 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the required length cannot be fullfilled.
-    #[inline(always)]
     pub fn take(&mut self, len: usize) -> Result<&'i Input, E>
     where
         E: FromError<ExpectedLength<'i>>,
@@ -44,17 +43,35 @@ impl<'i, E> Reader<'i, E> {
         Ok(head)
     }
 
-    /// Read a length of input while a condition remains true,
+    /// Read a length of input while a predicate check remains true.
     ///
     /// # Errors
     ///
     /// Returns any error the provided function does.
-    #[inline(always)]
-    pub fn take_while<F>(&mut self, f: F) -> Result<&'i Input, E>
+    pub fn take_while<F>(&mut self, mut pred: F) -> &'i Input
+    where
+        F: FnMut(&'i Input, u8) -> bool,
+    {
+        match self.input.split_while::<_, Invalid>(|i, c| Ok(pred(i, c))) {
+            Ok((head, tail)) => {
+                self.input = tail;
+                head
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    /// Try read a length of input while a predicate check remains successful
+    /// and true.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function does.
+    pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
     {
-        let (head, tail) = self.input.split_while(f)?;
+        let (head, tail) = self.input.split_while(pred)?;
         self.input = tail;
         Ok(head)
     }
@@ -64,8 +81,23 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the required length cannot be fullfilled.
-    #[inline(always)]
     pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&Input) -> O,
+        E: FromError<ExpectedLength<'i>>,
+        O: 'static,
+    {
+        let (head, _) = self.input.split_at(len)?;
+        Ok(f(head))
+    }
+
+    /// Try peek a length of input.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the required length cannot be fullfilled,
+    /// or if the provided function returns one.
+    pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         F: FnOnce(&Input) -> Result<O, E>,
         E: FromError<ExpectedLength<'i>>,
@@ -80,7 +112,7 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the reader has no more input.
-    #[inline(always)]
+    #[inline]
     pub fn peek_u8(&self) -> Result<u8, E>
     where
         E: FromError<ExpectedLength<'i>>,
@@ -89,7 +121,7 @@ impl<'i, E> Reader<'i, E> {
     }
 
     /// Returns `true` if `bytes` is next in the input.
-    #[inline(always)]
+    #[inline]
     pub fn peek_eq(&self, bytes: &[u8]) -> bool {
         match self.input.split_at::<Invalid>(bytes.len()) {
             Ok((input, _)) => bytes == input,
@@ -138,7 +170,7 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if there is no more input.
-    #[inline(always)]
+    #[inline]
     pub fn read_u8(&mut self) -> Result<u8, E>
     where
         E: FromError<ExpectedLength<'i>>,
@@ -199,7 +231,7 @@ impl<'i, E> Reader<'i, E> {
     impl_read_num!(f64, le: read_f64_le, be: read_f64_be);
 
     /// Create a sub reader with  given error type.
-    #[inline(always)]
+    #[inline]
     pub fn with_error<'r: 'i, T>(&'r mut self) -> Reader<'r, T> {
         Reader {
             input: self.input,

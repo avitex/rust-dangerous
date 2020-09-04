@@ -62,6 +62,12 @@ impl Input {
         self.as_dangerous().is_empty()
     }
 
+    /// Returns `true` if the underlying byte slice for `parent` contains that
+    /// of `self` in the same section of memory with no bounds out of range.
+    pub fn is_within(&self, parent: &Input) -> bool {
+        parent.inclusive_range(self).is_some()
+    }
+
     /// Returns a [`Reader`] for parsing.
     #[inline(always)]
     pub const fn reader<E>(&self) -> Reader<'_, E> {
@@ -72,12 +78,6 @@ impl Input {
     #[inline(always)]
     pub const fn display(&self) -> InputDisplay<'_> {
         InputDisplay::new(self)
-    }
-
-    /// Returns `true` if the underlying byte slice for `parent` contains that
-    /// of `self` in the same section of memory with no bounds out of range.
-    pub fn is_within(&self, parent: &Input) -> bool {
-        parent.inclusive_range(self).is_some()
     }
 
     /// Returns the underlying byte slice.
@@ -211,7 +211,7 @@ impl Input {
     /// # Errors
     ///
     /// Returns an error if the input is empty.
-    #[inline]
+    #[inline(always)]
     pub(crate) fn first<'i, E>(&'i self) -> Result<u8, E>
     where
         E: FromError<ExpectedLength<'i>>,
@@ -230,7 +230,7 @@ impl Input {
     }
 
     /// Returns an empty `Input` pointing the end of `self`.
-    #[inline]
+    #[inline(always)]
     pub(crate) fn end(&self) -> &Input {
         input(&self.as_dangerous()[self.len()..])
     }
@@ -240,7 +240,7 @@ impl Input {
     /// # Errors
     ///
     /// Returns an error if the input is empty.
-    #[inline]
+    #[inline(always)]
     pub(crate) fn split_first<'i, E>(&'i self) -> Result<(u8, &'i Input), E>
     where
         E: FromError<ExpectedLength<'i>>,
@@ -254,7 +254,7 @@ impl Input {
     /// # Errors
     ///
     /// Returns an error if `mid > self.len()`.
-    #[inline]
+    #[inline(always)]
     pub(crate) fn split_at<'i, E>(&'i self, mid: usize) -> Result<(&'i Input, &'i Input), E>
     where
         E: FromError<ExpectedLength<'i>>,
@@ -276,7 +276,7 @@ impl Input {
     }
 
     /// Splits the input into two at `max`.
-    #[inline]
+    #[inline(always)]
     pub(crate) fn split_max(&self, max: usize) -> (&Input, &Input) {
         if max > self.len() {
             (self, self.end())
@@ -286,7 +286,7 @@ impl Input {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn split_sub(&self, sub: &Input) -> Option<(&Input, &Input)> {
         self.inclusive_range(sub).map(|range| {
             let bytes = self.as_dangerous();
@@ -297,7 +297,7 @@ impl Input {
     }
 
     /// Splits the input when the provided function returns `false`.
-    #[inline]
+    #[inline(always)]
     pub(crate) fn split_while<'i, F, E>(&'i self, mut f: F) -> Result<(&'i Input, &'i Input), E>
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
@@ -313,6 +313,7 @@ impl Input {
         Ok((self, self.end()))
     }
 
+    #[inline(always)]
     pub(crate) fn inclusive_range(&self, sub: &Input) -> Option<Range<usize>> {
         let self_bounds = self.as_dangerous_ptr_range();
         let sub_bounds = sub.as_dangerous_ptr_range();
