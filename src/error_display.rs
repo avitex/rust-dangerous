@@ -16,7 +16,7 @@ impl<'a, T> ErrorDisplay<'a, T>
 where
     T: ?Sized + Error,
 {
-     /// Create a new `ErrorDisplay` given an [`Error`].
+    /// Create a new `ErrorDisplay` given an [`Error`].
     pub fn new(error: &'a T) -> Self {
         Self {
             error,
