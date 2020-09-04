@@ -1,5 +1,6 @@
 //! All errors supported.
 use core::fmt;
+use core::num::NonZeroUsize;
 use core::ops::Deref;
 
 use crate::error_display::ErrorDisplay;
@@ -52,7 +53,7 @@ pub trait Error {
     /// you need till you can continue processing the input, it is a very
     /// granular value and may result in a lot of wasted reprocessing of input
     /// if not handled correctly.
-    fn can_continue_after(&self) -> Option<usize>;
+    fn can_continue_after(&self) -> Option<NonZeroUsize>;
 }
 
 /// The context surrounding an error.
@@ -180,8 +181,8 @@ impl<'i> Error for ExpectedValue<'i> {
         f.write_str("value")
     }
 
-    fn can_continue_after(&self) -> Option<usize> {
-        Some(self.value.len().saturating_sub(self.span().len()))
+    fn can_continue_after(&self) -> Option<NonZeroUsize> {
+        NonZeroUsize::new(self.value.len().saturating_sub(self.span().len()))
     }
 }
 
@@ -262,8 +263,8 @@ impl<'i> Error for ExpectedLength<'i> {
         }
     }
 
-    fn can_continue_after(&self) -> Option<usize> {
-        Some(self.min.saturating_sub(self.span().len()))
+    fn can_continue_after(&self) -> Option<NonZeroUsize> {
+        NonZeroUsize::new(self.min.saturating_sub(self.span().len()))
     }
 }
 
@@ -320,7 +321,7 @@ impl<'i> Error for ExpectedValid<'i> {
         f.write_str(self.expected)
     }
 
-    fn can_continue_after(&self) -> Option<usize> {
+    fn can_continue_after(&self) -> Option<NonZeroUsize> {
         None
     }
 }
@@ -381,7 +382,7 @@ impl<'i> Error for Expected<'i> {
         self.inner().expected_description(f)
     }
 
-    fn can_continue_after(&self) -> Option<usize> {
+    fn can_continue_after(&self) -> Option<NonZeroUsize> {
         self.inner().can_continue_after()
     }
 }

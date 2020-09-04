@@ -70,7 +70,7 @@ where
         let input = dangerous::input(&buf[..written_cur]);
         match decode_message::<Expected>(input) {
             Err(err) => match err.can_continue_after() {
-                Some(len) => expects_cur += len,
+                Some(len) => expects_cur += len.get(),
                 None => return Err(err.into()),
             },
             Ok(message) => {
