@@ -182,7 +182,9 @@ impl<'i> Error for ExpectedValue<'i> {
     }
 
     fn can_continue_after(&self) -> Option<NonZeroUsize> {
-        NonZeroUsize::new(self.value.len().saturating_sub(self.span().len()))
+        let needed = self.value.len();
+        let did_have = self.span().len();
+        NonZeroUsize::new(needed.saturating_sub(did_have))
     }
 }
 
@@ -211,15 +213,29 @@ impl<'i> ExpectedLength<'i> {
     }
 
     /// The maximum length that was expected in a context, if applicable.
+    ///
+    /// If max has a value, this signifies the [`Input`] exceeded it in some
+    /// way. An example of this would be [`Reader::read_all`], where there was
+    /// [`Input`] left over.
     pub fn max(&self) -> Option<usize> {
         self.max
     }
 
+    /// Returns `true` if an exact length was expected in a context.
+    pub fn is_exact(&self) -> bool {
+        Some(self.min) == self.max
+    }
+
+    /// Returns `true` if `max()` has a value.
+    pub fn is_fatal(&self) -> bool {
+        self.max.is_some()
+    }
+
     /// The exact length that was expected in a context, if applicable.
     ///
-    /// Will only return a value if both `min` and `max` are equal.
+    /// Will return a value if `is_exact()` returns `true`.
     pub fn exact(&self) -> Option<usize> {
-        if Some(self.min) == self.max {
+        if self.is_exact() {
             self.max
         } else {
             None
@@ -264,7 +280,13 @@ impl<'i> Error for ExpectedLength<'i> {
     }
 
     fn can_continue_after(&self) -> Option<NonZeroUsize> {
-        NonZeroUsize::new(self.min.saturating_sub(self.span().len()))
+        if self.is_fatal() {
+            None
+        } else {
+            let needed = self.min;
+            let did_have = self.span().len();
+            NonZeroUsize::new(needed.saturating_sub(did_have))
+        }
     }
 }
 

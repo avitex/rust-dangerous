@@ -1,13 +1,15 @@
 use dangerous::{Error, Expected};
 
+use core::num::NonZeroUsize;
+
 #[test]
-fn test_as_dangerous() {
+fn as_dangerous() {
     assert_eq!(dangerous::input(b"").as_dangerous(), b"");
     assert_eq!(dangerous::input(b"hello").as_dangerous(), b"hello");
 }
 
 #[test]
-fn test_to_dangerous_non_empty() {
+fn to_dangerous_non_empty() {
     // Valid
     assert_eq!(
         dangerous::input(b"hello").to_dangerous_non_empty().unwrap(),
@@ -18,7 +20,7 @@ fn test_to_dangerous_non_empty() {
 }
 
 #[test]
-fn test_as_dangerous_str() {
+fn as_dangerous_str() {
     // Valid
     assert_eq!(
         dangerous::input(b"")
@@ -39,7 +41,7 @@ fn test_as_dangerous_str() {
 }
 
 #[test]
-fn test_to_dangerous_non_empty_str() {
+fn to_dangerous_non_empty_str() {
     // Valid
     assert_eq!(
         dangerous::input(b"hello")
@@ -57,7 +59,7 @@ fn test_to_dangerous_non_empty_str() {
 }
 
 #[test]
-fn test_is_within() {
+fn is_within() {
     let bytes = [0u8; 64];
 
     // Within
@@ -83,7 +85,7 @@ fn test_is_within() {
 }
 
 #[test]
-fn test_to_dangerous_str_expected_length() {
+fn to_dangerous_str_expected_length() {
     // Length 1
     dangerous::input(&[0b0111_1111])
         .to_dangerous_str::<Expected>()
@@ -92,12 +94,12 @@ fn test_to_dangerous_str_expected_length() {
     let err = dangerous::input(&[0b1101_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.can_continue_after(), Some(1));
+    assert_eq!(err.can_continue_after(), NonZeroUsize::new(1));
     // Length 3
     let err = dangerous::input(&[0b1110_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.can_continue_after(), Some(2));
+    assert_eq!(err.can_continue_after(), NonZeroUsize::new(2));
     // Invalid
     let err = dangerous::input(&[0b1111_0111])
         .to_dangerous_str::<Expected>()

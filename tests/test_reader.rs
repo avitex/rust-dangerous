@@ -1,3 +1,5 @@
+use dangerous::{Error, Expected};
+
 macro_rules! assert_read_eq {
     ($input:expr, $read_fn:expr, $expect:expr) => {{
         let input = &$input[..];
@@ -42,4 +44,40 @@ fn read_nums() {
     validate_read_num!(i64, le: read_i64_le, be: read_i64_be);
     validate_read_num!(f32, le: read_f32_le, be: read_f32_be);
     validate_read_num!(f64, le: read_f64_le, be: read_f64_be);
+}
+
+#[test]
+fn read_all() {
+    // Valid
+    assert_eq!(
+        dangerous::input(b"hello")
+            .reader::<Expected>()
+            .read_all(|r| { r.consume(b"hello") })
+            .unwrap(),
+        ()
+    );
+    assert_eq!(
+        dangerous::input(b"hello")
+            .reader::<Expected>()
+            .read_all(|r| { r.take(5) })
+            .unwrap(),
+        dangerous::input(b"hello")
+    );
+    // Invalid
+    assert_eq!(
+        dangerous::input(b"hello")
+            .reader::<Expected>()
+            .read_all(|r| { r.consume(b"hell") })
+            .unwrap_err()
+            .can_continue_after(),
+        None
+    );
+    assert_eq!(
+        dangerous::input(b"hello")
+            .reader::<Expected>()
+            .read_all(|r| { r.take(4) })
+            .unwrap_err()
+            .can_continue_after(),
+        None
+    );
 }
