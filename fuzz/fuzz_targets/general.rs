@@ -4,7 +4,7 @@ use libfuzzer_sys::fuzz_target;
 use core::fmt::{self, Write as _};
 
 use rand::{Rng, SeedableRng, rngs::SmallRng};
-use dangerous::{Invalid, Expected};
+use dangerous::Expected;
 
 fuzz_target!(|data: &[u8]| {
     let mut rng = derive_rng(data);
@@ -21,7 +21,6 @@ fuzz_target!(|data: &[u8]| {
     };
 
     let _ = input_a.is_within(input_b);
-    let _ = input_full.to_dangerous_str::<Invalid>();
     
     if let Err(err) = input_full.to_dangerous_str::<Expected>() {
         write!(DummyWrite, "{}", err).unwrap();
