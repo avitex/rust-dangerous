@@ -104,6 +104,15 @@ fn peek() {
 }
 
 #[test]
+fn peek_eq() {
+    let r = reader!(b"helloworld");
+    assert!(r.peek_eq(b"helloworld"));
+    assert!(r.peek_eq(b"hello"));
+    assert!(!r.peek_eq(b"no"));
+    assert!(!r.peek_eq(b"helloworld!"));
+}
+
+#[test]
 fn try_peek() {
     // Valid
     assert_read_all_eq!(
@@ -123,4 +132,14 @@ fn try_peek() {
             Err(err) => Err(err),
         })
         .unwrap_err();
+}
+
+#[test]
+fn with_error() {
+    use dangerous::{Reader, Expected, Invalid};
+
+    let mut parent: Reader<Expected> = reader!("hello");
+    let mut child: Reader<Invalid> = parent.with_error();
+
+    assert_eq!(child.consume(b"world"), Err(Invalid));
 }
