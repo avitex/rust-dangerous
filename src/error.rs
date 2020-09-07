@@ -1,4 +1,5 @@
 //! All errors supported.
+use core::any::Any;
 use core::fmt;
 use core::num::NonZeroUsize;
 use core::ops::Deref;
@@ -83,7 +84,7 @@ pub trait Context {
     /// Say we attempted to process a UTF-8 string from the input via
     /// [`Input::to_dangerous_str()`] within a parent operation described
     /// `decode name`. The final context produced would be that of around
-    /// `decode name`. The `inner` context would be that of
+    /// `decode name`. The `child` context would be that of
     /// [`Input::to_dangerous_str()`].
     ///
     /// This would allow us to walk the contexts, so we can present the
@@ -96,7 +97,10 @@ pub trait Context {
     /// 1. `decode name`: expected valid name
     /// 2. `decode utf-8 code point`: invalid utf-8 code point encounted
     /// ```
-    fn inner(&self) -> Option<&dyn Context>;
+    fn child(&self) -> Option<&dyn Context>;
+
+    /// Additional details associated with this context.
+    fn additional(&self) -> &dyn Any;
 }
 
 /// Conversion trait for errors.
@@ -504,7 +508,11 @@ impl<'i> Context for SealedContext<'i> {
         self.operation
     }
 
-    fn inner(&self) -> Option<&dyn Context> {
+    fn child(&self) -> Option<&dyn Context> {
         None
+    }
+
+    fn additional(&self) -> &dyn Any {
+        &()
     }
 }

@@ -28,9 +28,7 @@ fn read_all() {
         ()
     );
     assert_eq!(
-        reader!(b"hello")
-            .read_all(|r| { r.take(5) })
-            .unwrap(),
+        reader!(b"hello").read_all(|r| { r.take(5) }).unwrap(),
         input!(b"hello")
     );
     // Invalid
@@ -73,7 +71,6 @@ fn take_while() {
     );
 }
 
-
 #[test]
 fn try_take_while() {
     // Valid
@@ -93,16 +90,37 @@ fn try_take_while() {
         .unwrap_err();
 }
 
-
 #[test]
 fn peek() {
     assert_read_all_eq!(
-        b"hello!",
+        b"hello",
         |r| {
-            let v = r.take_while(|_, c| c.is_ascii_alphabetic());
-            r.skip(1)?;
+            let v = r.peek(4, |i| i == b"hell"[..])?;
+            r.skip(5)?;
             Ok(v)
         },
-        &b"hello"[..]
+        true
     );
+}
+
+#[test]
+fn try_peek() {
+    // Valid
+    assert_read_all_eq!(
+        b"hello",
+        |r| {
+            let v = r.try_peek(4, |i| Ok(i == b"hell"[..]))?;
+            r.skip(5)?;
+            Ok(v)
+        },
+        true
+    );
+
+    // Invalid
+    reader!(b"hello")
+        .try_peek(4, |i| match i.reader().consume(b"world") {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err),
+        })
+        .unwrap_err();
 }

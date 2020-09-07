@@ -3,21 +3,18 @@
 macro_rules! input {
     ($input:expr) => {
         dangerous::input($input.as_ref())
-    }
+    };
 }
 
 macro_rules! reader {
     ($input:expr) => {
         input!($input).reader::<dangerous::Expected>()
-    }
+    };
 }
 
 macro_rules! assert_input_display_eq {
     ($input:expr, $format:expr, $expected:expr) => {
-        assert_eq!(
-            format!($format, input!($input)),
-            $expected
-        );
+        assert_eq!(format!($format, input!($input)), $expected);
     };
 }
 

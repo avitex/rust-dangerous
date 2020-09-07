@@ -24,9 +24,23 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn skip(&mut self, len: usize) -> Result<(), E>
     where
+        E: FromError<E>,
         E: FromError<ExpectedLength<'i>>,
     {
-        self.take(len).map(drop)
+        self.input
+            .split_at::<E>(len)
+            .map(|(_, tail)| {
+                self.input = tail;
+            })
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        input: self.input,
+                        operation: "skip",
+                    },
+                )
+            })
     }
 
     /// Read a length of input.
@@ -36,11 +50,24 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if the required length cannot be fullfilled.
     pub fn take(&mut self, len: usize) -> Result<&'i Input, E>
     where
+        E: FromError<E>,
         E: FromError<ExpectedLength<'i>>,
     {
-        let (head, tail) = self.input.split_at(len)?;
-        self.input = tail;
-        Ok(head)
+        self.input
+            .split_at::<E>(len)
+            .map(|(head, tail)| {
+                self.input = tail;
+                head
+            })
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        input: self.input,
+                        operation: "take",
+                    },
+                )
+            })
     }
 
     /// Read a length of input while a predicate check remains true.
@@ -66,10 +93,23 @@ impl<'i, E> Reader<'i, E> {
     pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
+        E: FromError<E>,
     {
-        let (head, tail) = self.input.try_split_while(pred)?;
-        self.input = tail;
-        Ok(head)
+        self.input
+            .try_split_while(pred)
+            .map(|(head, tail)| {
+                self.input = tail;
+                head
+            })
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        input: self.input,
+                        operation: "try take while",
+                    },
+                )
+            })
     }
 
     /// Peek a length of input.
@@ -80,11 +120,22 @@ impl<'i, E> Reader<'i, E> {
     pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         F: FnOnce(&Input) -> O,
+        E: FromError<E>,
         E: FromError<ExpectedLength<'i>>,
         O: 'static,
     {
-        let (head, _) = self.input.split_at(len)?;
-        Ok(f(head))
+        self.input
+            .split_at::<E>(len)
+            .map(|(head, _)| f(head))
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        input: self.input,
+                        operation: "peek",
+                    },
+                )
+            })
     }
 
     /// Try peek a length of input.
@@ -95,12 +146,23 @@ impl<'i, E> Reader<'i, E> {
     /// or if the provided function returns one.
     pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
-        F: FnOnce(&Input) -> Result<O, E>,
+        F: FnOnce(&'i Input) -> Result<O, E>,
+        E: FromError<E>,
         E: FromError<ExpectedLength<'i>>,
         O: 'static,
     {
-        let (head, _) = self.input.split_at(len)?;
-        f(head)
+        self.input
+            .split_at::<E>(len)
+            .and_then(|(head, _)| f(head))
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        input: self.input,
+                        operation: "try peek",
+                    },
+                )
+            })
     }
 
     /// Returns the next byte in the input without mutating the reader.
@@ -111,9 +173,18 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn peek_u8(&self) -> Result<u8, E>
     where
+        E: FromError<E>,
         E: FromError<ExpectedLength<'i>>,
     {
-        Ok(self.input.first()?)
+        self.input.first::<E>().map_err(|err| {
+            E::from_err_ctx(
+                err,
+                SealedContext {
+                    input: self.input,
+                    operation: "peek u8",
+                },
+            )
+        })
     }
 
     /// Returns `true` if `bytes` is next in the input.
@@ -169,11 +240,24 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn read_u8(&mut self) -> Result<u8, E>
     where
+        E: FromError<E>,
         E: FromError<ExpectedLength<'i>>,
     {
-        let (byte, tail) = self.input.split_first()?;
-        self.input = tail;
-        Ok(byte)
+        self.input
+            .split_first::<E>()
+            .map(|(byte, tail)| {
+                self.input = tail;
+                byte
+            })
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        input: self.input,
+                        operation: "read u8",
+                    },
+                )
+            })
     }
 
     /// Run a function with the reader with the expectation all of the input is
@@ -190,28 +274,31 @@ impl<'i, E> Reader<'i, E> {
         E: FromError<ExpectedLength<'i>>,
     {
         let complete = self.input;
-        let ok = f(self).map_err(|err| {
-            E::from_err_ctx(
-                err,
-                SealedContext {
-                    input: complete,
-                    operation: "confirm all read",
-                },
-            )
-        })?;
-        if self.at_end() {
-            Ok(ok)
-        } else {
-            Err(E::from_err(ExpectedLength {
-                min: 0,
-                max: Some(0),
-                span: self.input,
-                context: SealedContext {
-                    input: complete,
-                    operation: "confirm all read",
-                },
-            }))
-        }
+        f(self)
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        input: complete,
+                        operation: "confirm all read",
+                    },
+                )
+            })
+            .and_then(|ok| {
+                if self.at_end() {
+                    Ok(ok)
+                } else {
+                    Err(E::from_err(ExpectedLength {
+                        min: 0,
+                        max: Some(0),
+                        span: self.input,
+                        context: SealedContext {
+                            input: complete,
+                            operation: "confirm all read",
+                        },
+                    }))
+                }
+            })
     }
 
     impl_read_num!(i8, le: read_i8_le, be: read_i8_be);

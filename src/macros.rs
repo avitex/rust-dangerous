@@ -12,9 +12,10 @@ macro_rules! impl_read_num {
         /// Returns an error if there is not sufficient input left to read.
         pub fn $read_le(&mut self) -> Result<$ty, E>
         where
+            E: FromError<E>,
             E: FromError<ExpectedLength<'i>>,
         {
-            read_arr!(self, core::mem::size_of::<$ty>()).map(<$ty>::from_le_bytes)
+            read_num!(self, E, $ty, concat!("little-endian ", $ty_str), from_le_bytes)
         }
 
         #[doc = "Read a big-endian encoded `"]
@@ -26,23 +27,37 @@ macro_rules! impl_read_num {
         /// Returns an error if there is not sufficient input left to read.
         pub fn $read_be(&mut self) -> Result<$ty, E>
         where
+            E: FromError<E>,
             E: FromError<ExpectedLength<'i>>,
         {
-            read_arr!(self, core::mem::size_of::<$ty>()).map(<$ty>::from_be_bytes)
+            read_num!(self, E, $ty, concat!("big-endian ", $ty_str), from_be_bytes)
         }
     };
 }
 
-macro_rules! read_arr {
-    ($reader:expr, $size:expr) => {{
-        use core::convert::TryInto;
+macro_rules! read_num {
+    ($reader:expr, $err_ty:ident, $num_ty:ty, $num_desc:expr, $from_xx_bytes:ident) => {{
         $reader
-            .take($size)
-            .map(|i| match i.as_dangerous().try_into() {
-                Ok(v) => v,
-                Err(_) => unreachable!(),
+            .input
+            .split_at::<$err_ty>(core::mem::size_of::<$num_ty>())
+            .map(
+                |(head, tail)| match core::convert::TryInto::try_into(head.as_dangerous()) {
+                    Ok(arr) => {
+                        $reader.input = tail;
+                        <$num_ty>::$from_xx_bytes(arr)
+                    }
+                    Err(_) => unreachable!(),
+                },
+            )
+            .map_err(|err| {
+                E::from_err_ctx(
+                    err,
+                    SealedContext {
+                        operation: concat!("read ", $num_desc),
+                        input: $reader.input,
+                    },
+                )
             })
-            .map(Clone::clone)
     }};
 }
 
