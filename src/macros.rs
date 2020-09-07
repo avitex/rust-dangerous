@@ -12,8 +12,7 @@ macro_rules! impl_read_num {
         /// Returns an error if there is not sufficient input left to read.
         pub fn $read_le(&mut self) -> Result<$ty, E>
         where
-            E: FromError<E>,
-            E: FromError<ExpectedLength<'i>>,
+            E: From<ExpectedLength<'i>>,
         {
             read_num!(self, E, $ty, concat!("little-endian ", $ty_str), from_le_bytes)
         }
@@ -27,8 +26,7 @@ macro_rules! impl_read_num {
         /// Returns an error if there is not sufficient input left to read.
         pub fn $read_be(&mut self) -> Result<$ty, E>
         where
-            E: FromError<E>,
-            E: FromError<ExpectedLength<'i>>,
+            E: From<ExpectedLength<'i>>,
         {
             read_num!(self, E, $ty, concat!("big-endian ", $ty_str), from_be_bytes)
         }
@@ -50,7 +48,7 @@ macro_rules! read_num {
                 },
             )
             .map_err(|err| {
-                E::from_err_ctx(
+                E::with_context(
                     err,
                     SealedContext {
                         operation: concat!("read ", $num_desc),
@@ -66,6 +64,21 @@ macro_rules! impl_error {
         impl<'i> fmt::Display for $name<'i> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 self.display().fmt(f)
+            }
+        }
+
+        impl<'i> Error for $name<'i> {
+            fn with_context<C>(self, _ctx: C) -> Self
+            where
+                C: Context,
+            {
+                self
+            }
+        }
+
+        impl<'i> From<$name<'i>> for Invalid {
+            fn from(_: $name<'i>) -> Self {
+                Invalid
             }
         }
 

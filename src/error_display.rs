@@ -1,11 +1,11 @@
 use core::fmt::{self, Write};
 
-use crate::error::Error;
+use crate::error::ErrorDetails;
 
 const INPUT_PREFIX: &str = "> ";
 const DEFAULT_MAX_WIDTH: usize = 80;
 
-/// Provides configurable [`Error`] formatting.
+/// Provides configurable [`ErrorDetails`] formatting.
 #[derive(Clone)]
 pub struct ErrorDisplay<'a, T: ?Sized> {
     error: &'a T,
@@ -14,9 +14,9 @@ pub struct ErrorDisplay<'a, T: ?Sized> {
 
 impl<'a, T> ErrorDisplay<'a, T>
 where
-    T: ?Sized + Error,
+    T: ?Sized + ErrorDetails,
 {
-    /// Create a new `ErrorDisplay` given an [`Error`].
+    /// Create a new `ErrorDisplay` given an [`ErrorDetails`].
     pub fn new(error: &'a T) -> Self {
         Self {
             error,
@@ -36,7 +36,7 @@ where
         self
     }
 
-    /// Writes the [`Error`] to a writer with the choosen format.
+    /// Writes the [`ErrorDetails`] to a writer with the choosen format.
     ///
     /// # Errors
     ///
@@ -70,7 +70,7 @@ where
 
 impl<'a, T> fmt::Debug for ErrorDisplay<'a, T>
 where
-    T: ?Sized + Error,
+    T: ?Sized + ErrorDetails,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)
@@ -79,7 +79,7 @@ where
 
 impl<'a, T> fmt::Display for ErrorDisplay<'a, T>
 where
-    T: ?Sized + Error,
+    T: ?Sized + ErrorDetails,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)

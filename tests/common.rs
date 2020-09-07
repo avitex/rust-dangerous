@@ -6,9 +6,15 @@ macro_rules! input {
     };
 }
 
-macro_rules! reader {
-    ($input:expr) => {
-        input!($input).reader::<dangerous::Expected>()
+macro_rules! read_all {
+    ($input:expr, $read_fn:expr) => {
+        input!($input).read_all::<_, _, dangerous::Expected>($read_fn)
+    };
+}
+
+macro_rules! read_partial {
+    ($input:expr, $read_fn:expr) => {
+        input!($input).read_partial::<_, _, dangerous::Expected>($read_fn)
     };
 }
 
@@ -18,34 +24,22 @@ macro_rules! assert_input_display_eq {
     };
 }
 
-macro_rules! assert_read_all_eq {
-    ($input:expr, $read_fn:expr, $expect:expr) => {{
-        let input = $input;
-        let mut reader = reader!(input);
-        assert_eq!(reader.read_all($read_fn).expect("value"), $expect);
-    }};
-}
-
 macro_rules! validate_read_num {
     ($ty:ty, le: $read_le:ident, be: $read_be:ident) => {
-        assert_read_all_eq!(
-            <$ty>::to_le_bytes(<$ty>::MIN),
-            |r| Ok(r.$read_le()?),
+        assert_eq!(
+            read_all!(<$ty>::to_le_bytes(<$ty>::MIN), |r| r.$read_le()).unwrap(),
             <$ty>::MIN
         );
-        assert_read_all_eq!(
-            <$ty>::to_be_bytes(<$ty>::MIN),
-            |r| Ok(r.$read_be()?),
+        assert_eq!(
+            read_all!(<$ty>::to_be_bytes(<$ty>::MIN), |r| r.$read_be()).unwrap(),
             <$ty>::MIN
         );
-        assert_read_all_eq!(
-            <$ty>::to_le_bytes(<$ty>::MAX),
-            |r| Ok(r.$read_le()?),
+        assert_eq!(
+            read_all!(<$ty>::to_le_bytes(<$ty>::MAX), |r| r.$read_le()).unwrap(),
             <$ty>::MAX
         );
-        assert_read_all_eq!(
-            <$ty>::to_be_bytes(<$ty>::MAX),
-            |r| Ok(r.$read_be()?),
+        assert_eq!(
+            read_all!(<$ty>::to_be_bytes(<$ty>::MAX), |r| r.$read_be()).unwrap(),
             <$ty>::MAX
         );
     };

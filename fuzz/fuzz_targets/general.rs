@@ -3,13 +3,19 @@ use libfuzzer_sys::fuzz_target;
 
 use core::fmt::{self, Write as _};
 
-use rand::{Rng, SeedableRng, rngs::SmallRng};
 use dangerous::Expected;
+use rand::{rngs::SmallRng, Rng, SeedableRng};
+
+macro_rules! read_partial {
+    ($input:expr, $read_fn:expr) => {
+        let _ = $input.read_partial::<_, _, Expected>($read_fn);
+    };
+}
 
 fuzz_target!(|data: &[u8]| {
     let mut rng = derive_rng(data);
 
-    let single_slice =  &[rng.gen()][..];
+    let single_slice = &[rng.gen()][..];
 
     let input_full = dangerous::input(data);
 
@@ -21,23 +27,22 @@ fuzz_target!(|data: &[u8]| {
     };
 
     let _ = input_a.is_within(input_b);
-    
+
     if let Err(err) = input_full.to_dangerous_str::<Expected>() {
         write!(DummyWrite, "{}", err).unwrap();
     }
 
-    let _ = input_full.reader::<Expected>().read_u8();
-    let _ = input_full.reader::<Expected>().peek_u8();
-    let _ = input_full.reader::<Expected>().peek_eq(single_slice);
-    let _ = input_full.reader::<Expected>().take(rng.gen());
-    let _ = input_full.reader::<Expected>().skip(rng.gen());
-    let _ = input_full.reader::<Expected>().take_while(|_, c| c == rng.gen());
-    let _ = input_full.reader::<Expected>().try_take_while(|_, c| Ok(c == rng.gen()));
-    let _ = input_full.reader::<Expected>().peek(1, |i| i == single_slice);
-    let _ = input_full.reader::<Expected>().try_peek(1, |i| Ok(i == single_slice));
-    let _ = input_full.reader::<Expected>().consume(single_slice);
+    read_partial!(input_full, |r| r.read_u8());
+    read_partial!(input_full, |r| r.peek_u8());
+    read_partial!(input_full, |r| Ok(r.peek_eq(single_slice)));
+    read_partial!(input_full, |r| r.take(rng.gen()));
+    read_partial!(input_full, |r| r.skip(rng.gen()));
+    read_partial!(input_full, |r| Ok(r.take_while(|_, c| c == rng.gen())));
+    read_partial!(input_full, |r| r.try_take_while(|_, c| Ok(c == rng.gen())));
+    read_partial!(input_full, |r| r.peek(1, |i| i == single_slice));
+    read_partial!(input_full, |r| r.try_peek(1, |i| Ok(i == single_slice)));
+    read_partial!(input_full, |r| r.consume(single_slice));
 });
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Support

@@ -14,7 +14,7 @@
 use std::error::Error;
 use std::io;
 
-use dangerous::Expected;
+use dangerous::{ErrorDetails, Expected};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
@@ -82,21 +82,23 @@ where
 
 fn decode_message<'i, E>(input: &'i dangerous::Input) -> Result<Message<'i>, E>
 where
+    E: dangerous::Error,
     E: From<dangerous::ExpectedLength<'i>>,
     E: From<dangerous::ExpectedValid<'i>>,
     E: From<dangerous::ExpectedValue<'i>>,
 {
-    let mut r = input.reader::<E>();
-    // Expect version 1
-    r.consume(&[0x01])?;
-    // Read the body length
-    let body_len = r.read_u8()?;
-    // Take the body input
-    let body_input = r.take(body_len as usize)?;
-    // Decode the body input as a UTF-8 str
-    let body = body_input.to_dangerous_str::<E>()?;
-    // We did it!
-    Ok(Message { body })
+    input.read_all::<_, _, E>(|r| {
+        // Expect version 1
+        r.consume(&[0x01])?;
+        // Read the body length
+        let body_len = r.read_u8()?;
+        // Take the body input
+        let body_input = r.take(body_len as usize)?;
+        // Decode the body input as a UTF-8 str
+        let body = body_input.to_dangerous_str::<E>()?;
+        // We did it!
+        Ok(Message { body })
+    })
 }
 
 // Dummy reader that reads one byte at a time

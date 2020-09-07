@@ -2,19 +2,30 @@
 use core::any::Any;
 use core::fmt;
 use core::num::NonZeroUsize;
-use core::ops::Deref;
 
 use crate::error_display::ErrorDisplay;
 use crate::input::Input;
 
-/// An error produced when attempting to process input, providing all the
-/// properties required to produce a verbose report on what happened.
+/// The the core error that collects contexts.
+pub trait Error {
+    /// Return `Self` with context.
+    ///
+    /// This method is used for adding parent contexts to errors bubbling up.
+    /// How child and parent contexts are handled are upstream concerns.
+    fn with_context<C>(self, ctx: C) -> Self
+    where
+        C: Context;
+}
+
+/// The errors details around an error produced while attempting to process
+/// input providing the required properties to produce a verbose report on what
+/// happened.
 ///
 /// If you're not interested in errors of this nature and only wish to know
 /// whether or not the input was correctly processed, you'll wish to use the
 /// concrete type `Invalid` and all of the computations around verbose erroring
 /// will be removed in compilation.
-pub trait Error {
+pub trait ErrorDetails {
     /// The specific section of input that caused an error.
     fn span(&self) -> &Input;
 
@@ -103,40 +114,6 @@ pub trait Context {
     fn additional(&self) -> &dyn Any;
 }
 
-/// Conversion trait for errors.
-///
-/// This is used in place of `From<T>` to get around specialization and to
-/// support creating an error from another with context.
-pub trait FromError<T> {
-    /// Create `Self` from an error with no associated context.
-    fn from_err(err: T) -> Self;
-
-    /// Create `Self` from an error with an associated context.
-    ///
-    /// This method is used for adding parent contexts to errors bubbling up.
-    /// How child and parent contexts are handled are upstream concerns.
-    fn from_err_ctx<C>(err: T, ctx: C) -> Self
-    where
-        C: Context;
-}
-
-impl<T, U> FromError<T> for U
-where
-    U: From<T>,
-    T: Error,
-{
-    fn from_err(err: T) -> Self {
-        U::from(err)
-    }
-
-    fn from_err_ctx<C>(err: T, _ctx: C) -> Self
-    where
-        C: Context,
-    {
-        Self::from_err(err)
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
 
@@ -160,7 +137,7 @@ impl<'i> ExpectedValue<'i> {
     }
 }
 
-impl<'i> Error for ExpectedValue<'i> {
+impl<'i> ErrorDetails for ExpectedValue<'i> {
     fn span(&self) -> &Input {
         self.span
     }
@@ -219,7 +196,7 @@ impl<'i> ExpectedLength<'i> {
     /// The maximum length that was expected in a context, if applicable.
     ///
     /// If max has a value, this signifies the [`Input`] exceeded it in some
-    /// way. An example of this would be [`Reader::read_all`], where there was
+    /// way. An example of this would be [`Input::read_all`], where there was
     /// [`Input`] left over.
     pub fn max(&self) -> Option<usize> {
         self.max
@@ -252,7 +229,7 @@ impl<'i> ExpectedLength<'i> {
     }
 }
 
-impl<'i> Error for ExpectedLength<'i> {
+impl<'i> ErrorDetails for ExpectedLength<'i> {
     fn span(&self) -> &Input {
         self.span
     }
@@ -322,7 +299,7 @@ impl<'i> ExpectedValid<'i> {
     }
 }
 
-impl<'i> Error for ExpectedValid<'i> {
+impl<'i> ErrorDetails for ExpectedValid<'i> {
     fn span(&self) -> &Input {
         self.span
     }
@@ -374,7 +351,7 @@ impl<'i> Expected<'i> {
         ErrorDisplay::new(self)
     }
 
-    fn inner(&self) -> &(dyn Error + 'i) {
+    fn details(&self) -> &(dyn ErrorDetails + 'i) {
         match self {
             Self::Value(ref err) => err,
             Self::Valid(ref err) => err,
@@ -383,41 +360,33 @@ impl<'i> Expected<'i> {
     }
 }
 
-impl<'i> Error for Expected<'i> {
+impl<'i> ErrorDetails for Expected<'i> {
     fn span(&self) -> &Input {
-        self.inner().span()
+        self.details().span()
     }
 
     fn context(&self) -> &dyn Context {
-        self.inner().context()
+        self.details().context()
     }
 
     fn found_value(&self) -> Option<&Input> {
-        self.inner().found_value()
+        self.details().found_value()
     }
 
     fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner().found_description(f)
+        self.details().found_description(f)
     }
 
     fn expected_value(&self) -> Option<&Input> {
-        self.inner().expected_value()
+        self.details().expected_value()
     }
 
     fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner().expected_description(f)
+        self.details().expected_description(f)
     }
 
     fn can_continue_after(&self) -> Option<NonZeroUsize> {
-        self.inner().can_continue_after()
-    }
-}
-
-impl<'i> Deref for Expected<'i> {
-    type Target = dyn Error + 'i;
-
-    fn deref(&self) -> &Self::Target {
-        self.inner()
+        self.details().can_continue_after()
     }
 }
 
@@ -455,8 +424,10 @@ impl_error!(Expected);
 /// ```
 /// use dangerous::Invalid;
 ///
-/// let mut reader = dangerous::input(b"").reader();
-/// let error: Invalid = reader.read_u8().unwrap_err();
+/// let error: Invalid = dangerous::input(b"").read_all(|r| {
+///     r.read_u8()
+/// }).unwrap_err();
+///
 /// assert_eq!(format!("{}", error), "invalid input")
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -468,22 +439,12 @@ impl fmt::Display for Invalid {
     }
 }
 
-impl<T: Error> From<T> for Invalid {
-    fn from(_: T) -> Self {
-        Self
-    }
-}
-
-impl FromError<Invalid> for Invalid {
-    fn from_err(_: Invalid) -> Self {
-        Self
-    }
-
-    fn from_err_ctx<C>(_: Invalid, _: C) -> Self
+impl Error for Invalid {
+    fn with_context<C>(self, _ctx: C) -> Self
     where
         C: Context,
     {
-        Self
+        self
     }
 }
 

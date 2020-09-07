@@ -1,7 +1,7 @@
 #[macro_use]
 mod common;
 
-use dangerous::{Error, Expected};
+use dangerous::{ErrorDetails, Expected};
 
 use core::num::NonZeroUsize;
 

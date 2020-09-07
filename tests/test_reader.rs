@@ -1,11 +1,11 @@
 #[macro_use]
 mod common;
 
-use dangerous::Error;
+use dangerous::ErrorDetails;
 
 #[test]
 fn read_nums() {
-    assert_read_all_eq!(&[0x1], |r| r.read_u8(), 1);
+    assert_eq!(read_all!(&[0x1], |r| r.read_u8()).unwrap(), 1);
 
     validate_read_num!(i8, le: read_i8_le, be: read_i8_be);
     validate_read_num!(u16, le: read_u16_le, be: read_u16_be);
@@ -22,26 +22,22 @@ fn read_nums() {
 fn read_all() {
     // Valid
     assert_eq!(
-        reader!(b"hello")
-            .read_all(|r| { r.consume(b"hello") })
-            .unwrap(),
+        read_all!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
         ()
     );
     assert_eq!(
-        reader!(b"hello").read_all(|r| { r.take(5) }).unwrap(),
+        read_all!(b"hello", |r| { r.take(5) }).unwrap(),
         input!(b"hello")
     );
     // Invalid
     assert_eq!(
-        reader!(b"hello")
-            .read_all(|r| { r.consume(b"hell") })
+        read_all!(b"hello", |r| { r.consume(b"hell") })
             .unwrap_err()
             .can_continue_after(),
         None
     );
     assert_eq!(
-        reader!(b"hello")
-            .read_all(|r| { r.take(4) })
+        read_all!(b"hello", |r| { r.take(4) })
             .unwrap_err()
             .can_continue_after(),
         None
@@ -50,23 +46,26 @@ fn read_all() {
 
 #[test]
 fn skip() {
-    assert_read_all_eq!(b"hello", |r| { r.skip(5) }, ());
+    assert_eq!(read_all!(b"hello", |r| { r.skip(5) }).unwrap(), ());
 }
 
 #[test]
 fn take() {
-    assert_read_all_eq!(b"hello", |r| { r.take(5) }, &b"hello"[..]);
+    assert_eq!(
+        read_all!(b"hello", |r| { r.take(5) }).unwrap(),
+        &b"hello"[..]
+    );
 }
 
 #[test]
 fn take_while() {
-    assert_read_all_eq!(
-        b"hello!",
-        |r| {
+    assert_eq!(
+        read_all!(b"hello!", |r| {
             let v = r.take_while(|_, c| c.is_ascii_alphabetic());
             r.skip(1)?;
             Ok(v)
-        },
+        })
+        .unwrap(),
         &b"hello"[..]
     );
 }
@@ -74,72 +73,76 @@ fn take_while() {
 #[test]
 fn try_take_while() {
     // Valid
-    assert_read_all_eq!(
-        b"hello!",
-        |r| {
+    assert_eq!(
+        read_all!(b"hello!", |r| {
             let v = r.try_take_while(|_, c| Ok(c.is_ascii_alphabetic()))?;
             r.skip(1)?;
             Ok(v)
-        },
+        })
+        .unwrap(),
         &b"hello"[..]
     );
 
     // Invalid
-    reader!(b"hello")
-        .try_take_while(|i, _| i.reader().consume(b"world").map(|_| true))
-        .unwrap_err();
+    read_all!(b"hello", |r| {
+        r.try_take_while(|i, _| i.read_all(|r| r.consume(b"world")).map(|_| true))
+    })
+    .unwrap_err();
 }
 
 #[test]
 fn peek() {
-    assert_read_all_eq!(
-        b"hello",
-        |r| {
+    assert_eq!(
+        read_all!(b"hello", |r| {
             let v = r.peek(4, |i| i == b"hell"[..])?;
             r.skip(5)?;
             Ok(v)
-        },
+        })
+        .unwrap(),
         true
     );
 }
 
 #[test]
 fn peek_eq() {
-    let r = reader!(b"helloworld");
-    assert!(r.peek_eq(b"helloworld"));
-    assert!(r.peek_eq(b"hello"));
-    assert!(!r.peek_eq(b"no"));
-    assert!(!r.peek_eq(b"helloworld!"));
+    read_partial!(b"helloworld", |r| {
+        assert!(r.peek_eq(b"helloworld"));
+        assert!(r.peek_eq(b"hello"));
+        assert!(!r.peek_eq(b"no"));
+        assert!(!r.peek_eq(b"helloworld!"));
+        Ok(())
+    })
+    .unwrap();
 }
 
 #[test]
 fn try_peek() {
     // Valid
-    assert_read_all_eq!(
-        b"hello",
-        |r| {
+    assert_eq!(
+        read_all!(b"hello", |r| {
             let v = r.try_peek(4, |i| Ok(i == b"hell"[..]))?;
             r.skip(5)?;
             Ok(v)
-        },
+        })
+        .unwrap(),
         true
     );
 
     // Invalid
-    reader!(b"hello")
-        .try_peek(4, |i| match i.reader().consume(b"world") {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err),
-        })
-        .unwrap_err();
+    read_all!(b"hello", |r| {
+        r.try_peek(4, |i| i.read_all(|r| r.consume(b"world")).map(drop))
+    })
+    .unwrap_err();
 }
 
 #[test]
 fn with_error() {
-    use dangerous::{Reader, Expected, Invalid};
+    use dangerous::{Expected, Invalid, Reader};
 
-    let mut parent: Reader<Expected> = reader!("hello");
-    let mut child: Reader<Invalid> = parent.with_error();
-
-    assert_eq!(child.consume(b"world"), Err(Invalid));
+    read_all!("hello", |parent: &mut Reader<'_, Expected<'_>>| {
+        let mut child = parent.with_error::<Invalid>();
+        assert_eq!(child.consume(b"world"), Err(Invalid));
+        Ok(())
+    })
+    .unwrap_err();
 }

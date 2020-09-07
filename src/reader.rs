@@ -1,15 +1,18 @@
 use core::marker::PhantomData;
 
-use crate::error::{ExpectedLength, ExpectedValue, FromError, Invalid, SealedContext};
+use crate::error::{Error, ExpectedLength, ExpectedValue, Invalid, SealedContext};
 use crate::input::Input;
 
 /// A `Reader` is created from and consumes a [`Input`].
-pub struct Reader<'i, E = Invalid> {
+pub struct Reader<'i, E> {
     input: &'i Input,
     error: PhantomData<E>,
 }
 
-impl<'i, E> Reader<'i, E> {
+impl<'i, E> Reader<'i, E>
+where
+    E: Error,
+{
     /// Returns `true` if the reader has no more input to consume.
     #[inline]
     pub fn at_end(&self) -> bool {
@@ -24,8 +27,7 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn skip(&mut self, len: usize) -> Result<(), E>
     where
-        E: FromError<E>,
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         self.input
             .split_at::<E>(len)
@@ -33,7 +35,7 @@ impl<'i, E> Reader<'i, E> {
                 self.input = tail;
             })
             .map_err(|err| {
-                E::from_err_ctx(
+                E::with_context(
                     err,
                     SealedContext {
                         input: self.input,
@@ -43,6 +45,13 @@ impl<'i, E> Reader<'i, E> {
             })
     }
 
+    /// Read all of the input left.
+    pub fn take_all(&mut self) -> &'i Input {
+        let all = self.input;
+        self.input = all.end();
+        all
+    }
+
     /// Read a length of input.
     ///
     /// # Errors
@@ -50,8 +59,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if the required length cannot be fullfilled.
     pub fn take(&mut self, len: usize) -> Result<&'i Input, E>
     where
-        E: FromError<E>,
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         self.input
             .split_at::<E>(len)
@@ -60,7 +68,7 @@ impl<'i, E> Reader<'i, E> {
                 head
             })
             .map_err(|err| {
-                E::from_err_ctx(
+                E::with_context(
                     err,
                     SealedContext {
                         input: self.input,
@@ -93,7 +101,6 @@ impl<'i, E> Reader<'i, E> {
     pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
-        E: FromError<E>,
     {
         self.input
             .try_split_while(pred)
@@ -102,7 +109,7 @@ impl<'i, E> Reader<'i, E> {
                 head
             })
             .map_err(|err| {
-                E::from_err_ctx(
+                E::with_context(
                     err,
                     SealedContext {
                         input: self.input,
@@ -120,15 +127,14 @@ impl<'i, E> Reader<'i, E> {
     pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         F: FnOnce(&Input) -> O,
-        E: FromError<E>,
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
         O: 'static,
     {
         self.input
             .split_at::<E>(len)
             .map(|(head, _)| f(head))
             .map_err(|err| {
-                E::from_err_ctx(
+                E::with_context(
                     err,
                     SealedContext {
                         input: self.input,
@@ -147,15 +153,14 @@ impl<'i, E> Reader<'i, E> {
     pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         F: FnOnce(&'i Input) -> Result<O, E>,
-        E: FromError<E>,
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
         O: 'static,
     {
         self.input
             .split_at::<E>(len)
             .and_then(|(head, _)| f(head))
             .map_err(|err| {
-                E::from_err_ctx(
+                E::with_context(
                     err,
                     SealedContext {
                         input: self.input,
@@ -173,11 +178,10 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn peek_u8(&self) -> Result<u8, E>
     where
-        E: FromError<E>,
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         self.input.first::<E>().map_err(|err| {
-            E::from_err_ctx(
+            E::with_context(
                 err,
                 SealedContext {
                     input: self.input,
@@ -205,15 +209,15 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if the bytes could not be consumed from the input.
     pub fn consume(&mut self, bytes: &'i [u8]) -> Result<(), E>
     where
-        E: FromError<ExpectedLength<'i>>,
-        E: FromError<ExpectedValue<'i>>,
+        E: From<ExpectedLength<'i>>,
+        E: From<ExpectedValue<'i>>,
     {
         match self.input.split_at::<Invalid>(bytes.len()) {
             Ok((input, tail)) if input == bytes => {
                 self.input = tail;
                 Ok(())
             }
-            Ok((input, _)) => Err(E::from_err(ExpectedValue {
+            Ok((input, _)) => Err(E::from(ExpectedValue {
                 span: input,
                 value: crate::input(bytes),
                 context: SealedContext {
@@ -221,7 +225,7 @@ impl<'i, E> Reader<'i, E> {
                     operation: "consume value",
                 },
             })),
-            Err(_) => Err(E::from_err(ExpectedValue {
+            Err(_) => Err(E::from(ExpectedValue {
                 span: self.input.end(),
                 value: crate::input(bytes),
                 context: SealedContext {
@@ -240,8 +244,7 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn read_u8(&mut self) -> Result<u8, E>
     where
-        E: FromError<E>,
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         self.input
             .split_first::<E>()
@@ -250,54 +253,13 @@ impl<'i, E> Reader<'i, E> {
                 byte
             })
             .map_err(|err| {
-                E::from_err_ctx(
+                E::with_context(
                     err,
                     SealedContext {
                         input: self.input,
                         operation: "read u8",
                     },
                 )
-            })
-    }
-
-    /// Run a function with the reader with the expectation all of the input is
-    /// read.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if either the function does, or there is trailing
-    /// input.
-    pub fn read_all<F, O>(&mut self, f: F) -> Result<O, E>
-    where
-        F: FnOnce(&mut Self) -> Result<O, E>,
-        E: FromError<E>,
-        E: FromError<ExpectedLength<'i>>,
-    {
-        let complete = self.input;
-        f(self)
-            .map_err(|err| {
-                E::from_err_ctx(
-                    err,
-                    SealedContext {
-                        input: complete,
-                        operation: "confirm all read",
-                    },
-                )
-            })
-            .and_then(|ok| {
-                if self.at_end() {
-                    Ok(ok)
-                } else {
-                    Err(E::from_err(ExpectedLength {
-                        min: 0,
-                        max: Some(0),
-                        span: self.input,
-                        context: SealedContext {
-                            input: complete,
-                            operation: "confirm all read",
-                        },
-                    }))
-                }
             })
     }
 
@@ -313,9 +275,9 @@ impl<'i, E> Reader<'i, E> {
     impl_read_num!(f32, le: read_f32_le, be: read_f32_be);
     impl_read_num!(f64, le: read_f64_le, be: read_f64_be);
 
-    /// Create a sub reader with  given error type.
+    /// Create a sub reader with a given error type.
     #[inline]
-    pub fn with_error<'r: 'i, T>(&'r mut self) -> Reader<'r, T> {
+    pub fn with_error<T>(&mut self) -> Reader<'_, T> {
         Reader {
             input: self.input,
             error: PhantomData,
@@ -323,7 +285,7 @@ impl<'i, E> Reader<'i, E> {
     }
 
     /// Create a `Reader` given `Input`.
-    pub(crate) const fn new(input: &'i Input) -> Self {
+    pub(crate) fn new(input: &'i Input) -> Self {
         Self {
             input,
             error: PhantomData,

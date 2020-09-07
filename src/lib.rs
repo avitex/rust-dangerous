@@ -3,12 +3,15 @@
 //! # Basic usage
 //!
 //! ```rust
-//! use dangerous::Invalid;
+//! use dangerous::{Reader, Invalid};
 //!
 //! let input = dangerous::input(b"hello");
-//! let mut reader = input.reader::<Invalid>();
 //!
-//! assert_eq!(reader.read_u8(), Ok(b'h'));
+//! let result: Result<_, Invalid> = input.read_partial(|r| {
+//!     r.read_u8()
+//! });
+//!
+//! assert_eq!(result, Ok((b'h', dangerous::input(b"ello"))));
 //! ```
 //!
 //! # Guarantees

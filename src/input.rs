@@ -1,7 +1,7 @@
 use core::ops::Range;
 use core::{fmt, str};
 
-use crate::error::{ExpectedLength, ExpectedValid, FromError, SealedContext};
+use crate::error::{Error, ExpectedLength, ExpectedValid, SealedContext};
 use crate::input_display::InputDisplay;
 use crate::reader::Reader;
 
@@ -68,12 +68,6 @@ impl Input {
         parent.inclusive_range(self).is_some()
     }
 
-    /// Returns a [`Reader`] for parsing.
-    #[inline(always)]
-    pub const fn reader<E>(&self) -> Reader<'_, E> {
-        Reader::new(self)
-    }
-
     /// Returns an [`InputDisplay`] for formatting.
     #[inline(always)]
     pub const fn display(&self) -> InputDisplay<'_> {
@@ -127,8 +121,9 @@ impl Input {
     #[inline]
     pub fn to_dangerous_str<'i, E>(&'i self) -> Result<&'i str, E>
     where
-        E: FromError<ExpectedValid<'i>>,
-        E: FromError<ExpectedLength<'i>>,
+        E: Error,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         match str::from_utf8(self.as_dangerous()) {
             Ok(s) => Ok(s),
@@ -148,7 +143,7 @@ impl Input {
                     // | 1110XXXX | 3   | valid               |
                     // | 11110VVV | 4   | valid               |
                     // | 11110XXX | N/A | invalid/unreachable |
-                    Err(E::from_err(ExpectedLength {
+                    Err(E::from(ExpectedLength {
                         min: invalid[0].leading_ones() as usize,
                         max: None,
                         span: input(invalid),
@@ -162,7 +157,7 @@ impl Input {
                     let bytes = self.as_dangerous();
                     let error_start = utf8_err.valid_up_to();
                     let error_end = error_start + error_len;
-                    Err(E::from_err(ExpectedValid {
+                    Err(E::from(ExpectedValid {
                         expected: "utf-8 code point",
                         found: "invalid value",
                         span: input(&bytes[error_start..error_end]),
@@ -188,11 +183,12 @@ impl Input {
     #[inline]
     pub fn to_dangerous_non_empty_str<'i, E>(&'i self) -> Result<&'i str, E>
     where
-        E: FromError<ExpectedValid<'i>>,
-        E: FromError<ExpectedLength<'i>>,
+        E: Error,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         if self.is_empty() {
-            Err(E::from_err(ExpectedLength {
+            Err(E::from(ExpectedLength {
                 min: 1,
                 max: None,
                 span: self,
@@ -206,6 +202,71 @@ impl Input {
         }
     }
 
+    /// Create a reader with the expectation all of the input is read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the function does, or there is trailing
+    /// input.
+    pub fn read_all<'i, F, O, E>(&'i self, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
+        E: From<ExpectedLength<'i>>,
+        E: Error,
+    {
+        let mut reader = Reader::new(self);
+        f(&mut reader)
+            .map_err(|err| {
+                E::with_context(
+                    err,
+                    SealedContext {
+                        input: self,
+                        operation: "read all",
+                    },
+                )
+            })
+            .and_then(|ok| {
+                if reader.at_end() {
+                    Ok(ok)
+                } else {
+                    Err(E::from(ExpectedLength {
+                        min: 0,
+                        max: Some(0),
+                        span: self,
+                        context: SealedContext {
+                            input: self,
+                            operation: "read all",
+                        },
+                    }))
+                }
+            })
+    }
+
+    /// Create a reader with the expectation all of the input is read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the function does, or there is trailing
+    /// input.
+    pub fn read_partial<'i, F, O, E>(&'i self, f: F) -> Result<(O, &'i Input), E>
+    where
+        F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
+        E: Error,
+    {
+        let mut reader = Reader::new(self);
+        f(&mut reader)
+            .map(|ok| (ok, reader.take_all()))
+            .map_err(|err| {
+                E::with_context(
+                    err,
+                    SealedContext {
+                        input: self,
+                        operation: "read partial",
+                    },
+                )
+            })
+    }
+
     /// Returns the first byte in the input.
     ///
     /// # Errors
@@ -214,10 +275,10 @@ impl Input {
     #[inline(always)]
     pub(crate) fn first<'i, E>(&'i self) -> Result<u8, E>
     where
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         self.as_dangerous().first().copied().ok_or_else(|| {
-            E::from_err(ExpectedLength {
+            E::from(ExpectedLength {
                 min: 1,
                 max: None,
                 span: self,
@@ -243,7 +304,7 @@ impl Input {
     #[inline(always)]
     pub(crate) fn split_first<'i, E>(&'i self) -> Result<(u8, &'i Input), E>
     where
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         let (head, tail) = self.split_at(1)?;
         Ok((head.first()?, tail))
@@ -257,10 +318,10 @@ impl Input {
     #[inline(always)]
     pub(crate) fn split_at<'i, E>(&'i self, mid: usize) -> Result<(&'i Input, &'i Input), E>
     where
-        E: FromError<ExpectedLength<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         if mid > self.len() {
-            Err(E::from_err(ExpectedLength {
+            Err(E::from(ExpectedLength {
                 min: mid,
                 max: None,
                 span: self,
