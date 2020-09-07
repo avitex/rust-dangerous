@@ -121,7 +121,6 @@ impl Input {
     #[inline]
     pub fn to_dangerous_str<'i, E>(&'i self) -> Result<&'i str, E>
     where
-        E: Error,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
@@ -183,7 +182,6 @@ impl Input {
     #[inline]
     pub fn to_dangerous_non_empty_str<'i, E>(&'i self) -> Result<&'i str, E>
     where
-        E: Error,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
@@ -211,8 +209,8 @@ impl Input {
     pub fn read_all<'i, F, O, E>(&'i self, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
-        E: From<ExpectedLength<'i>>,
         E: Error,
+        E: From<ExpectedLength<'i>>,
     {
         let mut reader = Reader::new(self);
         f(&mut reader)
