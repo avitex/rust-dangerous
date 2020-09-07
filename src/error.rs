@@ -51,7 +51,7 @@ pub trait ErrorDetails {
     ///
     /// Descriptions should be simple and written in lowercase. They should not
     /// contain the literal value expected, that is to be left to
-    /// [`Error::expected_value()`].
+    /// [`ErrorDetails::expected_value()`].
     ///
     /// # Errors
     ///
@@ -188,7 +188,7 @@ impl<'i> ExpectedLength<'i> {
     ///
     /// This doesn't not take into account the section of input being processed
     /// when this error occurred. If you wish to work out the requirement to
-    /// continue processing input use [`Error::can_continue_after()`].
+    /// continue processing input use [`ErrorDetails::can_continue_after()`].
     pub fn min(&self) -> usize {
         self.min
     }
@@ -288,7 +288,8 @@ pub struct ExpectedValid<'i> {
 impl<'i> ExpectedValid<'i> {
     /// A description of what was expected in a context.
     ///
-    /// Descriptions follow the conventions in [`Error::expected_description()`].
+    /// Descriptions follow the conventions in
+    /// [`ErrorDetails::expected_description()`].
     pub fn expected(&self) -> &'static str {
         self.expected
     }
