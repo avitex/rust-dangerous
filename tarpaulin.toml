@@ -1,2 +1,3 @@
 [dangerous]
+output-dir = "target/tarpaulin"
 exclude-files = ["tests/*", "fuzz/*"]

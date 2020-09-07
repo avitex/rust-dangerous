@@ -298,7 +298,24 @@ impl Input {
 
     /// Splits the input when the provided function returns `false`.
     #[inline(always)]
-    pub(crate) fn split_while<'i, F, E>(&'i self, mut f: F) -> Result<(&'i Input, &'i Input), E>
+    pub(crate) fn split_while<'i, F>(&'i self, mut f: F) -> (&'i Input, &'i Input)
+    where
+        F: FnMut(&'i Input, u8) -> bool,
+    {
+        let bytes = self.as_dangerous();
+        for (i, byte) in bytes.iter().enumerate() {
+            let (head, tail) = bytes.split_at(i);
+            let tail = input(tail);
+            if !f(&tail, *byte) {
+                return (input(head), tail);
+            }
+        }
+        (self, self.end())
+    }
+
+    /// Trys to split the input while the provided function returns `false`.
+    #[inline(always)]
+    pub(crate) fn try_split_while<'i, F, E>(&'i self, mut f: F) -> Result<(&'i Input, &'i Input), E>
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
     {

@@ -48,17 +48,13 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns any error the provided function does.
-    pub fn take_while<F>(&mut self, mut pred: F) -> &'i Input
+    pub fn take_while<F>(&mut self, pred: F) -> &'i Input
     where
         F: FnMut(&'i Input, u8) -> bool,
     {
-        match self.input.split_while::<_, Invalid>(|i, c| Ok(pred(i, c))) {
-            Ok((head, tail)) => {
-                self.input = tail;
-                head
-            }
-            Err(_) => unreachable!(),
-        }
+        let (head, tail) = self.input.split_while(pred);
+        self.input = tail;
+        head
     }
 
     /// Try read a length of input while a predicate check remains successful
@@ -71,7 +67,7 @@ impl<'i, E> Reader<'i, E> {
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
     {
-        let (head, tail) = self.input.split_while(pred)?;
+        let (head, tail) = self.input.try_split_while(pred)?;
         self.input = tail;
         Ok(head)
     }
