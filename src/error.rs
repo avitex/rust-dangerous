@@ -414,8 +414,8 @@ impl_error!(Expected);
 ///////////////////////////////////////////////////////////////////////////////
 // Basic input error
 
-/// `Invalid` contains no details about what happened, only that the input was
-/// unable to be processed.
+/// `Invalid` contains no details about what happened, other than the number of
+/// additional bytes required to continue processing if the error is not fatal.
 ///
 /// This is the most performant and simplistic catch-all error, but it doesn't
 /// provide any context to debug problems well.
@@ -429,14 +429,35 @@ impl_error!(Expected);
 ///     r.read_u8()
 /// }).unwrap_err();
 ///
-/// assert_eq!(format!("{}", error), "invalid input")
+/// assert_eq!(format!("{}", error), "invalid input - needs 1 byte(s)")
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Invalid;
+pub struct Invalid {
+    /// See the documentation for [`ErrorDetails::can_continue_after()`]
+    pub can_continue_after: Option<NonZeroUsize>,
+}
+
+impl Invalid {
+    /// Constructs a new invalid error.
+    ///
+    /// If the provided `can_continue_after` value is `0`, this signifies
+    /// processing can't be retried. If the provided value is greater than `0`,
+    /// this signifies the amount of additional input bytes required to continue
+    /// processing.
+    pub fn new(can_continue_after: usize) -> Self {
+        Self {
+            can_continue_after: NonZeroUsize::new(can_continue_after),
+        }
+    }
+}
 
 impl fmt::Display for Invalid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("invalid input")
+        f.write_str("invalid input")?;
+        if let Some(continue_after) = self.can_continue_after {
+            write!(f, " - needs {} byte(s)", continue_after)?;
+        }
+        Ok(())
     }
 }
 
@@ -446,6 +467,14 @@ impl Error for Invalid {
         C: Context,
     {
         self
+    }
+}
+
+impl Default for Invalid {
+    fn default() -> Self {
+        Self {
+            can_continue_after: None,
+        }
     }
 }
 

@@ -11,5 +11,5 @@ fn usage_with_fn() {
         Ok(())
     }
 
-    assert_eq!(input.read_all(do_thing), Err(Invalid));
+    assert_eq!(input.read_all(do_thing), Err(Invalid::new(1)));
 }

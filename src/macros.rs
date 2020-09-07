@@ -77,8 +77,10 @@ macro_rules! impl_error {
         }
 
         impl<'i> From<$name<'i>> for Invalid {
-            fn from(_: $name<'i>) -> Self {
-                Invalid
+            fn from(err: $name<'i>) -> Self {
+                Invalid {
+                    can_continue_after: err.can_continue_after(),
+                }
             }
         }
 
