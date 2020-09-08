@@ -136,11 +136,11 @@ fn try_peek() {
 }
 
 #[test]
-fn with_error() {
+fn error() {
     use dangerous::{Expected, Invalid, Reader};
 
     read_all!("hello", |parent: &mut Reader<'_, Expected<'_>>| {
-        let mut child = parent.with_error::<Invalid>();
+        let mut child = parent.error::<Invalid>();
         assert_eq!(child.consume(b"world"), Err(Invalid::default()));
         Ok(())
     })
