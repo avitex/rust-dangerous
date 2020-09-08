@@ -35,27 +35,19 @@ macro_rules! impl_read_num {
 
 macro_rules! read_num {
     ($reader:expr, $err_ty:ident, $num_ty:ty, $num_desc:expr, $from_xx_bytes:ident) => {{
-        $reader
-            .input
-            .split_at::<$err_ty>(core::mem::size_of::<$num_ty>())
-            .map(
-                |(head, tail)| match core::convert::TryInto::try_into(head.as_dangerous()) {
-                    Ok(arr) => {
-                        $reader.input = tail;
-                        <$num_ty>::$from_xx_bytes(arr)
-                    }
-                    Err(_) => unreachable!(),
-                },
-            )
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        operation: concat!("read ", $num_desc),
-                        input: $reader.input,
+        $reader.context_mut(concat!("read ", $num_desc), |r| {
+            r.input
+                .split_at::<$err_ty>(core::mem::size_of::<$num_ty>())
+                .map(
+                    |(head, tail)| match core::convert::TryInto::try_into(head.as_dangerous()) {
+                        Ok(arr) => {
+                            r.input = tail;
+                            <$num_ty>::$from_xx_bytes(arr)
+                        }
+                        Err(_) => unreachable!(),
                     },
                 )
-            })
+        })
     }};
 }
 
@@ -67,11 +59,12 @@ macro_rules! impl_error {
             }
         }
 
-        impl<'i> Error for $name<'i> {
-            fn with_context<C>(self, _ctx: C) -> Self
+        impl<'i> Error<'i> for $name<'i> {
+            fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
             where
                 C: Context,
             {
+                self.update_input(input);
                 self
             }
         }
@@ -79,7 +72,7 @@ macro_rules! impl_error {
         impl<'i> From<$name<'i>> for Invalid {
             fn from(err: $name<'i>) -> Self {
                 Invalid {
-                    can_continue_after: err.can_continue_after(),
+                    retry_requirement: err.retry_requirement(),
                 }
             }
         }

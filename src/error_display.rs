@@ -7,17 +7,17 @@ const DEFAULT_MAX_WIDTH: usize = 80;
 
 /// Provides configurable [`ErrorDetails`] formatting.
 #[derive(Clone)]
-pub struct ErrorDisplay<'a, T: ?Sized> {
-    error: &'a T,
+pub struct ErrorDisplay<T> {
+    error: T,
     max_width: Option<usize>,
 }
 
-impl<'a, T> ErrorDisplay<'a, T>
+impl<'i, T> ErrorDisplay<T>
 where
-    T: ?Sized + ErrorDetails,
+    T: ErrorDetails<'i>,
 {
     /// Create a new `ErrorDisplay` given an [`ErrorDetails`].
-    pub fn new(error: &'a T) -> Self {
+    pub fn new(error: T) -> Self {
         Self {
             error,
             max_width: Some(DEFAULT_MAX_WIDTH),
@@ -25,7 +25,7 @@ where
     }
 
     /// Derive an `ErrorDisplay` from a [`fmt::Formatter`] with defaults.
-    pub fn from_formatter(error: &'a T, f: &fmt::Formatter<'_>) -> Self {
+    pub fn from_formatter(error: T, f: &fmt::Formatter<'_>) -> Self {
         let _ = f;
         Self::new(error)
     }
@@ -45,9 +45,9 @@ where
     where
         W: Write,
     {
-        let error = self.error;
-        let context = self.error.context();
-        let input = context.input();
+        let error = &self.error;
+        let context = error.context();
+        let input = error.input();
         writeln!(
             w,
             "expected {} while attempting to {}, instead found {}",
@@ -64,22 +64,34 @@ where
         } else {
             write!(w, "{}", input)?;
         }
+        write!(w, "\ncontext bracktrace:")?;
+        let mut context_level = context;
+        let mut index = 1;
+        loop {
+            write!(w, "\n  {}. `{}`", index, context_level.operation())?;
+            if let Some(next_context) = context_level.child() {
+                context_level = next_context;
+                index += 1;
+            } else {
+                break;
+            }
+        }
         Ok(())
     }
 }
 
-impl<'a, T> fmt::Debug for ErrorDisplay<'a, T>
+impl<'i, T> fmt::Debug for ErrorDisplay<T>
 where
-    T: ?Sized + ErrorDetails,
+    T: ErrorDetails<'i>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)
     }
 }
 
-impl<'a, T> fmt::Display for ErrorDisplay<'a, T>
+impl<'i, T> fmt::Display for ErrorDisplay<T>
 where
-    T: ?Sized + ErrorDetails,
+    T: ErrorDetails<'i>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)

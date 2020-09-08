@@ -1,24 +1,18 @@
-use dangerous::{AdditionalContext, Expected, ExpectedLength, ExpectedValid, ExpectedValue, Input};
+use dangerous::VerboseError;
 
-struct Error<'i> {
-    expected: Expected<'i>,
-    additional: Option<AdditionalContext<'i>>,
+fn main() {
+    let input = dangerous::input(b"hello<123>");
+
+    let err = input
+        .read_all::<_, _, VerboseError>(|r| {
+            r.context_mut("read protocol", |r| {
+                let _ = r.take_while(|_, b| b.is_ascii_alphabetic());
+                r.consume(b"<")?;
+                let number = r.take_while(|_, b| b != b'>');
+                number.read_all(|r| r.consume(b"124"))
+            })
+        })
+        .unwrap_err();
+
+    println!("{}", err.display());
 }
-
-impl<'i> dangerous::FromError<ExpectedValue<'i>> for Error<'i> {
-    fn from_err(err: ExpectedValue<'i>) -> Self {
-        Self {
-            expected: err.into(),
-            additional: None,
-        }
-    }
-
-    fn from_err_ctx<C>(err: ExpectedValue<'i>, ctx: C) -> Self {
-        Self {
-            expected: err.into(),
-            additional: None,
-        }
-    }
-}
-
-fn main() {}

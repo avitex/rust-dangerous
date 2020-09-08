@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::error::{Error, ExpectedLength, ExpectedValue, Invalid, SealedContext};
+use crate::error::{Context, Error, ExpectedLength, ExpectedValue, Invalid};
 use crate::input::Input;
 
 /// A `Reader` is created from and consumes a [`Input`].
@@ -11,8 +11,38 @@ pub struct Reader<'i, E> {
 
 impl<'i, E> Reader<'i, E>
 where
-    E: Error,
+    E: Error<'i>,
 {
+    /// Use the reader with a given context.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error returned by the provided function, and attaches the
+    /// specified context to it.
+    pub fn context<C, F, O>(&self, context: C, f: F) -> Result<O, E>
+    where
+        C: Context,
+        F: FnOnce(&Self) -> Result<O, E>,
+    {
+        let complete = self.input;
+        f(self).map_err(|err| err.with_context(complete, context))
+    }
+
+    /// Mutably use the reader with a given context.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error returned by the provided function, and attaches the
+    /// specified context to it.
+    pub fn context_mut<C, F, O>(&mut self, context: C, f: F) -> Result<O, E>
+    where
+        C: Context,
+        F: FnOnce(&mut Self) -> Result<O, E>,
+    {
+        let complete = self.input;
+        f(self).map_err(|err| err.with_context(complete, context))
+    }
+
     /// Returns `true` if the reader has no more input to consume.
     #[inline]
     pub fn at_end(&self) -> bool {
@@ -29,20 +59,11 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.input
-            .split_at::<E>(len)
-            .map(|(_, tail)| {
-                self.input = tail;
-            })
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self.input,
-                        operation: "skip",
-                    },
-                )
-            })
+        self.context_mut("skip", |r| {
+            let (_, tail) = r.input.split_at(len)?;
+            r.input = tail;
+            Ok(())
+        })
     }
 
     /// Read all of the input left.
@@ -61,21 +82,11 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.input
-            .split_at::<E>(len)
-            .map(|(head, tail)| {
-                self.input = tail;
-                head
-            })
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self.input,
-                        operation: "take",
-                    },
-                )
-            })
+        self.context_mut("take", |r| {
+            let (head, tail) = r.input.split_at(len)?;
+            r.input = tail;
+            Ok(head)
+        })
     }
 
     /// Read a length of input while a predicate check remains true.
@@ -102,21 +113,11 @@ where
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
     {
-        self.input
-            .try_split_while(pred)
-            .map(|(head, tail)| {
-                self.input = tail;
-                head
-            })
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self.input,
-                        operation: "try take while",
-                    },
-                )
-            })
+        self.context_mut("try take while", |r| {
+            let (head, tail) = r.input.try_split_while(pred)?;
+            r.input = tail;
+            Ok(head)
+        })
     }
 
     /// Peek a length of input.
@@ -130,18 +131,10 @@ where
         E: From<ExpectedLength<'i>>,
         O: 'static,
     {
-        self.input
-            .split_at::<E>(len)
-            .map(|(head, _)| f(head))
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self.input,
-                        operation: "peek",
-                    },
-                )
-            })
+        self.context("peek", |r| {
+            let (head, _) = r.input.split_at(len)?;
+            Ok(f(head))
+        })
     }
 
     /// Try peek a length of input.
@@ -156,18 +149,10 @@ where
         E: From<ExpectedLength<'i>>,
         O: 'static,
     {
-        self.input
-            .split_at::<E>(len)
-            .and_then(|(head, _)| f(head))
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self.input,
-                        operation: "try peek",
-                    },
-                )
-            })
+        self.context("try peek", |r| {
+            let (head, _) = r.input.split_at(len)?;
+            f(head)
+        })
     }
 
     /// Returns the next byte in the input without mutating the reader.
@@ -180,24 +165,13 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.input.first::<E>().map_err(|err| {
-            E::with_context(
-                err,
-                SealedContext {
-                    input: self.input,
-                    operation: "peek u8",
-                },
-            )
-        })
+        self.context("peek u8", |r| r.input.first())
     }
 
     /// Returns `true` if `bytes` is next in the input.
     #[inline]
     pub fn peek_eq(&self, bytes: &[u8]) -> bool {
-        match self.input.split_at::<Invalid>(bytes.len()) {
-            Ok((input, _)) => bytes == input,
-            Err(_) => false,
-        }
+        self.input.split_prefix::<Invalid>(bytes).is_ok()
     }
 
     /// Consume expected bytes from the input.
@@ -212,28 +186,11 @@ where
         E: From<ExpectedLength<'i>>,
         E: From<ExpectedValue<'i>>,
     {
-        match self.input.split_at::<Invalid>(bytes.len()) {
-            Ok((input, tail)) if input == bytes => {
-                self.input = tail;
-                Ok(())
-            }
-            Ok((input, _)) => Err(E::from(ExpectedValue {
-                span: input,
-                value: crate::input(bytes),
-                context: SealedContext {
-                    input: self.input,
-                    operation: "consume value",
-                },
-            })),
-            Err(_) => Err(E::from(ExpectedValue {
-                span: self.input.end(),
-                value: crate::input(bytes),
-                context: SealedContext {
-                    input: self.input,
-                    operation: "consume value",
-                },
-            })),
-        }
+        self.context_mut("consume", |r| {
+            let tail = r.input.split_prefix::<E>(bytes)?;
+            r.input = tail;
+            Ok(())
+        })
     }
 
     /// Read a byte, consuming the input.
@@ -246,21 +203,11 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.input
-            .split_first::<E>()
-            .map(|(byte, tail)| {
-                self.input = tail;
-                byte
-            })
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self.input,
-                        operation: "read u8",
-                    },
-                )
-            })
+        self.context_mut("read u8", |r| {
+            let (byte, tail) = r.input.split_first::<E>()?;
+            r.input = tail;
+            Ok(byte)
+        })
     }
 
     impl_read_num!(i8, le: read_i8_le, be: read_i8_be);
@@ -277,7 +224,7 @@ where
 
     /// Create a sub reader with a given error type.
     #[inline]
-    pub fn with_error<T>(&mut self) -> Reader<'_, T> {
+    pub fn error<T>(&mut self) -> Reader<'_, T> {
         Reader {
             input: self.input,
             error: PhantomData,

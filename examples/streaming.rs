@@ -69,8 +69,8 @@ where
         }
         let input = dangerous::input(&buf[..written_cur]);
         match decode_message::<Expected>(input) {
-            Err(err) => match err.can_continue_after() {
-                Some(len) => expects_cur += len.get(),
+            Err(err) => match err.retry_requirement() {
+                Some(req) => expects_cur += req.continue_after(),
                 None => return Err(err.into()),
             },
             Ok(message) => {
@@ -82,7 +82,7 @@ where
 
 fn decode_message<'i, E>(input: &'i dangerous::Input) -> Result<Message<'i>, E>
 where
-    E: dangerous::Error,
+    E: dangerous::Error<'i>,
     E: From<dangerous::ExpectedLength<'i>>,
     E: From<dangerous::ExpectedValid<'i>>,
     E: From<dangerous::ExpectedValue<'i>>,

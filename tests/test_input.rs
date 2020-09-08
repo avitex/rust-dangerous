@@ -1,9 +1,7 @@
 #[macro_use]
 mod common;
 
-use dangerous::{ErrorDetails, Expected};
-
-use core::num::NonZeroUsize;
+use dangerous::{ErrorDetails, Expected, RetryRequirement};
 
 #[test]
 fn as_dangerous() {
@@ -85,15 +83,15 @@ fn to_dangerous_str_expected_length() {
     let err = input!(&[0b1101_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.can_continue_after(), NonZeroUsize::new(1));
+    assert_eq!(err.retry_requirement(), RetryRequirement::new(1));
     // Length 3
     let err = input!(&[0b1110_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.can_continue_after(), NonZeroUsize::new(2));
+    assert_eq!(err.retry_requirement(), RetryRequirement::new(2));
     // Invalid
     let err = input!(&[0b1111_0111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.can_continue_after(), None);
+    assert_eq!(err.retry_requirement(), None);
 }

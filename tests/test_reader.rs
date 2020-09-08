@@ -33,13 +33,13 @@ fn read_all() {
     assert_eq!(
         read_all!(b"hello", |r| { r.consume(b"hell") })
             .unwrap_err()
-            .can_continue_after(),
+            .retry_requirement(),
         None
     );
     assert_eq!(
         read_all!(b"hello", |r| { r.take(4) })
             .unwrap_err()
-            .can_continue_after(),
+            .retry_requirement(),
         None
     );
 }

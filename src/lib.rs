@@ -68,8 +68,13 @@ mod input;
 mod input_display;
 mod reader;
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+mod verbose_error;
+
 pub use self::error::*;
 pub use self::error_display::ErrorDisplay;
 pub use self::input::{input, Input};
 pub use self::input_display::InputDisplay;
 pub use self::reader::Reader;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use self::verbose_error::VerboseError;

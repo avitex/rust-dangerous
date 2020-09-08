@@ -1,7 +1,7 @@
 use core::ops::Range;
 use core::{fmt, str};
 
-use crate::error::{Error, ExpectedLength, ExpectedValid, SealedContext};
+use crate::error::{Error, ExpectedLength, ExpectedValid, ExpectedValue};
 use crate::input_display::InputDisplay;
 use crate::reader::Reader;
 
@@ -99,10 +99,8 @@ impl Input {
                 min: 1,
                 max: None,
                 span: self,
-                context: SealedContext {
-                    input: self,
-                    operation: "extract non-empty byte slice",
-                },
+                input: self,
+                operation: "extract non-empty byte slice",
             })
         } else {
             Ok(self.as_dangerous())
@@ -146,10 +144,8 @@ impl Input {
                         min: invalid[0].leading_ones() as usize,
                         max: None,
                         span: input(invalid),
-                        context: SealedContext {
-                            input: self,
-                            operation: "decode utf-8 str",
-                        },
+                        input: self,
+                        operation: "decode utf-8 str",
                     }))
                 }
                 Some(error_len) => {
@@ -160,10 +156,8 @@ impl Input {
                         expected: "utf-8 code point",
                         found: "invalid value",
                         span: input(&bytes[error_start..error_end]),
-                        context: SealedContext {
-                            input: self,
-                            operation: "decode utf-8 str",
-                        },
+                        input: self,
+                        operation: "decode utf-8 str",
                     }))
                 }
             },
@@ -190,10 +184,8 @@ impl Input {
                 min: 1,
                 max: None,
                 span: self,
-                context: SealedContext {
-                    input: self,
-                    operation: "decode non-empty utf-8 str",
-                },
+                input: self,
+                operation: "decode non-empty utf-8 str",
             }))
         } else {
             self.to_dangerous_str()
@@ -209,35 +201,23 @@ impl Input {
     pub fn read_all<'i, F, O, E>(&'i self, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
-        E: Error,
+        E: Error<'i>,
         E: From<ExpectedLength<'i>>,
     {
-        let mut reader = Reader::new(self);
-        f(&mut reader)
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self,
-                        operation: "read all",
-                    },
-                )
-            })
-            .and_then(|ok| {
-                if reader.at_end() {
-                    Ok(ok)
-                } else {
-                    Err(E::from(ExpectedLength {
-                        min: 0,
-                        max: Some(0),
-                        span: self,
-                        context: SealedContext {
-                            input: self,
-                            operation: "read all",
-                        },
-                    }))
-                }
-            })
+        Reader::new(self).context_mut("read all", |r| {
+            let ok = f(r)?;
+            if r.at_end() {
+                Ok(ok)
+            } else {
+                Err(E::from(ExpectedLength {
+                    min: 0,
+                    max: Some(0),
+                    span: self,
+                    input: self,
+                    operation: "read all",
+                }))
+            }
+        })
     }
 
     /// Create a reader with the expectation all of the input is read.
@@ -249,20 +229,12 @@ impl Input {
     pub fn read_partial<'i, F, O, E>(&'i self, f: F) -> Result<(O, &'i Input), E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
-        E: Error,
+        E: Error<'i>,
     {
-        let mut reader = Reader::new(self);
-        f(&mut reader)
-            .map(|ok| (ok, reader.take_all()))
-            .map_err(|err| {
-                E::with_context(
-                    err,
-                    SealedContext {
-                        input: self,
-                        operation: "read partial",
-                    },
-                )
-            })
+        Reader::new(self).context_mut("read partial", |r| {
+            let ok = f(r)?;
+            Ok((ok, r.take_all()))
+        })
     }
 
     /// Returns the first byte in the input.
@@ -280,10 +252,8 @@ impl Input {
                 min: 1,
                 max: None,
                 span: self,
-                context: SealedContext {
-                    input: self,
-                    operation: "extract first byte",
-                },
+                input: self,
+                operation: "extract first byte",
             })
         })
     }
@@ -292,6 +262,33 @@ impl Input {
     #[inline(always)]
     pub(crate) fn end(&self) -> &Input {
         input(&self.as_dangerous()[self.len()..])
+    }
+
+    pub(crate) fn split_prefix<'i, E>(&'i self, prefix: &'i [u8]) -> Result<&'i Input, E>
+    where
+        E: From<ExpectedValue<'i>>,
+    {
+        if self.len() >= prefix.len() {
+            let bytes = self.as_dangerous();
+            let (head, tail) = bytes.split_at(prefix.len());
+            if head == prefix {
+                Ok(input(tail))
+            } else {
+                Err(E::from(ExpectedValue {
+                    span: self,
+                    value: input(prefix),
+                    input: self,
+                    operation: "split prefix",
+                }))
+            }
+        } else {
+            Err(E::from(ExpectedValue {
+                span: self.end(),
+                value: input(prefix),
+                input: self,
+                operation: "split prefix",
+            }))
+        }
     }
 
     /// Splits the input into the first byte and whatever remains.
@@ -323,10 +320,8 @@ impl Input {
                 min: mid,
                 max: None,
                 span: self,
-                context: SealedContext {
-                    input: self,
-                    operation: "split length",
-                },
+                input: self,
+                operation: "split length",
             }))
         } else {
             let (head, tail) = self.as_dangerous().split_at(mid);

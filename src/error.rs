@@ -6,16 +6,13 @@ use core::num::NonZeroUsize;
 use crate::error_display::ErrorDisplay;
 use crate::input::Input;
 
-#[cfg(feature = "alloc")]
-use alloc::boxed::Box;
-
 /// The the core error that collects contexts.
-pub trait Error {
+pub trait Error<'i> {
     /// Return `Self` with context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
     /// How child and parent contexts are handled are upstream concerns.
-    fn with_context<C>(self, ctx: C) -> Self
+    fn with_context<C>(self, input: &'i Input, context: C) -> Self
     where
         C: Context;
 }
@@ -28,9 +25,17 @@ pub trait Error {
 /// whether or not the input was correctly processed, you'll wish to use the
 /// concrete type `Invalid` and all of the computations around verbose erroring
 /// will be removed in compilation.
-pub trait ErrorDetails {
+pub trait ErrorDetails<'i> {
+    /// The input in its entirety that was being processed when an error
+    /// occured.
+    ///
+    /// The error itself will have the details and the specific section of input
+    /// that caused the error. This value simply allows us to see the bigger
+    /// picture given granular errors in a large amount of input.
+    fn input(&self) -> &'i Input;
+
     /// The specific section of input that caused an error.
-    fn span(&self) -> &Input;
+    fn span(&self) -> &'i Input;
 
     /// The context around the error.
     fn context(&self) -> &dyn Context;
@@ -61,26 +66,49 @@ pub trait ErrorDetails {
     /// Returns am `fmt::Error` if failed to write to the formatter.
     fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
-    /// Returns the number of bytes required to continue processing the input,
-    /// if applicable.
-    ///
-    /// Although the value produces allows you to estimate how much more input
-    /// you need till you can continue processing the input, it is a very
-    /// granular value and may result in a lot of wasted reprocessing of input
-    /// if not handled correctly.
-    fn can_continue_after(&self) -> Option<NonZeroUsize>;
+    /// Returns the requirement, if applicable, to retry processing the `Input`.
+    fn retry_requirement(&self) -> Option<RetryRequirement>;
+}
+
+impl<'i, T> ErrorDetails<'i> for &T
+where
+    T: ErrorDetails<'i>,
+{
+    fn input(&self) -> &'i Input {
+        (**self).input()
+    }
+
+    fn span(&self) -> &'i Input {
+        (**self).span()
+    }
+
+    fn context(&self) -> &dyn Context {
+        (**self).context()
+    }
+
+    fn found_value(&self) -> Option<&Input> {
+        (**self).found_value()
+    }
+
+    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).found_description(f)
+    }
+
+    fn expected_value(&self) -> Option<&Input> {
+        (**self).expected_value()
+    }
+
+    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).expected_description(f)
+    }
+
+    fn retry_requirement(&self) -> Option<RetryRequirement> {
+        (**self).retry_requirement()
+    }
 }
 
 /// The context surrounding an error.
-pub trait Context {
-    /// The input in its entirety that was being processed when an error
-    /// occured.
-    ///
-    /// The error itself will have the details and the specific section of input
-    /// that caused the error. This value simply allows us to see the bigger
-    /// picture given granular errors in a large amount of input.
-    fn input(&self) -> &Input;
-
+pub trait Context: Any {
     /// The operation that was attempted when an error occured.
     ///
     /// It should described in a simple manner what is trying to be achieved and
@@ -89,7 +117,7 @@ pub trait Context {
     /// ```text
     /// Something failed while attempting to <operation> from the input.
     /// ```
-    fn operation(&self) -> &str;
+    fn operation(&self) -> &'static str;
 
     /// The more granular context of where the error occured.
     ///
@@ -113,8 +141,72 @@ pub trait Context {
     /// ```
     fn child(&self) -> Option<&dyn Context>;
 
-    /// Additional details associated with this context.
-    fn additional(&self) -> &dyn Any;
+    /// The number of child contexts consolidated into `self`.
+    ///
+    /// Any context returned from `child` is the next deeper than those that
+    /// were consolidated.
+    fn consolidated(&self) -> usize;
+}
+
+impl Context for &'static str {
+    fn operation(&self) -> &'static str {
+        self
+    }
+
+    fn child(&self) -> Option<&dyn Context> {
+        None
+    }
+
+    fn consolidated(&self) -> usize {
+        0
+    }
+}
+
+// An indicator of how many bytes are required to continue processing input.
+///
+/// Although the value allows you to estimate how much more input you need till
+/// you can continue processing the input, it is a very granular value and may
+/// result in a lot of wasted reprocessing of input if not handled correctly.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct RetryRequirement(NonZeroUsize);
+
+impl RetryRequirement {
+    /// Construct a new `RetryRequirement`.
+    ///
+    /// If the provided  value is `0`, this signifies processing can't be
+    /// retried. If the provided value is greater than `0`, this signifies the
+    /// amount of additional input bytes required to continue processing.
+    pub fn new(value: usize) -> Option<Self> {
+        NonZeroUsize::new(value).map(Self)
+    }
+
+    pub fn from_had_and_needed(had: usize, needed: usize) -> Option<Self> {
+        Self::new(needed.saturating_sub(had))
+    }
+
+    pub fn met_by(self, count: usize) -> bool {
+        count >= self.continue_after()
+    }
+
+    /// An indicator of how many bytes are required to continue processing input, if
+    /// applicable.
+    ///
+    /// Although the value allows you to estimate how much more input you need till
+    /// you can continue processing the input, it is a very granular value and may
+    /// result in a lot of wasted reprocessing of input if not handled correctly.
+    pub fn continue_after(self) -> usize {
+        self.0.get()
+    }
+
+    pub fn continue_after_non_zero(self) -> NonZeroUsize {
+        self.0
+    }
+}
+
+impl fmt::Display for RetryRequirement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} more byte(s)", self.0)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -125,7 +217,8 @@ pub trait Context {
 pub struct ExpectedValue<'i> {
     pub(crate) value: &'i Input,
     pub(crate) span: &'i Input,
-    pub(crate) context: SealedContext<'i>,
+    pub(crate) input: &'i Input,
+    pub(crate) operation: &'static str,
 }
 
 impl<'i> ExpectedValue<'i> {
@@ -135,22 +228,32 @@ impl<'i> ExpectedValue<'i> {
     }
 
     /// Returns an `ErrorDisplay` for formatting.
-    pub fn display(&self) -> ErrorDisplay<'_, Self> {
+    pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
+    }
+
+    pub(crate) fn update_input(&mut self, input: &'i Input) {
+        if self.input.is_within(input) {
+            self.input = input;
+        }
     }
 }
 
-impl<'i> ErrorDetails for ExpectedValue<'i> {
-    fn span(&self) -> &Input {
+impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
+    fn input(&self) -> &'i Input {
+        self.input
+    }
+
+    fn span(&self) -> &'i Input {
         self.span
     }
 
     fn context(&self) -> &dyn Context {
-        &self.context
+        &self.operation
     }
 
     fn found_value(&self) -> Option<&Input> {
-        Some(self.context.input)
+        Some(self.input)
     }
 
     fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -165,10 +268,10 @@ impl<'i> ErrorDetails for ExpectedValue<'i> {
         f.write_str("value")
     }
 
-    fn can_continue_after(&self) -> Option<NonZeroUsize> {
+    fn retry_requirement(&self) -> Option<RetryRequirement> {
         let needed = self.value.len();
-        let did_have = self.span().len();
-        NonZeroUsize::new(needed.saturating_sub(did_have))
+        let had = self.span().len();
+        RetryRequirement::from_had_and_needed(had, needed)
     }
 }
 
@@ -183,7 +286,8 @@ pub struct ExpectedLength<'i> {
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
     pub(crate) span: &'i Input,
-    pub(crate) context: SealedContext<'i>,
+    pub(crate) input: &'i Input,
+    pub(crate) operation: &'static str,
 }
 
 impl<'i> ExpectedLength<'i> {
@@ -191,7 +295,7 @@ impl<'i> ExpectedLength<'i> {
     ///
     /// This doesn't not take into account the section of input being processed
     /// when this error occurred. If you wish to work out the requirement to
-    /// continue processing input use [`ErrorDetails::can_continue_after()`].
+    /// continue processing input use [`ErrorDetails::retry_requirement()`].
     pub fn min(&self) -> usize {
         self.min
     }
@@ -227,22 +331,32 @@ impl<'i> ExpectedLength<'i> {
     }
 
     /// Returns an `ErrorDisplay` for formatting.
-    pub fn display(&self) -> ErrorDisplay<'_, Self> {
+    pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
+    }
+
+    pub(crate) fn update_input(&mut self, input: &'i Input) {
+        if self.input.is_within(input) {
+            self.input = input;
+        }
     }
 }
 
-impl<'i> ErrorDetails for ExpectedLength<'i> {
-    fn span(&self) -> &Input {
+impl<'i> ErrorDetails<'i> for ExpectedLength<'i> {
+    fn input(&self) -> &'i Input {
+        self.input
+    }
+
+    fn span(&self) -> &'i Input {
         self.span
     }
 
     fn context(&self) -> &dyn Context {
-        &self.context
+        &self.operation
     }
 
     fn found_value(&self) -> Option<&Input> {
-        Some(self.context.input)
+        Some(self.input)
     }
 
     fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -263,13 +377,13 @@ impl<'i> ErrorDetails for ExpectedLength<'i> {
         }
     }
 
-    fn can_continue_after(&self) -> Option<NonZeroUsize> {
+    fn retry_requirement(&self) -> Option<RetryRequirement> {
         if self.is_fatal() {
             None
         } else {
+            let had = self.span().len();
             let needed = self.min;
-            let did_have = self.span().len();
-            NonZeroUsize::new(needed.saturating_sub(did_have))
+            RetryRequirement::from_had_and_needed(had, needed)
         }
     }
 }
@@ -283,9 +397,10 @@ impl_error!(ExpectedLength);
 #[derive(Debug, Clone)]
 pub struct ExpectedValid<'i> {
     pub(crate) span: &'i Input,
-    pub(crate) expected: &'static str,
+    pub(crate) input: &'i Input,
     pub(crate) found: &'static str,
-    pub(crate) context: SealedContext<'i>,
+    pub(crate) expected: &'static str,
+    pub(crate) operation: &'static str,
 }
 
 impl<'i> ExpectedValid<'i> {
@@ -298,22 +413,32 @@ impl<'i> ExpectedValid<'i> {
     }
 
     /// Returns an `ErrorDisplay` for formatting.
-    pub fn display(&self) -> ErrorDisplay<'_, Self> {
+    pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
+    }
+
+    pub(crate) fn update_input(&mut self, input: &'i Input) {
+        if self.input.is_within(input) {
+            self.input = input;
+        }
     }
 }
 
-impl<'i> ErrorDetails for ExpectedValid<'i> {
-    fn span(&self) -> &Input {
+impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
+    fn input(&self) -> &'i Input {
+        self.input
+    }
+
+    fn span(&self) -> &'i Input {
         self.span
     }
 
     fn context(&self) -> &dyn Context {
-        &self.context
+        &self.operation
     }
 
     fn found_value(&self) -> Option<&Input> {
-        Some(self.context.input)
+        Some(self.input)
     }
 
     fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -328,7 +453,7 @@ impl<'i> ErrorDetails for ExpectedValid<'i> {
         f.write_str(self.expected)
     }
 
-    fn can_continue_after(&self) -> Option<NonZeroUsize> {
+    fn retry_requirement(&self) -> Option<RetryRequirement> {
         None
     }
 }
@@ -351,21 +476,33 @@ pub enum Expected<'i> {
 
 impl<'i> Expected<'i> {
     /// Returns an `ErrorDisplay` for formatting.
-    pub fn display(&self) -> ErrorDisplay<'_, Self> {
+    pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
     }
 
-    fn details(&self) -> &(dyn ErrorDetails + 'i) {
+    fn details(&self) -> &(dyn ErrorDetails<'i>) {
         match self {
             Self::Value(ref err) => err,
             Self::Valid(ref err) => err,
             Self::Length(ref err) => err,
         }
     }
+
+    pub(crate) fn update_input(&mut self, input: &'i Input) {
+        match self {
+            Self::Value(ref mut err) => err.update_input(input),
+            Self::Valid(ref mut err) => err.update_input(input),
+            Self::Length(ref mut err) => err.update_input(input),
+        }
+    }
 }
 
-impl<'i> ErrorDetails for Expected<'i> {
-    fn span(&self) -> &Input {
+impl<'i> ErrorDetails<'i> for Expected<'i> {
+    fn input(&self) -> &'i Input {
+        self.details().input()
+    }
+
+    fn span(&self) -> &'i Input {
         self.details().span()
     }
 
@@ -389,8 +526,8 @@ impl<'i> ErrorDetails for Expected<'i> {
         self.details().expected_description(f)
     }
 
-    fn can_continue_after(&self) -> Option<NonZeroUsize> {
-        self.details().can_continue_after()
+    fn retry_requirement(&self) -> Option<RetryRequirement> {
+        self.details().retry_requirement()
     }
 }
 
@@ -436,36 +573,23 @@ impl_error!(Expected);
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Invalid {
-    /// See the documentation for [`ErrorDetails::can_continue_after()`]
-    pub can_continue_after: Option<NonZeroUsize>,
-}
-
-impl Invalid {
-    /// Constructs a new invalid error.
-    ///
-    /// If the provided `can_continue_after` value is `0`, this signifies
-    /// processing can't be retried. If the provided value is greater than `0`,
-    /// this signifies the amount of additional input bytes required to continue
-    /// processing.
-    pub fn new(can_continue_after: usize) -> Self {
-        Self {
-            can_continue_after: NonZeroUsize::new(can_continue_after),
-        }
-    }
+    /// See the documentation for [`RetryRequirement`]
+    pub retry_requirement: Option<RetryRequirement>,
 }
 
 impl fmt::Display for Invalid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("invalid input")?;
-        if let Some(continue_after) = self.can_continue_after {
-            write!(f, " - needs {} byte(s)", continue_after)?;
+        if let Some(retry_requirement) = self.retry_requirement {
+            f.write_str(" - ")?;
+            retry_requirement.fmt(f)?;
         }
         Ok(())
     }
 }
 
-impl Error for Invalid {
-    fn with_context<C>(self, _ctx: C) -> Self
+impl<'i> Error<'i> for Invalid {
+    fn with_context<C>(self, _input: &'i Input, _context: C) -> Self
     where
         C: Context,
     {
@@ -476,86 +600,10 @@ impl Error for Invalid {
 impl Default for Invalid {
     fn default() -> Self {
         Self {
-            can_continue_after: None,
+            retry_requirement: None,
         }
     }
 }
 
 #[cfg(feature = "std")]
 impl std::error::Error for Invalid {}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Additional context
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub struct AdditionalContext<'a> {
-    input: &'a Input,
-    operation: &'a str,
-    inner: Option<Box<dyn Context + 'a>>,
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a> AdditionalContext<'a> {
-    pub fn new(input: &'a Input, operation: &'a str) -> Self {
-        Self {
-            input,
-            operation,
-            inner: None,
-        }
-    }
-
-    pub fn with_inner<C>(mut self, ctx: C) -> Self
-    where
-        C: Context + 'a,
-    {
-        self.inner = Some(Box::new(ctx));
-        self
-    }
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a> Context for AdditionalContext<'a> {
-    fn input(&self) -> &Input {
-        self.input
-    }
-
-    fn operation(&self) -> &str {
-        self.operation
-    }
-
-    fn child(&self) -> Option<&dyn Context> {
-        self.inner.as_ref().map(AsRef::as_ref)
-    }
-
-    fn additional(&self) -> &dyn Any {
-        &()
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Error support
-
-#[derive(Debug, Clone)]
-pub(crate) struct SealedContext<'i> {
-    pub(crate) input: &'i Input,
-    pub(crate) operation: &'static str,
-}
-
-impl<'i> Context for SealedContext<'i> {
-    fn input(&self) -> &Input {
-        self.input
-    }
-
-    fn operation(&self) -> &str {
-        self.operation
-    }
-
-    fn child(&self) -> Option<&dyn Context> {
-        None
-    }
-
-    fn additional(&self) -> &dyn Any {
-        &()
-    }
-}
