@@ -10,6 +10,7 @@ use crate::error::{
 use crate::error_display::ErrorDisplay;
 use crate::input::Input;
 
+/// An error that catches all base errors in this crate with a context stack.
 pub struct VerboseError<'i> {
     expected: Expected<'i>,
     context: ContextNode,
