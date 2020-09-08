@@ -5,7 +5,7 @@ use crate::error::{Error, ExpectedLength, ExpectedValid, ExpectedValue};
 use crate::input_display::InputDisplay;
 use crate::reader::Reader;
 
-/// Constructs a new `Input` from a byte slice.
+/// Creates a new `Input` from a byte slice.
 ///
 /// It is recommended to use this directly from the crate as `dangerous::input()`,
 /// not as an import via `use` as shown below, as you lose the discoverability.

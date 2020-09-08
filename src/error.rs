@@ -6,7 +6,7 @@ use core::num::NonZeroUsize;
 use crate::error_display::ErrorDisplay;
 use crate::input::Input;
 
-/// The the core error that collects contexts.
+/// Core error that collects contexts.
 pub trait Error<'i> {
     /// Return `Self` with context.
     ///
@@ -162,7 +162,7 @@ impl Context for &'static str {
     }
 }
 
-// An indicator of how many bytes are required to continue processing input.
+/// An indicator of how many bytes are required to continue processing input.
 ///
 /// Although the value allows you to estimate how much more input you need till
 /// you can continue processing the input, it is a very granular value and may
@@ -171,7 +171,7 @@ impl Context for &'static str {
 pub struct RetryRequirement(NonZeroUsize);
 
 impl RetryRequirement {
-    /// Construct a new `RetryRequirement`.
+    /// Create a new `RetryRequirement`.
     ///
     /// If the provided  value is `0`, this signifies processing can't be
     /// retried. If the provided value is greater than `0`, this signifies the
@@ -180,10 +180,13 @@ impl RetryRequirement {
         NonZeroUsize::new(value).map(Self)
     }
 
+    /// Create a retry requirement from a count of how many bytes we had and
+    /// how many we needed.
     pub fn from_had_and_needed(had: usize, needed: usize) -> Option<Self> {
         Self::new(needed.saturating_sub(had))
     }
 
+    /// Returns `true` if a provided count mets the requirement.
     pub fn met_by(self, count: usize) -> bool {
         count >= self.continue_after()
     }
@@ -198,6 +201,7 @@ impl RetryRequirement {
         self.0.get()
     }
 
+    /// Returns a `NonZeroUsize` wrapped variant of `continue_after`.
     pub fn continue_after_non_zero(self) -> NonZeroUsize {
         self.0
     }

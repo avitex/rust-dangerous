@@ -8,7 +8,7 @@ const DEFAULT_SECTION: Section = Section::HeadTail { max: 1024 };
 
 /// Provides configurable [`Input`] formatting.
 ///
-/// Defaults to formatting an `Input` to max `1024` bytes or UTF-8 code points.
+/// Defaults to formatting an [`Input`] to max `1024` bytes or UTF-8 code points.
 ///
 /// # Format string options
 ///  

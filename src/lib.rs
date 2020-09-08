@@ -39,7 +39,7 @@
 #![forbid(
     // TODO: box_pointers,
     anonymous_parameters,
-    // TODO: missing_docs,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
