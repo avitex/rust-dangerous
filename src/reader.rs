@@ -66,6 +66,41 @@ where
         })
     }
 
+    /// Skip a length of input while a predicate check remains true.
+    ///
+    /// Returns the length of input skipped.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function does.
+    pub fn skip_while<F>(&mut self, pred: F) -> usize
+    where
+        F: FnMut(&'i Input, u8) -> bool,
+    {
+        let (head, tail) = self.input.split_while(pred);
+        self.input = tail;
+        head.len()
+    }
+
+    /// Try skip a length of input while a predicate check remains successful
+    /// and true.
+    ///
+    /// Returns the length of input skipped.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function does.
+    pub fn try_skip_while<F>(&mut self, pred: F) -> Result<usize, E>
+    where
+        F: FnMut(&'i Input, u8) -> Result<bool, E>,
+    {
+        self.context_mut("try skip while", |r| {
+            let (head, tail) = r.input.try_split_while(pred)?;
+            r.input = tail;
+            Ok(head.len())
+        })
+    }
+
     /// Read a length of input.
     ///
     /// # Errors
@@ -83,10 +118,6 @@ where
     }
 
     /// Read a length of input while a predicate check remains true.
-    ///
-    /// # Errors
-    ///
-    /// Returns any error the provided function does.
     pub fn take_while<F>(&mut self, pred: F) -> &'i Input
     where
         F: FnMut(&'i Input, u8) -> bool,

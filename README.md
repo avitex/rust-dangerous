@@ -21,7 +21,6 @@ dangerous = "0.1"
 - [ ] Input display
 - [ ] Stabilize errors
 - [ ] Stabilize `Reader` interface
-    - `skip_while`, `skip_until`, `take_until`, etc?
 - [ ] Terminal support
 
 ## Goals

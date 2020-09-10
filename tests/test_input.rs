@@ -95,3 +95,59 @@ fn to_dangerous_str_expected_length() {
         .unwrap_err();
     assert_eq!(err.retry_requirement(), None);
 }
+
+#[test]
+fn read_all() {
+    // Valid
+    assert_eq!(
+        read_all!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
+        ()
+    );
+    assert_eq!(
+        read_all!(b"hello", |r| { r.take(5) }).unwrap(),
+        input!(b"hello")
+    );
+    // Invalid
+    assert_eq!(
+        read_all!(b"hello", |r| { r.consume(b"hell") })
+            .unwrap_err()
+            .retry_requirement(),
+        None
+    );
+    assert_eq!(
+        read_all!(b"hello", |r| { r.take(4) })
+            .unwrap_err()
+            .retry_requirement(),
+        None
+    );
+    assert_eq!(
+        read_all!(b"hello", |r| { r.take(10) })
+            .unwrap_err()
+            .retry_requirement(),
+        RetryRequirement::new(5)
+    );
+}
+
+#[test]
+fn read_partial() {
+    // Valid
+    assert_eq!(
+        read_partial!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
+        ((), input!(b""))
+    );
+    assert_eq!(
+        read_partial!(b"hello", |r| { r.take(5) }).unwrap(),
+        (input!(b"hello"), input!(b""))
+    );
+    assert_eq!(
+        read_partial!(b"hello", |r| { r.consume(b"hell") }).unwrap(),
+        ((), input!(b"o"))
+    );
+    // Invalid
+    assert_eq!(
+        read_partial!(b"hello", |r| { r.take(10) })
+            .unwrap_err()
+            .retry_requirement(),
+        RetryRequirement::new(5)
+    );
+}
