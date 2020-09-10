@@ -1,12 +1,22 @@
 use core::fmt;
 
-use crate::error::{Context, ErrorDetails, ErrorDisplay, RetryRequirement};
+use crate::error::{Context, Error, ErrorDetails, ErrorDisplay, RetryRequirement};
 use crate::input::Input;
 use crate::utils::ByteCount;
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+use self::context_node::ContextNode;
+
 /// A catch-all error for all expected errors supported in this crate.
-#[derive(Debug, Clone)]
-pub enum Expected<'i> {
+#[derive(Debug)]
+pub struct Expected<'i> {
+    inner: ExpectedInner<'i>,
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    context: ContextNode,
+}
+
+#[derive(Debug)]
+enum ExpectedInner<'i> {
     /// An exact value was expected in a context.
     Value(ExpectedValue<'i>),
     /// A valid value was expected in a context.
@@ -22,18 +32,18 @@ impl<'i> Expected<'i> {
     }
 
     fn details(&self) -> &(dyn ErrorDetails<'i>) {
-        match self {
-            Self::Value(ref err) => err,
-            Self::Valid(ref err) => err,
-            Self::Length(ref err) => err,
+        match self.inner {
+            ExpectedInner::Value(ref err) => err,
+            ExpectedInner::Valid(ref err) => err,
+            ExpectedInner::Length(ref err) => err,
         }
     }
 
-    pub(crate) fn update_input(&mut self, input: &'i Input) {
-        match self {
-            Self::Value(ref mut err) => err.update_input(input),
-            Self::Valid(ref mut err) => err.update_input(input),
-            Self::Length(ref mut err) => err.update_input(input),
+    fn update_input(&mut self, input: &'i Input) {
+        match self.inner {
+            ExpectedInner::Value(ref mut err) => err.update_input(input),
+            ExpectedInner::Valid(ref mut err) => err.update_input(input),
+            ExpectedInner::Length(ref mut err) => err.update_input(input),
         }
     }
 }
@@ -47,6 +57,12 @@ impl<'i> ErrorDetails<'i> for Expected<'i> {
         self.details().span()
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    fn context(&self) -> &dyn Context {
+        &self.context
+    }
+
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
     fn context(&self) -> &dyn Context {
         self.details().context()
     }
@@ -68,25 +84,52 @@ impl<'i> ErrorDetails<'i> for Expected<'i> {
     }
 }
 
-impl<'i> From<ExpectedValue<'i>> for Expected<'i> {
-    fn from(err: ExpectedValue<'i>) -> Self {
-        Self::Value(err)
-    }
-}
-
-impl<'i> From<ExpectedValid<'i>> for Expected<'i> {
-    fn from(err: ExpectedValid<'i>) -> Self {
-        Self::Valid(err)
+impl<'i> Error<'i> for Expected<'i> {
+    fn with_context<C>(mut self, input: &'i Input, context: C) -> Self
+    where
+        C: Context,
+    {
+        let _ = &context;
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            self.context = self.context.with_parent(context);
+        }
+        self.update_input(input);
+        self
     }
 }
 
 impl<'i> From<ExpectedLength<'i>> for Expected<'i> {
     fn from(err: ExpectedLength<'i>) -> Self {
-        Self::Length(err)
+        Self {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            context: ContextNode::new(err.context().operation()),
+            inner: ExpectedInner::Length(err),
+        }
     }
 }
 
-impl_error!(Expected);
+impl<'i> From<ExpectedValid<'i>> for Expected<'i> {
+    fn from(err: ExpectedValid<'i>) -> Self {
+        Self {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            context: ContextNode::new(err.context().operation()),
+            inner: ExpectedInner::Valid(err),
+        }
+    }
+}
+
+impl<'i> From<ExpectedValue<'i>> for Expected<'i> {
+    fn from(err: ExpectedValue<'i>) -> Self {
+        Self {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            context: ContextNode::new(err.context().operation()),
+            inner: ExpectedInner::Value(err),
+        }
+    }
+}
+
+impl_error_common!(Expected);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
@@ -111,7 +154,7 @@ impl<'i> ExpectedValue<'i> {
         ErrorDisplay::new(self)
     }
 
-    pub(crate) fn update_input(&mut self, input: &'i Input) {
+    fn update_input(&mut self, input: &'i Input) {
         if self.input.is_within(input) {
             self.input = input;
         }
@@ -150,7 +193,17 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
     }
 }
 
-impl_error!(ExpectedValue);
+impl<'i> Error<'i> for ExpectedValue<'i> {
+    fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
+    where
+        C: Context,
+    {
+        self.update_input(input);
+        self
+    }
+}
+
+impl_error_common!(ExpectedValue);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected length error
@@ -210,7 +263,7 @@ impl<'i> ExpectedLength<'i> {
         ErrorDisplay::new(self)
     }
 
-    pub(crate) fn update_input(&mut self, input: &'i Input) {
+    fn update_input(&mut self, input: &'i Input) {
         if self.input.is_within(input) {
             self.input = input;
         }
@@ -265,7 +318,17 @@ impl<'i> ErrorDetails<'i> for ExpectedLength<'i> {
     }
 }
 
-impl_error!(ExpectedLength);
+impl<'i> Error<'i> for ExpectedLength<'i> {
+    fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
+    where
+        C: Context,
+    {
+        self.update_input(input);
+        self
+    }
+}
+
+impl_error_common!(ExpectedLength);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected valid error
@@ -286,7 +349,7 @@ impl<'i> ExpectedValid<'i> {
         ErrorDisplay::new(self)
     }
 
-    pub(crate) fn update_input(&mut self, input: &'i Input) {
+    fn update_input(&mut self, input: &'i Input) {
         if self.input.is_within(input) {
             self.input = input;
         }
@@ -323,4 +386,64 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
     }
 }
 
-impl_error!(ExpectedValid);
+impl<'i> Error<'i> for ExpectedValid<'i> {
+    fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
+    where
+        C: Context,
+    {
+        self.update_input(input);
+        self
+    }
+}
+
+impl_error_common!(ExpectedValid);
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+mod context_node {
+    use super::*;
+
+    #[cfg(feature = "alloc")]
+    use alloc::boxed::Box;
+
+    #[derive(Debug)]
+    pub(super) struct ContextNode {
+        this: Box<dyn Context>,
+        child: Option<Box<dyn Context>>,
+    }
+
+    impl ContextNode {
+        pub(super) fn new<C>(context: C) -> Self
+        where
+            C: Context,
+        {
+            Self {
+                this: Box::new(context),
+                child: None,
+            }
+        }
+
+        pub(super) fn with_parent<C>(self, parent: C) -> Self
+        where
+            C: Context,
+        {
+            Self {
+                this: Box::new(parent),
+                child: Some(Box::new(self)),
+            }
+        }
+    }
+
+    impl Context for ContextNode {
+        fn child(&self) -> Option<&dyn Context> {
+            self.child.as_ref().map(AsRef::as_ref)
+        }
+
+        fn consolidated(&self) -> usize {
+            0
+        }
+
+        fn operation(&self) -> &'static str {
+            self.this.operation()
+        }
+    }
+}

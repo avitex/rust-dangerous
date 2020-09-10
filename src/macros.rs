@@ -51,21 +51,11 @@ macro_rules! read_num {
     }};
 }
 
-macro_rules! impl_error {
+macro_rules! impl_error_common {
     ($name:ident) => {
         impl<'i> fmt::Display for $name<'i> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 self.display().fmt(f)
-            }
-        }
-
-        impl<'i> crate::error::Error<'i> for $name<'i> {
-            fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
-            where
-                C: Context,
-            {
-                self.update_input(input);
-                self
             }
         }
 

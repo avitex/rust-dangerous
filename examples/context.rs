@@ -1,10 +1,10 @@
-use dangerous::VerboseError;
+use dangerous::Expected;
 
 fn main() {
     let input = dangerous::input(b"hello<123>");
 
     let err = input
-        .read_all::<_, _, VerboseError>(|r| {
+        .read_all::<_, _, Expected>(|r| {
             r.context_mut("read protocol", |r| {
                 let _ = r.take_while(|_, b| b.is_ascii_alphabetic());
                 r.consume(b"<")?;

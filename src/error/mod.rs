@@ -3,8 +3,6 @@
 mod display;
 mod expected;
 mod invalid;
-#[cfg(any(feature = "std", feature = "alloc"))]
-mod verbose;
 
 use core::any::Any;
 use core::fmt;
@@ -16,8 +14,6 @@ use crate::utils::ByteCount;
 pub use self::display::ErrorDisplay;
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::invalid::Invalid;
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use self::verbose::VerboseError;
 
 /// Core error that collects contexts.
 pub trait Error<'i> {
@@ -106,7 +102,7 @@ where
 }
 
 /// The context surrounding an error.
-pub trait Context: Any {
+pub trait Context: Any + fmt::Debug {
     /// The operation that was attempted when an error occured.
     ///
     /// It should described in a simple manner what is trying to be achieved and
