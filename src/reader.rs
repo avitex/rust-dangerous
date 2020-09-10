@@ -66,13 +66,6 @@ where
         })
     }
 
-    /// Read all of the input left.
-    pub fn take_all(&mut self) -> &'i Input {
-        let all = self.input;
-        self.input = all.end();
-        all
-    }
-
     /// Read a length of input.
     ///
     /// # Errors
@@ -118,6 +111,13 @@ where
             r.input = tail;
             Ok(head)
         })
+    }
+
+    /// Read all of the input left.
+    pub fn take_remaining(&mut self) -> &'i Input {
+        let all = self.input;
+        self.input = all.end();
+        all
     }
 
     /// Peek a length of input.

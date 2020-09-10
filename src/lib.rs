@@ -67,6 +67,7 @@ mod error_display;
 mod input;
 mod input_display;
 mod reader;
+mod utils;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod verbose_error;

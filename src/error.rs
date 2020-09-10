@@ -5,6 +5,7 @@ use core::num::NonZeroUsize;
 
 use crate::error_display::ErrorDisplay;
 use crate::input::Input;
+use crate::utils::ByteCount;
 
 /// Core error that collects contexts.
 pub trait Error<'i> {
@@ -43,28 +44,17 @@ pub trait ErrorDetails<'i> {
     /// The unexpected value, if applicable, that was found.
     fn found_value(&self) -> Option<&Input>;
 
-    /// The description of what was found as opposed to what was expected.
+    /// The expected value, if applicable.
+    fn expected_value(&self) -> Option<&Input>;
+
+    /// The description of what went wrong while processing the input.
     ///
     /// Descriptions should be simple and written in lowercase.
     ///
     /// # Errors
     ///
     /// Returns am [`fmt::Error`] if failed to write to the formatter.
-    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-
-    /// The expected value, if applicable.
-    fn expected_value(&self) -> Option<&Input>;
-
-    /// The description of what was expected as opposed to what was found.
-    ///
-    /// Descriptions should be simple and written in lowercase. They should not
-    /// contain the literal value expected, that is to be left to
-    /// [`ErrorDetails::expected_value()`].
-    ///
-    /// # Errors
-    ///
-    /// Returns am `fmt::Error` if failed to write to the formatter.
-    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// Returns the requirement, if applicable, to retry processing the `Input`.
     fn retry_requirement(&self) -> Option<RetryRequirement>;
@@ -90,16 +80,12 @@ where
         (**self).found_value()
     }
 
-    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).found_description(f)
-    }
-
     fn expected_value(&self) -> Option<&Input> {
         (**self).expected_value()
     }
 
-    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).expected_description(f)
+    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).description(f)
     }
 
     fn retry_requirement(&self) -> Option<RetryRequirement> {
@@ -209,7 +195,7 @@ impl RetryRequirement {
 
 impl fmt::Display for RetryRequirement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} more byte(s)", self.0)
+        write!(f, "{} more", ByteCount(self.continue_after()))
     }
 }
 
@@ -260,16 +246,12 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
         Some(self.input)
     }
 
-    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("input not matching the expected value")
-    }
-
     fn expected_value(&self) -> Option<&Input> {
         Some(self.value)
     }
 
-    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("value")
+    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("found a different value to the exact expected")
     }
 
     fn retry_requirement(&self) -> Option<RetryRequirement> {
@@ -363,22 +345,24 @@ impl<'i> ErrorDetails<'i> for ExpectedLength<'i> {
         Some(self.input)
     }
 
-    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} byte(s)", self.span().len())
-    }
-
     fn expected_value(&self) -> Option<&Input> {
         None
     }
 
-    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "found {} when ", ByteCount(self.span().len()))?;
         match (self.min, self.max) {
-            (_, Some(0)) => write!(f, "no bytes"),
-            (min, Some(max)) if min == max => write!(f, "{} more bytes(s)", min),
-            (0, Some(max)) => write!(f, "at most {} bytes(s)", max),
-            (min, None) => write!(f, "at least {} more byte(s)", min),
-            (min, Some(max)) => write!(f, "at least {} and at most {} byte(s)", min, max),
-        }
+            (0, Some(max)) => write!(f, "at most {}", ByteCount(max)),
+            (min, None) => write!(f, "at least {}", ByteCount(min)),
+            (min, Some(max)) if min == max => write!(f, "exactly {}", ByteCount(min)),
+            (min, Some(max)) => write!(
+                f,
+                "at least {} and at most {}",
+                ByteCount(min),
+                ByteCount(max)
+            ),
+        }?;
+        write!(f, " was expected")
     }
 
     fn retry_requirement(&self) -> Option<RetryRequirement> {
@@ -402,20 +386,12 @@ impl_error!(ExpectedLength);
 pub struct ExpectedValid<'i> {
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
-    pub(crate) found: &'static str,
-    pub(crate) expected: &'static str,
     pub(crate) operation: &'static str,
+    pub(crate) expected: &'static str,
+    pub(crate) retry_requirement: Option<RetryRequirement>,
 }
 
 impl<'i> ExpectedValid<'i> {
-    /// A description of what was expected in a context.
-    ///
-    /// Descriptions follow the conventions in
-    /// [`ErrorDetails::expected_description()`].
-    pub fn expected(&self) -> &'static str {
-        self.expected
-    }
-
     /// Returns an `ErrorDisplay` for formatting.
     pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
@@ -445,20 +421,16 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
         Some(self.input)
     }
 
-    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.found)
-    }
-
     fn expected_value(&self) -> Option<&Input> {
         None
     }
 
-    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.expected)
+    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid {}", self.expected)
     }
 
     fn retry_requirement(&self) -> Option<RetryRequirement> {
-        None
+        self.retry_requirement
     }
 }
 
@@ -518,16 +490,12 @@ impl<'i> ErrorDetails<'i> for Expected<'i> {
         self.details().found_value()
     }
 
-    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.details().found_description(f)
-    }
-
     fn expected_value(&self) -> Option<&Input> {
         self.details().expected_value()
     }
 
-    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.details().expected_description(f)
+    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.details().description(f)
     }
 
     fn retry_requirement(&self) -> Option<RetryRequirement> {
@@ -573,7 +541,10 @@ impl_error!(Expected);
 ///     r.read_u8()
 /// }).unwrap_err();
 ///
-/// assert_eq!(format!("{}", error), "invalid input - needs 1 byte(s)")
+/// assert_eq!(
+///     format!("{}", error),
+///     "invalid input: needs 1 byte more to continue processing",
+/// );
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Invalid {
@@ -585,8 +556,9 @@ impl fmt::Display for Invalid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("invalid input")?;
         if let Some(retry_requirement) = self.retry_requirement {
-            f.write_str(" - ")?;
+            f.write_str(": needs ")?;
             retry_requirement.fmt(f)?;
+            f.write_str(" to continue processing")?;
         }
         Ok(())
     }
@@ -606,6 +578,12 @@ impl Default for Invalid {
         Self {
             retry_requirement: None,
         }
+    }
+}
+
+impl From<()> for Invalid {
+    fn from(_: ()) -> Self {
+        Self::default()
     }
 }
 

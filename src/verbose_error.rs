@@ -79,16 +79,12 @@ impl<'i> ErrorDetails<'i> for VerboseError<'i> {
         self.expected.found_value()
     }
 
-    fn found_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.expected.found_description(f)
-    }
-
     fn expected_value(&self) -> Option<&Input> {
         self.expected.expected_value()
     }
 
-    fn expected_description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.expected.expected_description(f)
+    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.expected.description(f)
     }
 
     fn retry_requirement(&self) -> Option<RetryRequirement> {

@@ -1,7 +1,7 @@
 use core::ops::Range;
 use core::{fmt, str};
 
-use crate::error::{Error, ExpectedLength, ExpectedValid, ExpectedValue};
+use crate::error::{Error, ExpectedLength, ExpectedValid, ExpectedValue, Invalid};
 use crate::input_display::InputDisplay;
 use crate::reader::Reader;
 
@@ -154,10 +154,10 @@ impl Input {
                     let error_end = error_start + error_len;
                     Err(E::from(ExpectedValid {
                         expected: "utf-8 code point",
-                        found: "invalid value",
                         span: input(&bytes[error_start..error_end]),
                         input: self,
                         operation: "decode utf-8 str",
+                        retry_requirement: None,
                     }))
                 }
             },
@@ -196,45 +196,143 @@ impl Input {
     ///
     /// # Errors
     ///
-    /// Returns an error if either the function does, or there is trailing
-    /// input.
+    /// Returns an error if either the provided function does, or there is
+    /// trailing input.
     pub fn read_all<'i, F, O, E>(&'i self, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
         E: Error<'i>,
         E: From<ExpectedLength<'i>>,
     {
-        Reader::new(self).context_mut("read all", |r| {
-            let ok = f(r)?;
-            if r.at_end() {
-                Ok(ok)
-            } else {
-                Err(E::from(ExpectedLength {
-                    min: 0,
-                    max: Some(0),
-                    span: self,
-                    input: self,
-                    operation: "read all",
-                }))
-            }
-        })
+        let mut r = Reader::new(self);
+        let ok = r.context_mut("read all", f)?;
+        if r.at_end() {
+            Ok(ok)
+        } else {
+            Err(E::from(ExpectedLength {
+                min: 0,
+                max: Some(0),
+                span: self,
+                input: self,
+                operation: "read all",
+            }))
+        }
     }
 
-    /// Create a reader with the expectation all of the input is read.
+    /// Create a reader to read a part of the input and return the rest.
     ///
     /// # Errors
     ///
-    /// Returns an error if either the function does, or there is trailing
-    /// input.
+    /// Returns an error if the provided function does.
     pub fn read_partial<'i, F, O, E>(&'i self, f: F) -> Result<(O, &'i Input), E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
         E: Error<'i>,
     {
-        Reader::new(self).context_mut("read partial", |r| {
-            let ok = f(r)?;
-            Ok((ok, r.take_all()))
-        })
+        let mut r = Reader::new(self);
+        let ok = r.context_mut("read partial", f)?;
+        Ok((ok, r.take_remaining()))
+    }
+
+    /// Create a reader with the expectation all of the input is read with any
+    /// error's details erased except for an optional
+    /// [`RetryRequirement`](crate::RetryRequirement).
+    ///
+    /// This function is useful for reading custom/unsupported types easily
+    /// without having to create custom errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// use dangerous::{Error, Expected, ExpectedLength, ExpectedValid, Invalid};
+    ///
+    /// // Our custom reader function
+    /// fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
+    /// where
+    ///   E: Error<'i>,
+    ///   E: From<ExpectedValid<'i>>,
+    ///   E: From<ExpectedLength<'i>>,
+    /// {
+    ///   input.read_all_erased("ipv4 addr", |i| {
+    ///     i.take_remaining()
+    ///       .to_dangerous_str()
+    ///       .and_then(|s| s.parse().map_err(|_| Invalid::default()))
+    ///   })
+    /// }
+    ///
+    /// let input = dangerous::input(b"192.168.1.x");
+    /// let error: Expected = read_ipv4_addr(input).unwrap_err();
+    /// println!("{}", error);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the provided function does, or there is
+    /// trailing input.
+    pub fn read_all_erased<'i, F, O, E>(&'i self, expected: &'static str, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&mut Reader<'i, E>) -> Result<O, Invalid>,
+        E: Error<'i>,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        let mut r = Reader::new(self);
+        let ok = f(&mut r).map_err(|err| {
+            E::from(ExpectedValid {
+                expected,
+                span: self,
+                input: self,
+                operation: "read all erased",
+                retry_requirement: err.retry_requirement,
+            })
+        })?;
+        if r.at_end() {
+            Ok(ok)
+        } else {
+            Err(E::from(ExpectedLength {
+                min: 0,
+                max: Some(0),
+                span: self,
+                input: self,
+                operation: "read all erased",
+            }))
+        }
+    }
+
+    /// Create a reader to read a part of the input and return the rest with any
+    /// error's details erased except for an optional
+    /// [`RetryRequirement`](crate::RetryRequirement).
+    ///
+    /// This function is useful for reading custom/unsupported types easily
+    /// without having to create custom errors.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the provided function does, or there is
+    /// trailing input.
+    pub fn read_partial_erased<'i, F, O, E>(
+        &'i self,
+        expected: &'static str,
+        f: F,
+    ) -> Result<(O, &'i Input), E>
+    where
+        F: FnOnce(&mut Reader<'i, E>) -> Result<O, Invalid>,
+        E: Error<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        let mut r = Reader::new(self);
+        let ok = f(&mut r).map_err(|err| {
+            E::from(ExpectedValid {
+                expected,
+                span: self,
+                input: self,
+                operation: "read all erased",
+                retry_requirement: err.retry_requirement,
+            })
+        })?;
+        Ok((ok, r.take_remaining()))
     }
 
     /// Returns the first byte in the input.

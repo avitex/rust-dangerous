@@ -1,6 +1,7 @@
 use core::fmt::{self, Write};
 
 use crate::error::ErrorDetails;
+use crate::utils::WithFormatter;
 
 const INPUT_PREFIX: &str = "> ";
 const DEFAULT_MAX_WIDTH: usize = 80;
@@ -50,10 +51,9 @@ where
         let input = error.input();
         writeln!(
             w,
-            "expected {} while attempting to {}, instead found {}",
-            WithFormatter(|f| self.error.expected_description(f)),
+            "error attempting to {}: {}",
             context.operation(),
-            WithFormatter(|f| self.error.found_description(f)),
+            WithFormatter(|f| self.error.description(f)),
         )?;
         w.write_str(INPUT_PREFIX)?;
         if error.span().is_empty() {
@@ -95,20 +95,5 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-struct WithFormatter<T>(T)
-where
-    T: Fn(&mut fmt::Formatter<'_>) -> fmt::Result;
-
-impl<T> fmt::Display for WithFormatter<T>
-where
-    T: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.0)(f)
     }
 }
