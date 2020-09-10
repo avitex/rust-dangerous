@@ -581,11 +581,5 @@ impl Default for Invalid {
     }
 }
 
-impl From<()> for Invalid {
-    fn from(_: ()) -> Self {
-        Self::default()
-    }
-}
-
 #[cfg(feature = "std")]
 impl std::error::Error for Invalid {}
