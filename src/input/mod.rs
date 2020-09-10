@@ -1,9 +1,12 @@
+mod display;
+
 use core::ops::Range;
 use core::{fmt, str};
 
 use crate::error::{Error, ExpectedLength, ExpectedValid, ExpectedValue, Invalid};
-use crate::input_display::InputDisplay;
 use crate::reader::Reader;
+
+pub use self::display::InputDisplay;
 
 /// Creates a new `Input` from a byte slice.
 ///

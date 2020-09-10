@@ -59,7 +59,7 @@ macro_rules! impl_error {
             }
         }
 
-        impl<'i> Error<'i> for $name<'i> {
+        impl<'i> crate::error::Error<'i> for $name<'i> {
             fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
             where
                 C: Context,
@@ -69,9 +69,9 @@ macro_rules! impl_error {
             }
         }
 
-        impl<'i> From<$name<'i>> for Invalid {
+        impl<'i> From<$name<'i>> for crate::error::Invalid {
             fn from(err: $name<'i>) -> Self {
-                Invalid {
+                crate::error::Invalid {
                     retry_requirement: err.retry_requirement(),
                 }
             }

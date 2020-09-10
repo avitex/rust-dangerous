@@ -63,19 +63,10 @@ extern crate alloc;
 mod macros;
 
 mod error;
-mod error_display;
 mod input;
-mod input_display;
 mod reader;
 mod utils;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-mod verbose_error;
-
 pub use self::error::*;
-pub use self::error_display::ErrorDisplay;
-pub use self::input::{input, Input};
-pub use self::input_display::InputDisplay;
+pub use self::input::{input, Input, InputDisplay};
 pub use self::reader::Reader;
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use self::verbose_error::VerboseError;
