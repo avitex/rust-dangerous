@@ -10,14 +10,12 @@ use crate::utils::ByteCount;
 use self::context_node::ContextNode;
 
 /// A catch-all error for all expected errors supported in this crate.
-#[derive(Debug)]
 pub struct Expected<'i> {
     inner: ExpectedInner<'i>,
     #[cfg(any(feature = "std", feature = "alloc"))]
     context: ContextNode,
 }
 
-#[derive(Debug)]
 enum ExpectedInner<'i> {
     /// An exact value was expected in a context.
     Value(ExpectedValue<'i>),
@@ -142,7 +140,7 @@ impl_error_common!(Expected);
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[allow(variant_size_differences)]
 pub(crate) enum Value<'a> {
     Byte(u8),
@@ -159,7 +157,7 @@ impl<'i> Value<'i> {
 }
 
 /// An error representing a failed exact value requirement of [`Input`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ExpectedValue<'i> {
     pub(crate) value: Value<'i>,
     pub(crate) span: &'i Input,
@@ -235,7 +233,7 @@ impl_error_common!(ExpectedValue);
 // Expected length error
 
 /// An error representing a failed requirement for a length of [`Input`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ExpectedLength<'i> {
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
@@ -363,7 +361,7 @@ impl_error_common!(ExpectedLength);
 // Expected valid error
 
 /// An error representing a failed requirement for a valid [`Input`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ExpectedValid<'i> {
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
@@ -436,7 +434,6 @@ mod context_node {
     #[cfg(feature = "alloc")]
     use alloc::boxed::Box;
 
-    #[derive(Debug)]
     pub(super) struct ContextNode {
         this: Box<dyn Context>,
         child: Option<Box<dyn Context>>,
