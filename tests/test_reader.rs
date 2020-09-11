@@ -146,7 +146,7 @@ fn error() {
 
     read_all!("hello", |parent: &mut Reader<'_, Expected<'_>>| {
         let mut child = parent.error::<Invalid>();
-        assert_eq!(child.consume(b"world"), Err(Invalid::default()));
+        assert_eq!(child.consume(b"world"), Err(Invalid::fatal()));
         Ok(())
     })
     .unwrap_err();
