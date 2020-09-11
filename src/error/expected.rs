@@ -3,7 +3,7 @@ use core::fmt;
 use crate::error::{
     Context, Error, ErrorDetails, ErrorDisplay, RetryRequirement, ToRetryRequirement,
 };
-use crate::input::Input;
+use crate::input::{input, Input};
 use crate::utils::ByteCount;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -142,10 +142,26 @@ impl_error_common!(Expected);
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
 
+#[derive(Debug, Clone)]
+#[allow(variant_size_differences)]
+pub(crate) enum Value<'a> {
+    Byte(u8),
+    Bytes(&'a [u8]),
+}
+
+impl<'i> Value<'i> {
+    pub(crate) fn as_input(&self) -> &Input {
+        match self {
+            Self::Byte(ref b) => Input::from_u8(b),
+            Self::Bytes(bytes) => input(bytes),
+        }
+    }
+}
+
 /// An error representing a failed exact value requirement of [`Input`].
 #[derive(Debug, Clone)]
 pub struct ExpectedValue<'i> {
-    pub(crate) value: &'i Input,
+    pub(crate) value: Value<'i>,
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
     pub(crate) operation: &'static str,
@@ -154,7 +170,7 @@ pub struct ExpectedValue<'i> {
 impl<'i> ExpectedValue<'i> {
     /// The [`Input`] value that was expected.
     pub fn expected(&self) -> &Input {
-        self.value
+        self.value.as_input()
     }
 
     /// Returns an `ErrorDisplay` for formatting.
@@ -187,7 +203,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
     }
 
     fn expected_value(&self) -> Option<&Input> {
-        Some(self.value)
+        Some(self.value.as_input())
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -197,7 +213,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
 
 impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        let needed = self.value.len();
+        let needed = self.value.as_input().len();
         let had = self.span().len();
         RetryRequirement::from_had_and_needed(had, needed)
     }

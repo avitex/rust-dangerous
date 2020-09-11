@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
 use crate::error::{
-    Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, ToRetryRequirement,
+    Context, Error, ExpectedLength, Value, ExpectedValid, ExpectedValue, ToRetryRequirement,
 };
 use crate::input::Input;
 use crate::utils::with_context;
@@ -231,7 +231,26 @@ where
         E: From<ExpectedLength<'i>>,
         E: From<ExpectedValue<'i>>,
     {
-        let tail = self.input.split_prefix::<E>(bytes, "consume")?;
+        let prefix = Value::Bytes(bytes);
+        let tail = self.input.split_prefix::<E>(prefix, "consume")?;
+        self.input = tail;
+        Ok(())
+    }
+
+    /// Consume expected bytes from the input.
+    ///
+    /// Doesn't effect the internal state if the input couldn't be consumed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the bytes could not be consumed from the input.
+    pub fn consume_u8(&mut self, byte: u8) -> Result<(), E>
+    where
+        E: From<ExpectedLength<'i>>,
+        E: From<ExpectedValue<'i>>,
+    {
+        let prefix = Value::Byte(byte);
+        let tail = self.input.split_prefix::<E>(prefix, "consume u8")?;
         self.input = tail;
         Ok(())
     }

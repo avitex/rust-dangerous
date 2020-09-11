@@ -1,6 +1,7 @@
+use core::slice;
 use core::ops::Range;
 
-use crate::error::{Error, ExpectedLength, ExpectedValue};
+use crate::error::{Error, Value, ExpectedLength, ExpectedValue};
 use crate::input::{input, Input};
 use crate::reader::Reader;
 use crate::utils::with_context;
@@ -16,6 +17,10 @@ use crate::utils::with_context;
 // - Will be inlined into the callee
 
 impl Input {
+    pub(crate) fn from_u8(byte: &u8) -> &Input {
+        input(slice::from_ref(byte))
+    }
+
     /// Returns an empty `Input` pointing the end of `self`.
     #[inline(always)]
     pub(crate) fn end(&self) -> &Input {
@@ -57,21 +62,22 @@ impl Input {
     #[inline(always)]
     pub(crate) fn split_prefix<'i, E>(
         &'i self,
-        prefix: &'i [u8],
+        prefix: Value<'i>,
         operation: &'static str,
     ) -> Result<&'i Input, E>
     where
         E: From<ExpectedValue<'i>>,
     {
-        if self.len() >= prefix.len() {
+        let prefix_input = prefix.as_input();
+        if self.len() >= prefix_input.len() {
             let bytes = self.as_dangerous();
-            let (head, tail) = bytes.split_at(prefix.len());
-            if head == prefix {
+            let (head, tail) = bytes.split_at(prefix_input.len());
+            if head == prefix_input {
                 Ok(input(tail))
             } else {
                 Err(E::from(ExpectedValue {
                     span: self,
-                    value: input(prefix),
+                    value: prefix,
                     input: self,
                     operation,
                 }))
@@ -79,7 +85,7 @@ impl Input {
         } else {
             Err(E::from(ExpectedValue {
                 span: self.end(),
-                value: input(prefix),
+                value: prefix,
                 input: self,
                 operation,
             }))

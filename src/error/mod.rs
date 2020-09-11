@@ -15,6 +15,8 @@ pub use self::display::ErrorDisplay;
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::invalid::Invalid;
 
+pub(crate) use self::expected::Value;
+
 /// Implemented for errors that return input requirements.
 pub trait ToRetryRequirement {
     /// Returns the requirement, if applicable, to retry processing the `Input`.

@@ -34,6 +34,7 @@
     unsafe_code,
     // For derived implementations.
     unused_qualifications,
+    variant_size_differences,
     clippy::pedantic
 )]
 #![forbid(
@@ -46,7 +47,6 @@
     unused_extern_crates,
     unused_import_braces,
     unused_results,
-    variant_size_differences,
     warnings
 )]
 #![allow(
