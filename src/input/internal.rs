@@ -1,7 +1,7 @@
-use core::slice;
 use core::ops::Range;
+use core::slice;
 
-use crate::error::{Error, Value, ExpectedLength, ExpectedValue};
+use crate::error::{Error, ExpectedLength, ExpectedValue, Value};
 use crate::input::{input, Input};
 use crate::reader::Reader;
 use crate::utils::with_context;

@@ -90,7 +90,7 @@ macro_rules! impl_error_common {
 
         impl<'i> fmt::Debug for $name<'i> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                self.display().fmt(f)
+                writeln!(f, "{}", self.display())
             }
         }
 
