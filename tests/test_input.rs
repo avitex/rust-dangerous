@@ -1,7 +1,7 @@
 #[macro_use]
 mod common;
 
-use dangerous::{ErrorDetails, Expected, RetryRequirement};
+use dangerous::{Expected, RetryRequirement, ToRetryRequirement};
 
 #[test]
 fn as_dangerous() {
@@ -83,17 +83,17 @@ fn to_dangerous_str_expected_length() {
     let err = input!(&[0b1101_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.retry_requirement(), RetryRequirement::new(1));
+    assert_eq!(err.to_retry_requirement(), RetryRequirement::new(1));
     // Length 3
     let err = input!(&[0b1110_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.retry_requirement(), RetryRequirement::new(2));
+    assert_eq!(err.to_retry_requirement(), RetryRequirement::new(2));
     // Invalid
     let err = input!(&[0b1111_0111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.retry_requirement(), None);
+    assert_eq!(err.to_retry_requirement(), None);
 }
 
 #[test]
@@ -111,19 +111,19 @@ fn read_all() {
     assert_eq!(
         read_all!(b"hello", |r| { r.consume(b"hell") })
             .unwrap_err()
-            .retry_requirement(),
+            .to_retry_requirement(),
         None
     );
     assert_eq!(
         read_all!(b"hello", |r| { r.take(4) })
             .unwrap_err()
-            .retry_requirement(),
+            .to_retry_requirement(),
         None
     );
     assert_eq!(
         read_all!(b"hello", |r| { r.take(10) })
             .unwrap_err()
-            .retry_requirement(),
+            .to_retry_requirement(),
         RetryRequirement::new(5)
     );
 }
@@ -147,7 +147,7 @@ fn read_partial() {
     assert_eq!(
         read_partial!(b"hello", |r| { r.take(10) })
             .unwrap_err()
-            .retry_requirement(),
+            .to_retry_requirement(),
         RetryRequirement::new(5)
     );
 }

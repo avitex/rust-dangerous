@@ -19,7 +19,7 @@ where
         r.read_erased("ipv4 addr", |i| {
             i.take_remaining()
                 .to_dangerous_str()
-                .and_then(|s| s.parse().map_err(|_| Invalid::default()))
+                .and_then(|s| s.parse().map_err(|_| Invalid::fatal()))
         })
     })
 }

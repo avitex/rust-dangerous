@@ -14,7 +14,7 @@
 use std::error::Error;
 use std::io;
 
-use dangerous::{ErrorDetails, Expected};
+use dangerous::{Expected, ToRetryRequirement};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
@@ -69,7 +69,7 @@ where
         }
         let input = dangerous::input(&buf[..written_cur]);
         match decode_message::<Expected>(input) {
-            Err(err) => match err.retry_requirement() {
+            Err(err) => match err.to_retry_requirement() {
                 Some(req) => expects_cur += req.continue_after(),
                 None => return Err(err.into()),
             },

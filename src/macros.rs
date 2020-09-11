@@ -61,9 +61,7 @@ macro_rules! impl_error_common {
 
         impl<'i> From<$name<'i>> for crate::error::Invalid {
             fn from(err: $name<'i>) -> Self {
-                crate::error::Invalid {
-                    retry_requirement: err.retry_requirement(),
-                }
+                err.to_retry_requirement().into()
             }
         }
 

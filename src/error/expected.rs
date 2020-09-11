@@ -1,6 +1,8 @@
 use core::fmt;
 
-use crate::error::{Context, Error, ErrorDetails, ErrorDisplay, RetryRequirement};
+use crate::error::{
+    Context, Error, ErrorDetails, ErrorDisplay, RetryRequirement, ToRetryRequirement,
+};
 use crate::input::Input;
 use crate::utils::ByteCount;
 
@@ -78,9 +80,15 @@ impl<'i> ErrorDetails<'i> for Expected<'i> {
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.details().description(f)
     }
+}
 
-    fn retry_requirement(&self) -> Option<RetryRequirement> {
-        self.details().retry_requirement()
+impl<'i> ToRetryRequirement for Expected<'i> {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
+        match self.inner {
+            ExpectedInner::Value(ref err) => err.to_retry_requirement(),
+            ExpectedInner::Valid(ref err) => err.to_retry_requirement(),
+            ExpectedInner::Length(ref err) => err.to_retry_requirement(),
+        }
     }
 }
 
@@ -185,8 +193,10 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("found a different value to the exact expected")
     }
+}
 
-    fn retry_requirement(&self) -> Option<RetryRequirement> {
+impl<'i> ToRetryRequirement for ExpectedValue<'i> {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         let needed = self.value.len();
         let had = self.span().len();
         RetryRequirement::from_had_and_needed(had, needed)
@@ -306,8 +316,10 @@ impl<'i> ErrorDetails<'i> for ExpectedLength<'i> {
         }?;
         write!(f, " was expected")
     }
+}
 
-    fn retry_requirement(&self) -> Option<RetryRequirement> {
+impl<'i> ToRetryRequirement for ExpectedLength<'i> {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         if self.is_fatal() {
             None
         } else {
@@ -380,8 +392,10 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "invalid {}", self.expected)
     }
+}
 
-    fn retry_requirement(&self) -> Option<RetryRequirement> {
+impl<'i> ToRetryRequirement for ExpectedValid<'i> {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         self.retry_requirement
     }
 }

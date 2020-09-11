@@ -15,8 +15,14 @@ pub use self::display::ErrorDisplay;
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::invalid::Invalid;
 
+/// Implemented for errors that return input requirements.
+pub trait ToRetryRequirement {
+    /// Returns the requirement, if applicable, to retry processing the `Input`.
+    fn to_retry_requirement(&self) -> Option<RetryRequirement>;
+}
+
 /// Core error that collects contexts.
-pub trait Error<'i> {
+pub trait Error<'i>: ToRetryRequirement {
     /// Return `Self` with context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
@@ -63,9 +69,6 @@ pub trait ErrorDetails<'i> {
     ///
     /// Returns am [`fmt::Error`] if failed to write to the formatter.
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-
-    /// Returns the requirement, if applicable, to retry processing the `Input`.
-    fn retry_requirement(&self) -> Option<RetryRequirement>;
 }
 
 impl<'i, T> ErrorDetails<'i> for &T
@@ -94,10 +97,6 @@ where
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).description(f)
-    }
-
-    fn retry_requirement(&self) -> Option<RetryRequirement> {
-        (**self).retry_requirement()
     }
 }
 
@@ -204,5 +203,21 @@ impl RetryRequirement {
 impl fmt::Display for RetryRequirement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} more", ByteCount(self.continue_after()))
+    }
+}
+
+impl ToRetryRequirement for RetryRequirement {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
+        Some(*self)
+    }
+}
+
+impl<T> ToRetryRequirement for Option<T>
+where
+    T: ToRetryRequirement,
+{
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
+        self.as_ref()
+            .and_then(ToRetryRequirement::to_retry_requirement)
     }
 }

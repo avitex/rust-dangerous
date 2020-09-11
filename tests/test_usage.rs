@@ -1,6 +1,6 @@
 #[test]
 fn usage_with_fn() {
-    use dangerous::{Invalid, RetryRequirement};
+    use dangerous::{Invalid, RetryRequirement, ToRetryRequirement};
 
     let input = dangerous::input(b"a");
 
@@ -12,7 +12,7 @@ fn usage_with_fn() {
     }
 
     assert_eq!(
-        input.read_all(do_thing).unwrap_err().retry_requirement,
+        input.read_all(do_thing).unwrap_err().to_retry_requirement(),
         RetryRequirement::new(1)
     );
 }

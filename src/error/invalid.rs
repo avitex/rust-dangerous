@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::error::{Context, Error, RetryRequirement};
+use crate::error::{Context, Error, RetryRequirement, ToRetryRequirement};
 use crate::input::Input;
 
 /// `Invalid` contains no details about what happened, other than the number of
@@ -25,8 +25,16 @@ use crate::input::Input;
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Invalid {
-    /// See the documentation for [`RetryRequirement`]
-    pub retry_requirement: Option<RetryRequirement>,
+    retry_requirement: Option<RetryRequirement>,
+}
+
+impl Invalid {
+    /// Create a fatal `Invalid` error.
+    pub fn fatal() -> Self {
+        Self {
+            retry_requirement: None,
+        }
+    }
 }
 
 impl fmt::Display for Invalid {
@@ -41,6 +49,12 @@ impl fmt::Display for Invalid {
     }
 }
 
+impl ToRetryRequirement for Invalid {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
+        self.retry_requirement
+    }
+}
+
 impl<'i> Error<'i> for Invalid {
     fn with_context<C>(self, _input: &'i Input, _context: C) -> Self
     where
@@ -50,11 +64,15 @@ impl<'i> Error<'i> for Invalid {
     }
 }
 
+impl From<Option<RetryRequirement>> for Invalid {
+    fn from(retry_requirement: Option<RetryRequirement>) -> Self {
+        Self { retry_requirement }
+    }
+}
+
 impl Default for Invalid {
     fn default() -> Self {
-        Self {
-            retry_requirement: None,
-        }
+        Self::fatal()
     }
 }
 

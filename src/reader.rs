@@ -1,6 +1,8 @@
 use core::marker::PhantomData;
 
-use crate::error::{Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, Invalid};
+use crate::error::{
+    Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, Invalid, ToRetryRequirement,
+};
 use crate::input::Input;
 
 /// A `Reader` is created from and consumes a [`Input`].
@@ -235,7 +237,7 @@ where
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{Error, Expected, ExpectedLength, ExpectedValid, Invalid};
+    /// use dangerous::{Error, Invalid, Expected, ExpectedLength, ExpectedValid};
     ///
     /// // Our custom reader function
     /// fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
@@ -248,7 +250,7 @@ where
     ///         r.read_erased("ipv4 addr", |i| {
     ///             i.take_remaining()
     ///                 .to_dangerous_str()
-    ///                 .and_then(|s| s.parse().map_err(|_| Invalid::default()))
+    ///                 .and_then(|s| s.parse().map_err(|_| Invalid::fatal()))
     ///         })
     ///     })
     /// }
@@ -262,11 +264,12 @@ where
     ///
     /// Returns an error if either the provided function does, or there is
     /// trailing input.
-    pub fn read_erased<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    pub fn read_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
-        F: FnOnce(&mut Self) -> Result<O, Invalid>,
+        F: FnOnce(&mut Self) -> Result<O, R>,
         E: Error<'i>,
         E: From<ExpectedValid<'i>>,
+        R: ToRetryRequirement,
     {
         f(self).map_err(|err| {
             E::from(ExpectedValid {
@@ -274,7 +277,7 @@ where
                 span: self.input,
                 input: self.input,
                 operation: "read erased",
-                retry_requirement: err.retry_requirement,
+                retry_requirement: err.to_retry_requirement(),
             })
         })
     }
