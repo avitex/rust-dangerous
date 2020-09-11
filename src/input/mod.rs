@@ -208,7 +208,7 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         let mut r = Reader::new(self);
-        let ok = r.context_mut("read all", f)?;
+        let ok = r.context("read all", f)?;
         if r.at_end() {
             Ok(ok)
         } else {
@@ -233,7 +233,7 @@ impl Input {
         E: Error<'i>,
     {
         let mut r = Reader::new(self);
-        let ok = r.context_mut("read partial", f)?;
+        let ok = r.context("read partial", f)?;
         Ok((ok, r.take_remaining()))
     }
 

@@ -35,7 +35,7 @@ macro_rules! impl_read_num {
 
 macro_rules! read_num {
     ($reader:expr, $err_ty:ident, $num_ty:ty, $num_desc:expr, $from_xx_bytes:ident) => {{
-        $reader.context_mut(concat!("read ", $num_desc), |r| {
+        $reader.context(concat!("read ", $num_desc), |r| {
             r.input
                 .split_at::<$err_ty>(core::mem::size_of::<$num_ty>())
                 .map(

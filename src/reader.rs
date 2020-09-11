@@ -15,31 +15,31 @@ impl<'i, E> Reader<'i, E>
 where
     E: Error<'i>,
 {
-    /// Use the reader with a given context.
-    ///
-    /// # Errors
-    ///
-    /// Returns any error returned by the provided function, and attaches the
-    /// specified context to it.
-    pub fn context<C, F, O>(&self, context: C, f: F) -> Result<O, E>
-    where
-        C: Context,
-        F: FnOnce(&Self) -> Result<O, E>,
-    {
-        let complete = self.input;
-        f(self).map_err(|err| err.with_context(complete, context))
-    }
-
     /// Mutably use the reader with a given context.
     ///
     /// # Errors
     ///
     /// Returns any error returned by the provided function, and attaches the
     /// specified context to it.
-    pub fn context_mut<C, F, O>(&mut self, context: C, f: F) -> Result<O, E>
+    pub fn context<C, F, O>(&mut self, context: C, f: F) -> Result<O, E>
     where
         C: Context,
         F: FnOnce(&mut Self) -> Result<O, E>,
+    {
+        let complete = self.input;
+        f(self).map_err(|err| err.with_context(complete, context))
+    }
+
+    /// Immutably use the reader with a given context.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error returned by the provided function, and attaches the
+    /// specified context to it.
+    pub fn peek_context<C, F, O>(&self, context: C, f: F) -> Result<O, E>
+    where
+        C: Context,
+        F: FnOnce(&Self) -> Result<O, E>,
     {
         let complete = self.input;
         f(self).map_err(|err| err.with_context(complete, context))
@@ -61,7 +61,7 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.context_mut("skip", |r| {
+        self.context("skip", |r| {
             let (_, tail) = r.input.split_at(len)?;
             r.input = tail;
             Ok(())
@@ -96,7 +96,7 @@ where
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
     {
-        self.context_mut("try skip while", |r| {
+        self.context("try skip while", |r| {
             let (head, tail) = r.input.try_split_while(pred)?;
             r.input = tail;
             Ok(head.len())
@@ -112,7 +112,7 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.context_mut("take", |r| {
+        self.context("take", |r| {
             let (head, tail) = r.input.split_at(len)?;
             r.input = tail;
             Ok(head)
@@ -139,7 +139,7 @@ where
     where
         F: FnMut(&'i Input, u8) -> Result<bool, E>,
     {
-        self.context_mut("try take while", |r| {
+        self.context("try take while", |r| {
             let (head, tail) = r.input.try_split_while(pred)?;
             r.input = tail;
             Ok(head)
@@ -164,7 +164,7 @@ where
         E: From<ExpectedLength<'i>>,
         O: 'static,
     {
-        self.context("peek", |r| {
+        self.peek_context("peek", |r| {
             let (head, _) = r.input.split_at(len)?;
             Ok(f(head))
         })
@@ -182,7 +182,7 @@ where
         E: From<ExpectedLength<'i>>,
         O: 'static,
     {
-        self.context("try peek", |r| {
+        self.peek_context("try peek", |r| {
             let (head, _) = r.input.split_at(len)?;
             f(head)
         })
@@ -198,7 +198,7 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.context("peek u8", |r| r.input.first())
+        self.peek_context("peek u8", |r| r.input.first())
     }
 
     /// Returns `true` if `bytes` is next in the input.
@@ -219,7 +219,7 @@ where
         E: From<ExpectedLength<'i>>,
         E: From<ExpectedValue<'i>>,
     {
-        self.context_mut("consume", |r| {
+        self.context("consume", |r| {
             let tail = r.input.split_prefix::<E>(bytes)?;
             r.input = tail;
             Ok(())
@@ -292,7 +292,7 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.context_mut("read u8", |r| {
+        self.context("read u8", |r| {
             let (byte, tail) = r.input.split_first::<E>()?;
             r.input = tail;
             Ok(byte)
