@@ -1,5 +1,18 @@
 use core::fmt;
 
+use crate::error::{Context, Error};
+use crate::input::Input;
+
+#[inline(always)]
+pub(crate) fn with_context<'i, F, C, T, E>(input: &'i Input, context: C, f: F) -> Result<T, E>
+where
+    F: FnOnce() -> Result<T, E>,
+    E: Error<'i>,
+    C: Context,
+{
+    f().map_err(|err| err.with_context(input, context))
+}
+
 pub(crate) struct ByteCount(pub(crate) usize);
 
 impl fmt::Display for ByteCount {

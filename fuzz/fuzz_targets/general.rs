@@ -37,10 +37,10 @@ fuzz_target!(|data: &[u8]| {
     read_partial!(input_full, |r| Ok(r.peek_eq(single_slice)));
     read_partial!(input_full, |r| r.take(rng.gen()));
     read_partial!(input_full, |r| r.skip(rng.gen()));
-    read_partial!(input_full, |r| Ok(r.take_while(|_, c| c == rng.gen())));
-    read_partial!(input_full, |r| Ok(r.skip_while(|_, c| c == rng.gen())));
-    read_partial!(input_full, |r| r.try_take_while(|_, c| Ok(c == rng.gen())));
-    read_partial!(input_full, |r| r.try_skip_while(|_, c| Ok(c == rng.gen())));
+    read_partial!(input_full, |r| Ok(r.take_while(|c| c == rng.gen())));
+    read_partial!(input_full, |r| Ok(r.skip_while(|c| c == rng.gen())));
+    read_partial!(input_full, |r| r.try_take_while(|c| Ok(c == rng.gen())));
+    read_partial!(input_full, |r| r.try_skip_while(|c| Ok(c == rng.gen())));
     read_partial!(input_full, |r| r.peek(1, |i| i == single_slice));
     read_partial!(input_full, |r| r.try_peek(1, |i| Ok(i == single_slice)));
     read_partial!(input_full, |r| r.consume(single_slice));

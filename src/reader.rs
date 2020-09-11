@@ -1,9 +1,10 @@
 use core::marker::PhantomData;
 
 use crate::error::{
-    Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, Invalid, ToRetryRequirement,
+    Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, ToRetryRequirement,
 };
 use crate::input::Input;
+use crate::utils::with_context;
 
 /// A `Reader` is created from and consumes a [`Input`].
 pub struct Reader<'i, E> {
@@ -26,8 +27,7 @@ where
         C: Context,
         F: FnOnce(&mut Self) -> Result<O, E>,
     {
-        let complete = self.input;
-        f(self).map_err(|err| err.with_context(complete, context))
+        with_context(self.input, context, || f(self))
     }
 
     /// Immutably use the reader with a given context.
@@ -41,8 +41,7 @@ where
         C: Context,
         F: FnOnce(&Self) -> Result<O, E>,
     {
-        let complete = self.input;
-        f(self).map_err(|err| err.with_context(complete, context))
+        with_context(self.input, context, || f(self))
     }
 
     /// Returns `true` if the reader has no more input to consume.
@@ -61,11 +60,9 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.context("skip", |r| {
-            let (_, tail) = r.input.split_at(len)?;
-            r.input = tail;
-            Ok(())
-        })
+        let (_, tail) = self.input.split_at(len, "skip")?;
+        self.input = tail;
+        Ok(())
     }
 
     /// Skip a length of input while a predicate check remains true.
@@ -77,7 +74,7 @@ where
     /// Returns any error the provided function does.
     pub fn skip_while<F>(&mut self, pred: F) -> usize
     where
-        F: FnMut(&'i Input, u8) -> bool,
+        F: FnMut(u8) -> bool,
     {
         let (head, tail) = self.input.split_while(pred);
         self.input = tail;
@@ -94,13 +91,11 @@ where
     /// Returns any error the provided function does.
     pub fn try_skip_while<F>(&mut self, pred: F) -> Result<usize, E>
     where
-        F: FnMut(&'i Input, u8) -> Result<bool, E>,
+        F: FnMut(u8) -> Result<bool, E>,
     {
-        self.context("try skip while", |r| {
-            let (head, tail) = r.input.try_split_while(pred)?;
-            r.input = tail;
-            Ok(head.len())
-        })
+        let (head, tail) = self.input.try_split_while(pred, "try skip while")?;
+        self.input = tail;
+        Ok(head.len())
     }
 
     /// Read a length of input.
@@ -112,21 +107,52 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.context("take", |r| {
-            let (head, tail) = r.input.split_at(len)?;
-            r.input = tail;
-            Ok(head)
-        })
+        let (head, tail) = self.input.split_at(len, "take")?;
+        self.input = tail;
+        Ok(head)
+    }
+
+    /// Read all of the input left.
+    pub fn take_remaining(&mut self) -> &'i Input {
+        let all = self.input;
+        self.input = all.end();
+        all
     }
 
     /// Read a length of input while a predicate check remains true.
     pub fn take_while<F>(&mut self, pred: F) -> &'i Input
     where
-        F: FnMut(&'i Input, u8) -> bool,
+        F: FnMut(u8) -> bool,
     {
         let (head, tail) = self.input.split_while(pred);
         self.input = tail;
         head
+    }
+
+    /// Read a length of input that was successfully parsed.
+    pub fn take_consumed<F>(&mut self, consumer: F) -> &'i Input
+    where
+        F: FnMut(&mut Self),
+    {
+        let (head, tail) = self.input.split_consumed(consumer);
+        self.input = tail;
+        head
+    }
+
+    /// Try read a length of input that was successfully parsed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the provided function does.
+    pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<&'i Input, E>
+    where
+        F: FnMut(&mut Self) -> Result<(), E>,
+    {
+        let (head, tail) = self
+            .input
+            .try_split_consumed(consumer, "try take consumed")?;
+        self.input = tail;
+        Ok(head)
     }
 
     /// Try read a length of input while a predicate check remains successful
@@ -137,20 +163,11 @@ where
     /// Returns any error the provided function does.
     pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
     where
-        F: FnMut(&'i Input, u8) -> Result<bool, E>,
+        F: FnMut(u8) -> Result<bool, E>,
     {
-        self.context("try take while", |r| {
-            let (head, tail) = r.input.try_split_while(pred)?;
-            r.input = tail;
-            Ok(head)
-        })
-    }
-
-    /// Read all of the input left.
-    pub fn take_remaining(&mut self) -> &'i Input {
-        let all = self.input;
-        self.input = all.end();
-        all
+        let (head, tail) = self.input.try_split_while(pred, "try take while")?;
+        self.input = tail;
+        Ok(head)
     }
 
     /// Peek a length of input.
@@ -162,12 +179,9 @@ where
     where
         F: FnOnce(&Input) -> O,
         E: From<ExpectedLength<'i>>,
-        O: 'static,
     {
-        self.peek_context("peek", |r| {
-            let (head, _) = r.input.split_at(len)?;
-            Ok(f(head))
-        })
+        let (head, _) = self.input.split_at(len, "peek")?;
+        Ok(f(head))
     }
 
     /// Try peek a length of input.
@@ -182,10 +196,8 @@ where
         E: From<ExpectedLength<'i>>,
         O: 'static,
     {
-        self.peek_context("try peek", |r| {
-            let (head, _) = r.input.split_at(len)?;
-            f(head)
-        })
+        let (head, _) = self.input.split_at(len, "try peek")?;
+        with_context(self.input, "try peek", || f(head))
     }
 
     /// Returns the next byte in the input without mutating the reader.
@@ -198,13 +210,13 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.peek_context("peek u8", |r| r.input.first())
+        self.input.first("peek u8")
     }
 
     /// Returns `true` if `bytes` is next in the input.
     #[inline]
     pub fn peek_eq(&self, bytes: &[u8]) -> bool {
-        self.input.split_prefix::<Invalid>(bytes).is_ok()
+        self.input.has_prefix(bytes)
     }
 
     /// Consume expected bytes from the input.
@@ -219,11 +231,9 @@ where
         E: From<ExpectedLength<'i>>,
         E: From<ExpectedValue<'i>>,
     {
-        self.context("consume", |r| {
-            let tail = r.input.split_prefix::<E>(bytes)?;
-            r.input = tail;
-            Ok(())
-        })
+        let tail = self.input.split_prefix::<E>(bytes, "consume")?;
+        self.input = tail;
+        Ok(())
     }
 
     /// Read a value with any error's details erased except for an optional
@@ -292,11 +302,9 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.context("read u8", |r| {
-            let (byte, tail) = r.input.split_first::<E>()?;
-            r.input = tail;
-            Ok(byte)
-        })
+        let (byte, tail) = self.input.split_first::<E>("read u8")?;
+        self.input = tail;
+        Ok(byte)
     }
 
     impl_read_num!(i8, le: read_i8_le, be: read_i8_be);
