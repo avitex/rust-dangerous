@@ -70,11 +70,5 @@ impl From<Option<RetryRequirement>> for Invalid {
     }
 }
 
-impl Default for Invalid {
-    fn default() -> Self {
-        Self::fatal()
-    }
-}
-
 #[cfg(feature = "std")]
 impl std::error::Error for Invalid {}
