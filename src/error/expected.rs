@@ -233,7 +233,8 @@ impl<'i> ExpectedLength<'i> {
     ///
     /// This doesn't not take into account the section of input being processed
     /// when this error occurred. If you wish to work out the requirement to
-    /// continue processing input use [`ErrorDetails::retry_requirement()`].
+    /// continue processing input use
+    /// [`ToRetryRequirement::to_retry_requirement()`].
     pub fn min(&self) -> usize {
         self.min
     }
