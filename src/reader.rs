@@ -129,6 +129,21 @@ where
         head
     }
 
+    /// Try read a length of input while a predicate check remains successful
+    /// and true.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function does.
+    pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
+    where
+        F: FnMut(u8) -> Result<bool, E>,
+    {
+        let (head, tail) = self.input.try_split_while(pred, "try take while")?;
+        self.input = tail;
+        Ok(head)
+    }
+
     /// Read a length of input that was successfully parsed.
     pub fn take_consumed<F>(&mut self, consumer: F) -> &'i Input
     where
@@ -151,21 +166,6 @@ where
         let (head, tail) = self
             .input
             .try_split_consumed(consumer, "try take consumed")?;
-        self.input = tail;
-        Ok(head)
-    }
-
-    /// Try read a length of input while a predicate check remains successful
-    /// and true.
-    ///
-    /// # Errors
-    ///
-    /// Returns any error the provided function does.
-    pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
-    where
-        F: FnMut(u8) -> Result<bool, E>,
-    {
-        let (head, tail) = self.input.try_split_while(pred, "try take while")?;
         self.input = tail;
         Ok(head)
     }
@@ -290,6 +290,52 @@ where
                 retry_requirement: err.to_retry_requirement(),
             })
         })
+    }
+
+    /// Expect a value to be read and returned as `Some`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the returned value was `None`.
+    pub fn expect_some<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&mut Self) -> Option<O>,
+        E: Error<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        match f(self) {
+            Some(ok) => Ok(ok),
+            None => Err(E::from(ExpectedValid {
+                expected,
+                span: self.input,
+                input: self.input,
+                operation: "expect",
+                retry_requirement: None,
+            })),
+        }
+    }
+
+    /// Expect a value to be read successfully and returned as `Some`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if failed to read, or the returned value was `None`.
+    pub fn try_expect_some<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&mut Self) -> Result<Option<O>, E>,
+        E: Error<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        match with_context(self.input, "read expected", || f(self))? {
+            Some(ok) => Ok(ok),
+            None => Err(E::from(ExpectedValid {
+                expected,
+                span: self.input,
+                input: self.input,
+                operation: "try expect",
+                retry_requirement: None,
+            })),
+        }
     }
 
     /// Read a byte, consuming the input.
