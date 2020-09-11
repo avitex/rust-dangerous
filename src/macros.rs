@@ -80,7 +80,7 @@ macro_rules! read_num {
     }};
 }
 
-macro_rules! impl_error_common {
+macro_rules! impl_expected_error {
     ($name:ident) => {
         impl<'i> fmt::Display for $name<'i> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -90,7 +90,13 @@ macro_rules! impl_error_common {
 
         impl<'i> fmt::Debug for $name<'i> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                writeln!(f, "{}", self.display())
+                writeln!(
+                    f,
+                    "\n{:-<60}\n{}\n{:-<60}",
+                    "-- INPUT ERROR ",
+                    self.display(),
+                    "-",
+                )
             }
         }
 

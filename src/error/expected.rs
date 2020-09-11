@@ -135,7 +135,7 @@ impl<'i> From<ExpectedValue<'i>> for Expected<'i> {
     }
 }
 
-impl_error_common!(Expected);
+impl_expected_error!(Expected);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
@@ -227,7 +227,7 @@ impl<'i> Error<'i> for ExpectedValue<'i> {
     }
 }
 
-impl_error_common!(ExpectedValue);
+impl_expected_error!(ExpectedValue);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected length error
@@ -355,7 +355,7 @@ impl<'i> Error<'i> for ExpectedLength<'i> {
     }
 }
 
-impl_error_common!(ExpectedLength);
+impl_expected_error!(ExpectedLength);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected valid error
@@ -425,7 +425,7 @@ impl<'i> Error<'i> for ExpectedValid<'i> {
     }
 }
 
-impl_error_common!(ExpectedValid);
+impl_expected_error!(ExpectedValid);
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod context_node {
@@ -434,6 +434,7 @@ mod context_node {
     #[cfg(feature = "alloc")]
     use alloc::boxed::Box;
 
+    #[derive(Debug)]
     pub(super) struct ContextNode {
         this: Box<dyn Context>,
         child: Option<Box<dyn Context>>,
