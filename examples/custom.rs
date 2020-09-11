@@ -15,9 +15,11 @@ where
     E: From<ExpectedValid<'i>>,
     E: From<ExpectedLength<'i>>,
 {
-    input.read_all_erased("ipv4 addr", |i| {
-        i.take_remaining()
-            .to_dangerous_str()
-            .and_then(|s| s.parse().map_err(|_| Invalid::default()))
+    input.read_all(|r| {
+        r.read_erased("ipv4 addr", |i| {
+            i.take_remaining()
+                .to_dangerous_str()
+                .and_then(|s| s.parse().map_err(|_| Invalid::default()))
+        })
     })
 }

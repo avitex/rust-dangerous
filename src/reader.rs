@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::error::{Context, Error, ExpectedLength, ExpectedValue, Invalid};
+use crate::error::{Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, Invalid};
 use crate::input::Input;
 
 /// A `Reader` is created from and consumes a [`Input`].
@@ -221,6 +221,61 @@ where
             let tail = r.input.split_prefix::<E>(bytes)?;
             r.input = tail;
             Ok(())
+        })
+    }
+
+    /// Read a value with any error's details erased except for an optional
+    /// [`RetryRequirement`](crate::RetryRequirement).
+    ///
+    /// This function is useful for reading custom/unsupported types easily
+    /// without having to create custom errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// use dangerous::{Error, Expected, ExpectedLength, ExpectedValid, Invalid};
+    ///
+    /// // Our custom reader function
+    /// fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
+    /// where
+    ///   E: Error<'i>,
+    ///   E: From<ExpectedValid<'i>>,
+    ///   E: From<ExpectedLength<'i>>,
+    /// {
+    ///     input.read_all(|r| {
+    ///         r.read_erased("ipv4 addr", |i| {
+    ///             i.take_remaining()
+    ///                 .to_dangerous_str()
+    ///                 .and_then(|s| s.parse().map_err(|_| Invalid::default()))
+    ///         })
+    ///     })
+    /// }
+    ///
+    /// let input = dangerous::input(b"192.168.1.x");
+    /// let error: Expected = read_ipv4_addr(input).unwrap_err();
+    /// println!("{}", error);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the provided function does, or there is
+    /// trailing input.
+    pub fn read_erased<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&mut Self) -> Result<O, Invalid>,
+        E: Error<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        f(self).map_err(|err| {
+            E::from(ExpectedValid {
+                expected,
+                span: self.input,
+                input: self.input,
+                operation: "read erased",
+                retry_requirement: err.retry_requirement,
+            })
         })
     }
 
