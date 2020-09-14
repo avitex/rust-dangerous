@@ -88,16 +88,18 @@ where
     E: From<dangerous::ExpectedValue<'i>>,
 {
     input.read_all::<_, _, E>(|r| {
-        // Expect version 1
-        r.consume(&[0x01])?;
-        // Read the body length
-        let body_len = r.read_u8()?;
-        // Take the body input
-        let body_input = r.take(body_len as usize)?;
-        // Decode the body input as a UTF-8 str
-        let body = body_input.to_dangerous_str::<E>()?;
-        // We did it!
-        Ok(Message { body })
+        r.context("message", |r| {
+            // Expect version 1
+            r.consume(&[0x01])?;
+            // Read the body length
+            let body_len = r.read_u8()?;
+            // Take the body input
+            let body_input = r.take(body_len as usize)?;
+            // Decode the body input as a UTF-8 str
+            let body = body_input.to_dangerous_str::<E>()?;
+            // We did it!
+            Ok(Message { body })
+        })
     })
 }
 
