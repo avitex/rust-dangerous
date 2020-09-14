@@ -55,6 +55,11 @@ Wouldn't it be better if this was the alternative?
 [ERRO]: ahhh!: invalid utf-8 code point
 > [.. "aaaa" ff "aaaa" ..]
              ^^
+context bracktrace:
+  1. `read all`
+  2. `read` (expected message)
+  3. `read` (expected body)
+  4. `input to str` (expected valid utf-8 code point)
 ```
 
 ## Safety
