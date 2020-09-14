@@ -352,15 +352,16 @@ where
         E: Error<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        match with_operation_context(self.input, "read expected", || f(self))? {
+        let context = ExpectedContext {
+            expected,
+            operation: "try expect",
+        };
+        match with_context(self.input, context, || f(self))? {
             Some(ok) => Ok(ok),
             None => Err(E::from(ExpectedValid {
                 span: self.input,
                 input: self.input,
-                context: ExpectedContext {
-                    expected,
-                    operation: "try expect",
-                },
+                context,
                 retry_requirement: None,
             })),
         }
