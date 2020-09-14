@@ -3,7 +3,7 @@ mod internal;
 
 use core::{fmt, str};
 
-use crate::error::{Error, ExpectedLength, ExpectedValid};
+use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext};
 use crate::reader::Reader;
 
 pub use self::display::InputDisplay;
@@ -39,7 +39,7 @@ pub fn input(slice: &[u8]) -> &Input {
 
 /// `Input` is an immutable wrapper around bytes to be processed.
 ///
-/// It can only be created via [`dangerous::input()`](crate::input()) as so to
+/// It can only be created via [`dangerous::input()`] as so to
 /// clearly point out where user-generated / dangerous input is consumed.
 ///
 /// It is used along with [`Reader`] to process the input.
@@ -48,6 +48,8 @@ pub fn input(slice: &[u8]) -> &Input {
 ///
 /// `Input` implements both [`fmt::Debug`] and [`fmt::Display`] with support for
 /// pretty printing. See [`InputDisplay`] for formatting options.
+///
+/// [`dangerous::input()`]: crate::input()
 #[derive(Eq, PartialEq)]
 #[must_use = "input must be consumed"]
 pub struct Input([u8]);
@@ -103,7 +105,10 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                operation: "extract non-empty byte slice",
+                context: ExpectedContext {
+                    operation: "input to non-empty slice",
+                    expected: "non-empty input",
+                },
             })
         } else {
             Ok(self.as_dangerous())
@@ -148,7 +153,10 @@ impl Input {
                         max: None,
                         span: input(invalid),
                         input: self,
-                        operation: "decode utf-8 str",
+                        context: ExpectedContext {
+                            operation: "input to str",
+                            expected: "complete utf-8 code point",
+                        },
                     }))
                 }
                 Some(error_len) => {
@@ -156,10 +164,12 @@ impl Input {
                     let error_start = utf8_err.valid_up_to();
                     let error_end = error_start + error_len;
                     Err(E::from(ExpectedValid {
-                        expected: "utf-8 code point",
                         span: input(&bytes[error_start..error_end]),
                         input: self,
-                        operation: "decode utf-8 str",
+                        context: ExpectedContext {
+                            operation: "input to str",
+                            expected: "valid utf-8 code point",
+                        },
                         retry_requirement: None,
                     }))
                 }
@@ -188,7 +198,10 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                operation: "decode non-empty utf-8 str",
+                context: ExpectedContext {
+                    operation: "input to non-empty str",
+                    expected: "non empty input",
+                },
             }))
         } else {
             self.to_dangerous_str()
@@ -208,7 +221,7 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         let mut r = Reader::new(self);
-        let ok = r.context("read all", f)?;
+        let ok = r.context(OperationContext("read all"), f)?;
         if r.at_end() {
             Ok(ok)
         } else {
@@ -217,7 +230,10 @@ impl Input {
                 max: Some(0),
                 span: self,
                 input: self,
-                operation: "read all",
+                context: ExpectedContext {
+                    operation: "read all",
+                    expected: "no trailing input",
+                },
             }))
         }
     }
@@ -233,7 +249,7 @@ impl Input {
         E: Error<'i>,
     {
         let mut r = Reader::new(self);
-        let ok = r.context("read partial", f)?;
+        let ok = r.context(OperationContext("read partial"), f)?;
         Ok((ok, r.take_remaining()))
     }
 }

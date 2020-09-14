@@ -1,10 +1,11 @@
 use core::marker::PhantomData;
 
 use crate::error::{
-    Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, ToRetryRequirement, Value,
+    Context, Error, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue,
+    ToRetryRequirement, Value,
 };
 use crate::input::Input;
-use crate::utils::with_context;
+use crate::utils::{with_context, with_operation_context};
 
 /// A `Reader` is created from and consumes a [`Input`].
 pub struct Reader<'i, E> {
@@ -197,7 +198,7 @@ where
         O: 'static,
     {
         let (head, _) = self.input.split_at(len, "try peek")?;
-        with_context(self.input, "try peek", || f(head))
+        with_operation_context(self.input, "try peek", || f(head))
     }
 
     /// Returns the next byte in the input without mutating the reader.
@@ -256,7 +257,7 @@ where
     }
 
     /// Read a value with any error's details erased except for an optional
-    /// [`RetryRequirement`](crate::RetryRequirement).
+    /// [`RetryRequirement`].
     ///
     /// This function is useful for reading custom/unsupported types easily
     /// without having to create custom errors.
@@ -293,6 +294,8 @@ where
     ///
     /// Returns an error if either the provided function does, or there is
     /// trailing input.
+    ///
+    /// [`RetryRequirement`]: crate::RetryRequirement
     pub fn read_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Self) -> Result<O, R>,
@@ -302,10 +305,12 @@ where
     {
         f(self).map_err(|err| {
             E::from(ExpectedValid {
-                expected,
                 span: self.input,
                 input: self.input,
-                operation: "read erased",
+                context: ExpectedContext {
+                    operation: "read erased",
+                    expected,
+                },
                 retry_requirement: err.to_retry_requirement(),
             })
         })
@@ -325,10 +330,12 @@ where
         match f(self) {
             Some(ok) => Ok(ok),
             None => Err(E::from(ExpectedValid {
-                expected,
                 span: self.input,
                 input: self.input,
-                operation: "expect",
+                context: ExpectedContext {
+                    operation: "expect",
+                    expected,
+                },
                 retry_requirement: None,
             })),
         }
@@ -345,13 +352,15 @@ where
         E: Error<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        match with_context(self.input, "read expected", || f(self))? {
+        match with_operation_context(self.input, "read expected", || f(self))? {
             Some(ok) => Ok(ok),
             None => Err(E::from(ExpectedValid {
-                expected,
                 span: self.input,
                 input: self.input,
-                operation: "try expect",
+                context: ExpectedContext {
+                    expected,
+                    operation: "try expect",
+                },
                 retry_requirement: None,
             })),
         }

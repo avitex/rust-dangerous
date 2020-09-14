@@ -69,6 +69,9 @@ where
         let mut index = 1;
         loop {
             write!(w, "\n  {}. `{}`", index, context_level.operation())?;
+            if let Some(expected) = context_level.expected() {
+                write!(w, " (expected {})", expected)?;
+            }
             if let Some(next_context) = context_level.child() {
                 context_level = next_context;
                 index += 1;

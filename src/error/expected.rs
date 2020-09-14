@@ -1,13 +1,14 @@
 use core::fmt;
 
 use crate::error::{
-    Context, Error, ErrorDetails, ErrorDisplay, RetryRequirement, ToRetryRequirement,
+    Context, Error, ErrorDetails, ErrorDisplay, ExpectedContext, RetryRequirement,
+    ToRetryRequirement,
 };
 use crate::input::{input, Input};
 use crate::utils::ByteCount;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-use self::context_node::ContextNode;
+pub(crate) use crate::error::ContextNode;
 
 /// A catch-all error for all expected errors supported in this crate.
 pub struct Expected<'i> {
@@ -109,7 +110,7 @@ impl<'i> From<ExpectedLength<'i>> for Expected<'i> {
     fn from(err: ExpectedLength<'i>) -> Self {
         Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context().operation()),
+            context: ContextNode::new(err.context()),
             inner: ExpectedInner::Length(err),
         }
     }
@@ -119,7 +120,7 @@ impl<'i> From<ExpectedValid<'i>> for Expected<'i> {
     fn from(err: ExpectedValid<'i>) -> Self {
         Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context().operation()),
+            context: ContextNode::new(err.context()),
             inner: ExpectedInner::Valid(err),
         }
     }
@@ -129,7 +130,7 @@ impl<'i> From<ExpectedValue<'i>> for Expected<'i> {
     fn from(err: ExpectedValue<'i>) -> Self {
         Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context().operation()),
+            context: ContextNode::new(err.context()),
             inner: ExpectedInner::Value(err),
         }
     }
@@ -162,13 +163,19 @@ pub struct ExpectedValue<'i> {
     pub(crate) value: Value<'i>,
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
-    pub(crate) operation: &'static str,
+    pub(crate) context: ExpectedContext,
 }
 
 impl<'i> ExpectedValue<'i> {
     /// The [`Input`] value that was expected.
     pub fn expected(&self) -> &Input {
         self.value.as_input()
+    }
+
+    /// Returns `true` if the value could never match and `true` if the matching
+    /// was incomplete.
+    pub fn is_fatal(&self) -> bool {
+        !self.value.as_input().has_prefix(self.span.as_dangerous())
     }
 
     /// Returns an `ErrorDisplay` for formatting.
@@ -193,7 +200,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
     }
 
     fn context(&self) -> &dyn Context {
-        &self.operation
+        &self.context
     }
 
     fn found_value(&self) -> Option<&Input> {
@@ -211,9 +218,13 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
 
 impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        let needed = self.value.as_input().len();
-        let had = self.span().len();
-        RetryRequirement::from_had_and_needed(had, needed)
+        if self.is_fatal() {
+            None
+        } else {
+            let needed = self.value.as_input().len();
+            let had = self.span().len();
+            RetryRequirement::from_had_and_needed(had, needed)
+        }
     }
 }
 
@@ -239,7 +250,7 @@ pub struct ExpectedLength<'i> {
     pub(crate) max: Option<usize>,
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
-    pub(crate) operation: &'static str,
+    pub(crate) context: ExpectedContext,
 }
 
 impl<'i> ExpectedLength<'i> {
@@ -305,7 +316,7 @@ impl<'i> ErrorDetails<'i> for ExpectedLength<'i> {
     }
 
     fn context(&self) -> &dyn Context {
-        &self.operation
+        &self.context
     }
 
     fn found_value(&self) -> Option<&Input> {
@@ -365,8 +376,7 @@ impl_expected_error!(ExpectedLength);
 pub struct ExpectedValid<'i> {
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
-    pub(crate) operation: &'static str,
-    pub(crate) expected: &'static str,
+    pub(crate) context: ExpectedContext,
     pub(crate) retry_requirement: Option<RetryRequirement>,
 }
 
@@ -393,7 +403,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
     }
 
     fn context(&self) -> &dyn Context {
-        &self.operation
+        &self.context
     }
 
     fn found_value(&self) -> Option<&Input> {
@@ -405,7 +415,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid {}", self.expected)
+        write!(f, "invalid {}", self.context.expected)
     }
 }
 
@@ -426,53 +436,3 @@ impl<'i> Error<'i> for ExpectedValid<'i> {
 }
 
 impl_expected_error!(ExpectedValid);
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-mod context_node {
-    use super::*;
-
-    #[cfg(feature = "alloc")]
-    use alloc::boxed::Box;
-
-    #[derive(Debug)]
-    pub(super) struct ContextNode {
-        this: Box<dyn Context>,
-        child: Option<Box<dyn Context>>,
-    }
-
-    impl ContextNode {
-        pub(super) fn new<C>(context: C) -> Self
-        where
-            C: Context,
-        {
-            Self {
-                this: Box::new(context),
-                child: None,
-            }
-        }
-
-        pub(super) fn with_parent<C>(self, parent: C) -> Self
-        where
-            C: Context,
-        {
-            Self {
-                this: Box::new(parent),
-                child: Some(Box::new(self)),
-            }
-        }
-    }
-
-    impl Context for ContextNode {
-        fn child(&self) -> Option<&dyn Context> {
-            self.child.as_ref().map(AsRef::as_ref)
-        }
-
-        fn consolidated(&self) -> usize {
-            0
-        }
-
-        fn operation(&self) -> &'static str {
-            self.this.operation()
-        }
-    }
-}

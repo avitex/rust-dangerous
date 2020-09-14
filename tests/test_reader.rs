@@ -1,7 +1,13 @@
+#![allow(clippy::float_cmp)]
+#![allow(clippy::unit_cmp)]
+
 #[macro_use]
 mod common;
 
+use dangerous::{RetryRequirement, ToRetryRequirement};
+
 #[test]
+
 fn read_nums() {
     assert_eq!(read_all!(&[0x1], |r| r.read_u8()).unwrap(), 1);
 
@@ -140,6 +146,34 @@ fn try_peek() {
         r.try_peek(4, |i| i.read_all(|r| r.consume(b"world")).map(drop))
     })
     .unwrap_err();
+}
+
+#[test]
+fn consume() {
+    // Valid
+    assert_eq!(
+        read_all!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
+        ()
+    );
+    // Invalid
+    assert_eq!(
+        read_all!(b"hell", |r| { r.consume(b"hello") })
+            .unwrap_err()
+            .to_retry_requirement(),
+        RetryRequirement::new(1)
+    );
+    assert_eq!(
+        read_all!(b"abcde", |r| { r.consume(b"hello") })
+            .unwrap_err()
+            .to_retry_requirement(),
+        None
+    );
+    assert_eq!(
+        read_all!(b"abc", |r| { r.consume(b"hello") })
+            .unwrap_err()
+            .to_retry_requirement(),
+        None
+    );
 }
 
 #[test]

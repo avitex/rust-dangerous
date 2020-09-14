@@ -1,3 +1,5 @@
+#![allow(clippy::unit_cmp)]
+
 #[macro_use]
 mod common;
 

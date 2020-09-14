@@ -1,10 +1,10 @@
 use core::ops::Range;
 use core::slice;
 
-use crate::error::{Error, ExpectedLength, ExpectedValue, Value};
+use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValue, Value};
 use crate::input::{input, Input};
 use crate::reader::Reader;
-use crate::utils::with_context;
+use crate::utils::with_operation_context;
 
 // All functions defined in internal are used within other functions that expose
 // public functionality.
@@ -43,7 +43,10 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                operation,
+                context: ExpectedContext {
+                    operation,
+                    expected: "non-empty input",
+                },
             })
         })
     }
@@ -62,32 +65,25 @@ impl Input {
     #[inline(always)]
     pub(crate) fn split_prefix<'i, E>(
         &'i self,
-        prefix: Value<'i>,
+        prefix_value: Value<'i>,
         operation: &'static str,
     ) -> Result<&'i Input, E>
     where
         E: From<ExpectedValue<'i>>,
     {
-        let prefix_input = prefix.as_input();
-        if self.len() >= prefix_input.len() {
-            let bytes = self.as_dangerous();
-            let (head, tail) = bytes.split_at(prefix_input.len());
-            if head == prefix_input {
-                Ok(input(tail))
-            } else {
-                Err(E::from(ExpectedValue {
-                    span: self,
-                    value: prefix,
-                    input: self,
-                    operation,
-                }))
-            }
+        let prefix = prefix_value.as_input();
+        let (maybe_prefix, tail) = self.split_max(prefix.len());
+        if maybe_prefix == prefix {
+            Ok(tail)
         } else {
             Err(E::from(ExpectedValue {
-                span: self.end(),
-                value: prefix,
+                span: maybe_prefix,
+                value: prefix_value,
                 input: self,
-                operation,
+                context: ExpectedContext {
+                    operation,
+                    expected: "exact value",
+                },
             }))
         }
     }
@@ -129,7 +125,10 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                operation,
+                context: ExpectedContext {
+                    operation,
+                    expected: "enough input",
+                },
             }))
         } else {
             let (head, tail) = self.as_dangerous().split_at(mid);
@@ -161,7 +160,7 @@ impl Input {
         F: FnMut(&mut Reader<'i, E>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self);
-        with_context(self, operation, || f(&mut reader))?;
+        with_operation_context(self, operation, || f(&mut reader))?;
         let tail = reader.take_remaining();
         let head = &self.as_dangerous()[..self.len() - tail.len()];
         Ok((input(head), tail))
@@ -219,7 +218,7 @@ impl Input {
         let bytes = self.as_dangerous();
         for (i, byte) in bytes.iter().enumerate() {
             let (head, tail) = bytes.split_at(i);
-            let should_continue = with_context(self, operation, || f(*byte))?;
+            let should_continue = with_operation_context(self, operation, || f(*byte))?;
             if !should_continue {
                 return Ok((input(head), input(tail)));
             }
