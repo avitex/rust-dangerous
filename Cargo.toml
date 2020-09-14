@@ -29,7 +29,3 @@ unicode-width = { version = "0.1", optional = true }
 [[example]]
 name = "streaming"
 required-features = ["std"]
-
-[[example]]
-name = "context"
-required-features = ["alloc"]

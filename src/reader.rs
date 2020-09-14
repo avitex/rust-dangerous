@@ -256,7 +256,58 @@ where
         Ok(())
     }
 
-    /// Read a value with any error's details erased except for an optional
+    /// Expect a value to be read and returned as `Some`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the returned value was `None`.
+    pub fn expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&mut Self) -> Option<O>,
+        E: Error<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        match f(self) {
+            Some(ok) => Ok(ok),
+            None => Err(E::from(ExpectedValid {
+                span: self.input,
+                input: self.input,
+                context: ExpectedContext {
+                    expected,
+                    operation: "expect",
+                },
+                retry_requirement: None,
+            })),
+        }
+    }
+
+    /// Expect a value to be read successfully and returned as `Some`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if failed to read, or the returned value was `None`.
+    pub fn try_expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    where
+        F: FnOnce(&mut Self) -> Result<Option<O>, E>,
+        E: Error<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        let context = ExpectedContext {
+            expected,
+            operation: "try expect",
+        };
+        match with_context(self.input, context, || f(self))? {
+            Some(ok) => Ok(ok),
+            None => Err(E::from(ExpectedValid {
+                span: self.input,
+                input: self.input,
+                context,
+                retry_requirement: None,
+            })),
+        }
+    }
+
+    /// Expect a value with any error's details erased except for an optional
     /// [`RetryRequirement`].
     ///
     /// This function is useful for reading custom/unsupported types easily
@@ -277,7 +328,7 @@ where
     ///   E: From<ExpectedLength<'i>>,
     /// {
     ///     input.read_all(|r| {
-    ///         r.read_erased("ipv4 addr", |i| {
+    ///         r.try_expect_erased("ipv4 addr", |i| {
     ///             i.take_remaining()
     ///                 .to_dangerous_str()
     ///                 .and_then(|s| s.parse().map_err(|_| Invalid::fatal()))
@@ -296,7 +347,7 @@ where
     /// trailing input.
     ///
     /// [`RetryRequirement`]: crate::RetryRequirement
-    pub fn read_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    pub fn try_expect_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Self) -> Result<O, R>,
         E: Error<'i>,
@@ -308,63 +359,12 @@ where
                 span: self.input,
                 input: self.input,
                 context: ExpectedContext {
-                    operation: "read erased",
                     expected,
+                    operation: "try expect erased",
                 },
                 retry_requirement: err.to_retry_requirement(),
             })
         })
-    }
-
-    /// Expect a value to be read and returned as `Some`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the returned value was `None`.
-    pub fn expect_some<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
-    where
-        F: FnOnce(&mut Self) -> Option<O>,
-        E: Error<'i>,
-        E: From<ExpectedValid<'i>>,
-    {
-        match f(self) {
-            Some(ok) => Ok(ok),
-            None => Err(E::from(ExpectedValid {
-                span: self.input,
-                input: self.input,
-                context: ExpectedContext {
-                    operation: "expect",
-                    expected,
-                },
-                retry_requirement: None,
-            })),
-        }
-    }
-
-    /// Expect a value to be read successfully and returned as `Some`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if failed to read, or the returned value was `None`.
-    pub fn try_expect_some<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
-    where
-        F: FnOnce(&mut Self) -> Result<Option<O>, E>,
-        E: Error<'i>,
-        E: From<ExpectedValid<'i>>,
-    {
-        let context = ExpectedContext {
-            expected,
-            operation: "try expect",
-        };
-        match with_context(self.input, context, || f(self))? {
-            Some(ok) => Ok(ok),
-            None => Err(E::from(ExpectedValid {
-                span: self.input,
-                input: self.input,
-                context,
-                retry_requirement: None,
-            })),
-        }
     }
 
     /// Read a byte, consuming the input.

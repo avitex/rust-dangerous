@@ -90,13 +90,15 @@ where
     input.read_all::<_, _, E>(|r| {
         r.context("message", |r| {
             // Expect version 1
-            r.consume(&[0x01])?;
+            r.context("version", |r| r.consume(&[0x01]))?;
             // Read the body length
-            let body_len = r.read_u8()?;
+            let body_len = r.context("body len", |r| r.read_u8())?;
             // Take the body input
-            let body_input = r.take(body_len as usize)?;
-            // Decode the body input as a UTF-8 str
-            let body = body_input.to_dangerous_str::<E>()?;
+            let body = r.context("body", |r| {
+                let body_input = r.take(body_len as usize)?;
+                // Decode the body input as a UTF-8 str
+                body_input.to_dangerous_str::<E>()
+            })?;
             // We did it!
             Ok(Message { body })
         })
