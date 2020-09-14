@@ -110,7 +110,7 @@ impl<'i> From<ExpectedLength<'i>> for Expected<'i> {
     fn from(err: ExpectedLength<'i>) -> Self {
         Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context()),
+            context: ContextNode::new(err.context),
             inner: ExpectedInner::Length(err),
         }
     }
@@ -120,7 +120,7 @@ impl<'i> From<ExpectedValid<'i>> for Expected<'i> {
     fn from(err: ExpectedValid<'i>) -> Self {
         Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context()),
+            context: ContextNode::new(err.context),
             inner: ExpectedInner::Valid(err),
         }
     }
@@ -130,7 +130,7 @@ impl<'i> From<ExpectedValue<'i>> for Expected<'i> {
     fn from(err: ExpectedValue<'i>) -> Self {
         Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context()),
+            context: ContextNode::new(err.context),
             inner: ExpectedInner::Value(err),
         }
     }

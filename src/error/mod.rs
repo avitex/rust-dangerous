@@ -68,7 +68,7 @@ pub trait ErrorDetails<'i> {
     ///
     /// # Errors
     ///
-    /// Returns am [`fmt::Error`] if failed to write to the formatter.
+    /// Returns a [`fmt::Error`] if failed to write to the formatter.
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 }
 

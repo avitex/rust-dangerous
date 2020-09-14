@@ -1,5 +1,5 @@
 use core::any::Any;
-use core::fmt::Debug;
+use core::fmt::{self, Debug};
 
 /// The context surrounding an error.
 pub trait Context: Any + Debug {
@@ -13,8 +13,8 @@ pub trait Context: Any + Debug {
     /// ```
     fn operation(&self) -> &'static str;
 
-    /// The value expected in this context.
-    fn expected(&self) -> Option<&'static str> {
+    /// Returns a [`fmt::Display`] formattable value of what was expected.
+    fn expected(&self) -> Option<&dyn fmt::Display> {
         None
     }
 
@@ -58,7 +58,7 @@ impl Context for &'static str {
         "read"
     }
 
-    fn expected(&self) -> Option<&'static str> {
+    fn expected(&self) -> Option<&dyn fmt::Display> {
         Some(self)
     }
 }
@@ -87,8 +87,8 @@ impl Context for ExpectedContext {
         self.operation
     }
 
-    fn expected(&self) -> Option<&'static str> {
-        Some(self.expected)
+    fn expected(&self) -> Option<&dyn fmt::Display> {
+        Some(&self.expected)
     }
 }
 
@@ -103,34 +103,19 @@ mod context_node {
     use alloc::boxed::Box;
 
     #[derive(Debug)]
-    struct Inner {
-        operation: &'static str,
-        expected: Option<&'static str>,
-    }
-
-    impl Context for Inner {
-        fn operation(&self) -> &'static str {
-            self.operation
-        }
-
-        fn expected(&self) -> Option<&'static str> {
-            self.expected
-        }
-    }
-
-    #[derive(Debug)]
-    pub(crate) struct ContextNode {
+    pub(crate) struct ContextChain {
         this: Box<dyn Context>,
+        chain: Vec<>
         child: Option<Box<dyn Context>>,
     }
 
-    impl ContextNode {
-        pub(crate) fn new(context: &dyn Context) -> Self {
+    impl ContextChain {
+        pub(crate) fn new<C>(context: C) -> Self
+        where
+            C: Context,
+        {
             Self {
-                this: Box::new(Inner {
-                    operation: context.operation(),
-                    expected: context.expected(),
-                }),
+                this: Box::new(context),
                 child: None,
             }
         }
@@ -146,7 +131,7 @@ mod context_node {
         }
     }
 
-    impl Context for ContextNode {
+    impl Context for ContextChain {
         fn child(&self) -> Option<&dyn Context> {
             self.child.as_ref().map(AsRef::as_ref)
         }
@@ -155,7 +140,7 @@ mod context_node {
             0
         }
 
-        fn expected(&self) -> Option<&'static str> {
+        fn expected(&self) -> Option<&dyn fmt::Display> {
             self.this.expected()
         }
 
