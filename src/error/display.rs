@@ -6,6 +6,19 @@ use crate::utils::WithFormatter;
 const INPUT_PREFIX: &str = "> ";
 const DEFAULT_MAX_WIDTH: usize = 80;
 
+pub(crate) fn fmt_debug_error<'i, T>(error: T, f: &mut fmt::Formatter<'_>) -> fmt::Result
+where
+    T: ErrorDetails<'i>,
+{
+    writeln!(
+        f,
+        "\n{:-<60}\n{}\n{:-<60}",
+        "-- INPUT ERROR ",
+        ErrorDisplay::from_formatter(error, f),
+        "-",
+    )
+}
+
 /// Provides configurable [`ErrorDetails`] formatting.
 #[derive(Clone)]
 pub struct ErrorDisplay<T> {

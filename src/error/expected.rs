@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::error::{
-    Context, Error, ErrorDetails, ErrorDisplay, ExpectedContext, RetryRequirement,
+    fmt_debug_error, Context, Error, ErrorDetails, ErrorDisplay, ExpectedContext, RetryRequirement,
     ToRetryRequirement,
 };
 use crate::input::{input, Input};

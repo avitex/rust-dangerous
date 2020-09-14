@@ -19,6 +19,7 @@ pub use self::retry::{RetryRequirement, ToRetryRequirement};
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub(crate) use self::context::ContextNode;
 pub(crate) use self::context::{ExpectedContext, OperationContext};
+pub(crate) use self::display::fmt_debug_error;
 pub(crate) use self::expected::Value;
 
 /// Core error that collects contexts.

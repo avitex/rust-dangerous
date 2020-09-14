@@ -90,13 +90,7 @@ macro_rules! impl_expected_error {
 
         impl<'i> fmt::Debug for $name<'i> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                writeln!(
-                    f,
-                    "\n{:-<60}\n{}\n{:-<60}",
-                    "-- INPUT ERROR ",
-                    self.display(),
-                    "-",
-                )
+                fmt_debug_error(self, f)
             }
         }
 
