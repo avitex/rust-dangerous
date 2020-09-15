@@ -1,3 +1,4 @@
+use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
@@ -409,5 +410,13 @@ where
             input,
             error: PhantomData,
         }
+    }
+}
+
+impl<'i, E> fmt::Debug for Reader<'i, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Reader")
+            .field("input", &self.input)
+            .finish()
     }
 }
