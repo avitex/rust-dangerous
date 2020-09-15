@@ -14,7 +14,7 @@
 use std::error::Error;
 use std::io;
 
-use dangerous::{Expected, ToRetryRequirement};
+use dangerous::{Expected, FromExpected, ToRetryRequirement};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
@@ -82,10 +82,7 @@ where
 
 fn decode_message<'i, E>(input: &'i dangerous::Input) -> Result<Message<'i>, E>
 where
-    E: dangerous::Error<'i>,
-    E: From<dangerous::ExpectedLength<'i>>,
-    E: From<dangerous::ExpectedValid<'i>>,
-    E: From<dangerous::ExpectedValue<'i>>,
+    E: FromExpected<'i>,
 {
     input.read_all::<_, _, E>(|r| {
         r.context("message", |r| {

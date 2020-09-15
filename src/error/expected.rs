@@ -92,7 +92,7 @@ impl<'i> ToRetryRequirement for Expected<'i> {
 }
 
 impl<'i> Error<'i> for Expected<'i> {
-    fn with_context<C>(mut self, input: &'i Input, context: C) -> Self
+    fn from_context<C>(mut self, input: &'i Input, context: C) -> Self
     where
         C: Context,
     {
@@ -229,7 +229,7 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
 }
 
 impl<'i> Error<'i> for ExpectedValue<'i> {
-    fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
+    fn from_context<C>(mut self, input: &'i Input, _context: C) -> Self
     where
         C: Context,
     {
@@ -357,7 +357,7 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
 }
 
 impl<'i> Error<'i> for ExpectedLength<'i> {
-    fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
+    fn from_context<C>(mut self, input: &'i Input, _context: C) -> Self
     where
         C: Context,
     {
@@ -426,7 +426,7 @@ impl<'i> ToRetryRequirement for ExpectedValid<'i> {
 }
 
 impl<'i> Error<'i> for ExpectedValid<'i> {
-    fn with_context<C>(mut self, input: &'i Input, _context: C) -> Self
+    fn from_context<C>(mut self, input: &'i Input, _context: C) -> Self
     where
         C: Context,
     {
@@ -436,3 +436,14 @@ impl<'i> Error<'i> for ExpectedValid<'i> {
 }
 
 impl_expected_error!(ExpectedValid);
+
+/// Convenience trait for specifying a catch of all possible expected errors.
+pub trait FromExpected<'i>:
+    Error<'i> + From<ExpectedLength<'i>> + From<ExpectedValue<'i>> + From<ExpectedValid<'i>>
+{
+}
+
+impl<'i, T> FromExpected<'i> for T where
+    T: Error<'i> + From<ExpectedLength<'i>> + From<ExpectedValue<'i>> + From<ExpectedValid<'i>>
+{
+}

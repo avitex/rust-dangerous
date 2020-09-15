@@ -17,7 +17,7 @@ pub trait Context: Any + Debug {
     fn expected(&self) -> Option<&dyn fmt::Display>;
 }
 
-/// The context surrounding an error.
+/// The context surrounding an error with possible child contexts.
 pub trait ParentContext: Context {
     /// The more granular context of where the error occured.
     ///

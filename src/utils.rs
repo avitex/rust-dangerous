@@ -23,7 +23,7 @@ where
     E: Error<'i>,
     C: Context,
 {
-    f().map_err(|err| err.with_context(input, context))
+    f().map_err(|err| err.from_context(input, context))
 }
 
 pub(crate) struct ByteCount(pub(crate) usize);

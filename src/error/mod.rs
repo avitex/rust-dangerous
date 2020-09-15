@@ -12,7 +12,7 @@ use crate::input::Input;
 
 pub use self::context::{Context, ParentContext};
 pub use self::display::ErrorDisplay;
-pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
+pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue, FromExpected};
 pub use self::invalid::Invalid;
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
 
@@ -28,7 +28,7 @@ pub trait Error<'i>: ToRetryRequirement {
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
     /// How child and parent contexts are handled are upstream concerns.
-    fn with_context<C>(self, input: &'i Input, context: C) -> Self
+    fn from_context<C>(self, input: &'i Input, context: C) -> Self
     where
         C: Context;
 }
