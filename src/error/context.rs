@@ -41,9 +41,7 @@ pub trait ParentContext: Context {
     /// ```
     ///
     /// [`Input::to_dangerous_str()`]: crate::Input::to_dangerous_str()
-    fn child(&self) -> Option<&dyn ParentContext> {
-        None
-    }
+    fn child(&self) -> Option<&dyn ParentContext>;
 
     /// The number of child contexts consolidated into `self`.
     ///
@@ -97,7 +95,11 @@ impl Context for ExpectedContext {
     }
 }
 
-impl ParentContext for ExpectedContext {}
+impl ParentContext for ExpectedContext {
+    fn child(&self) -> Option<&dyn ParentContext> {
+        None
+    }
+}
 
 #[cfg(feature = "context-chain")]
 pub(crate) use self::context_chain::ContextChain;
