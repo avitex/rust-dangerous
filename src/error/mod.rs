@@ -10,14 +10,14 @@ use core::fmt;
 
 use crate::input::Input;
 
-pub use self::context::Context;
+pub use self::context::{Context, ParentContext};
 pub use self::display::ErrorDisplay;
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::invalid::Invalid;
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub(crate) use self::context::ContextNode;
+#[cfg(feature = "context-chain")]
+pub(crate) use self::context::ContextChain;
 pub(crate) use self::context::{ExpectedContext, OperationContext};
 pub(crate) use self::display::fmt_debug_error;
 pub(crate) use self::expected::Value;
@@ -54,7 +54,7 @@ pub trait ErrorDetails<'i> {
     fn span(&self) -> &'i Input;
 
     /// The context around the error.
-    fn context(&self) -> &dyn Context;
+    fn context(&self) -> &dyn ParentContext;
 
     /// The unexpected value, if applicable, that was found.
     fn found_value(&self) -> Option<&Input>;
@@ -84,7 +84,7 @@ where
         (**self).span()
     }
 
-    fn context(&self) -> &dyn Context {
+    fn context(&self) -> &dyn ParentContext {
         (**self).context()
     }
 

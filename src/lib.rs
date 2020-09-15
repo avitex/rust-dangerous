@@ -37,7 +37,6 @@
     clippy::pedantic
 )]
 #![forbid(
-    // TODO: box_pointers,
     anonymous_parameters,
     missing_docs,
     trivial_casts,
@@ -55,7 +54,7 @@
     clippy::type_repetition_in_bounds
 )]
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "context-chain")]
 extern crate alloc;
 
 #[macro_use]

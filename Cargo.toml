@@ -12,15 +12,16 @@ license = "MIT"
 readme = "README.md"
 
 [features]
-default = ["unicode"]
+default = ["context-chain", "unicode"]
 # If enabled, implements `std::error::Error` on errors.
 std = []
-# If enabled, implements `AdditionalContext`.
-alloc = []
 # If enabled, improves unicode printing support.
 unicode = ["unicode-width"]
 # If enabled, implements error terminal printing support.
 terminal = ["std", "termcolor"]
+# If enabled, shows full context backtraces.
+# This feature requires allocation.
+context-chain = []
 
 [dependencies]
 termcolor = { version = "~1", optional = true }

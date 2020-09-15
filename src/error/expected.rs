@@ -1,20 +1,20 @@
 use core::fmt;
 
 use crate::error::{
-    fmt_debug_error, Context, Error, ErrorDetails, ErrorDisplay, ExpectedContext, RetryRequirement,
-    ToRetryRequirement,
+    fmt_debug_error, Context, Error, ErrorDetails, ErrorDisplay, ExpectedContext, ParentContext,
+    RetryRequirement, ToRetryRequirement,
 };
 use crate::input::{input, Input};
 use crate::utils::ByteCount;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub(crate) use crate::error::ContextNode;
+#[cfg(feature = "context-chain")]
+pub(crate) use crate::error::ContextChain;
 
 /// A catch-all error for all expected errors supported in this crate.
 pub struct Expected<'i> {
     inner: ExpectedInner<'i>,
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    context: ContextNode,
+    #[cfg(feature = "context-chain")]
+    context: ContextChain,
 }
 
 enum ExpectedInner<'i> {
@@ -58,13 +58,13 @@ impl<'i> ErrorDetails<'i> for Expected<'i> {
         self.details().span()
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    fn context(&self) -> &dyn Context {
+    #[cfg(feature = "context-chain")]
+    fn context(&self) -> &dyn ParentContext {
         &self.context
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn context(&self) -> &dyn Context {
+    #[cfg(not(feature = "context-chain"))]
+    fn context(&self) -> &dyn ParentContext {
         self.details().context()
     }
 
@@ -97,7 +97,7 @@ impl<'i> Error<'i> for Expected<'i> {
         C: Context,
     {
         let _ = &context;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "context-chain")]
         {
             self.context = self.context.with_parent(context);
         }
@@ -109,8 +109,8 @@ impl<'i> Error<'i> for Expected<'i> {
 impl<'i> From<ExpectedLength<'i>> for Expected<'i> {
     fn from(err: ExpectedLength<'i>) -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context),
+            #[cfg(feature = "context-chain")]
+            context: ContextChain::new(err.context),
             inner: ExpectedInner::Length(err),
         }
     }
@@ -119,8 +119,8 @@ impl<'i> From<ExpectedLength<'i>> for Expected<'i> {
 impl<'i> From<ExpectedValid<'i>> for Expected<'i> {
     fn from(err: ExpectedValid<'i>) -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context),
+            #[cfg(feature = "context-chain")]
+            context: ContextChain::new(err.context),
             inner: ExpectedInner::Valid(err),
         }
     }
@@ -129,8 +129,8 @@ impl<'i> From<ExpectedValid<'i>> for Expected<'i> {
 impl<'i> From<ExpectedValue<'i>> for Expected<'i> {
     fn from(err: ExpectedValue<'i>) -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            context: ContextNode::new(err.context),
+            #[cfg(feature = "context-chain")]
+            context: ContextChain::new(err.context),
             inner: ExpectedInner::Value(err),
         }
     }
@@ -199,7 +199,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
         self.span
     }
 
-    fn context(&self) -> &dyn Context {
+    fn context(&self) -> &dyn ParentContext {
         &self.context
     }
 
@@ -315,7 +315,7 @@ impl<'i> ErrorDetails<'i> for ExpectedLength<'i> {
         self.span
     }
 
-    fn context(&self) -> &dyn Context {
+    fn context(&self) -> &dyn ParentContext {
         &self.context
     }
 
@@ -402,7 +402,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
         self.span
     }
 
-    fn context(&self) -> &dyn Context {
+    fn context(&self) -> &dyn ParentContext {
         &self.context
     }
 
@@ -415,7 +415,7 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid {}", self.context.expected)
+        write!(f, "expected {}", self.context.expected)
     }
 }
 

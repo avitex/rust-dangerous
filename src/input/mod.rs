@@ -168,7 +168,7 @@ impl Input {
                         input: self,
                         context: ExpectedContext {
                             operation: "input to str",
-                            expected: "valid utf-8 code point",
+                            expected: "utf-8 code point",
                         },
                         retry_requirement: None,
                     }))

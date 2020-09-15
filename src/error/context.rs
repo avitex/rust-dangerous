@@ -1,7 +1,7 @@
 use core::any::Any;
 use core::fmt::{self, Debug};
 
-/// The context surrounding an error.
+/// The base context surrounding an error.
 pub trait Context: Any + Debug {
     /// The operation that was attempted when an error occured.
     ///
@@ -14,10 +14,11 @@ pub trait Context: Any + Debug {
     fn operation(&self) -> &'static str;
 
     /// Returns a [`fmt::Display`] formattable value of what was expected.
-    fn expected(&self) -> Option<&dyn fmt::Display> {
-        None
-    }
+    fn expected(&self) -> Option<&dyn fmt::Display>;
+}
 
+/// The context surrounding an error.
+pub trait ParentContext: Context {
     /// The more granular context of where the error occured.
     ///
     /// # Example
@@ -32,7 +33,7 @@ pub trait Context: Any + Debug {
     /// following information for use in debugging:
     ///
     /// ```text
-    /// UTF-8 error occured while attempting to decode name from the input.
+    /// error attempting to read all: invalid utf-8 code point
     ///
     /// context backtrace:
     /// 1. `decode name` (expected valid name)
@@ -40,7 +41,7 @@ pub trait Context: Any + Debug {
     /// ```
     ///
     /// [`Input::to_dangerous_str()`]: crate::Input::to_dangerous_str()
-    fn child(&self) -> Option<&dyn Context> {
+    fn child(&self) -> Option<&dyn ParentContext> {
         None
     }
 
@@ -72,6 +73,10 @@ impl Context for OperationContext {
     fn operation(&self) -> &'static str {
         self.0
     }
+
+    fn expected(&self) -> Option<&dyn fmt::Display> {
+        None
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -92,21 +97,21 @@ impl Context for ExpectedContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub(crate) use self::context_node::ContextNode;
+impl ParentContext for ExpectedContext {}
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-mod context_node {
-    use super::*;
+#[cfg(feature = "context-chain")]
+pub(crate) use self::context_chain::ContextChain;
 
-    #[cfg(feature = "alloc")]
+#[cfg(feature = "context-chain")]
+mod context_chain {
+    use super::{fmt, Context, Debug, ParentContext};
+
     use alloc::boxed::Box;
 
     #[derive(Debug)]
     pub(crate) struct ContextChain {
         this: Box<dyn Context>,
-        chain: Vec<>
-        child: Option<Box<dyn Context>>,
+        child: Option<Box<dyn ParentContext>>,
     }
 
     impl ContextChain {
@@ -132,20 +137,18 @@ mod context_node {
     }
 
     impl Context for ContextChain {
-        fn child(&self) -> Option<&dyn Context> {
-            self.child.as_ref().map(AsRef::as_ref)
-        }
-
-        fn consolidated(&self) -> usize {
-            0
-        }
-
         fn expected(&self) -> Option<&dyn fmt::Display> {
             self.this.expected()
         }
 
         fn operation(&self) -> &'static str {
             self.this.operation()
+        }
+    }
+
+    impl ParentContext for ContextChain {
+        fn child(&self) -> Option<&dyn ParentContext> {
+            self.child.as_ref().map(AsRef::as_ref)
         }
     }
 }
