@@ -2,8 +2,8 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    Context, Error, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue,
-    ToRetryRequirement, Value,
+    Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, RootContext, ToRetryRequirement,
+    Value,
 };
 use crate::input::Input;
 use crate::utils::{with_context, with_operation_context};
@@ -273,7 +273,7 @@ where
             None => Err(E::from(ExpectedValid {
                 span: self.input,
                 input: self.input,
-                context: ExpectedContext {
+                context: RootContext {
                     expected,
                     operation: "expect",
                 },
@@ -293,7 +293,7 @@ where
         E: Error<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        let context = ExpectedContext {
+        let context = RootContext {
             expected,
             operation: "try expect",
         };
@@ -359,7 +359,7 @@ where
             E::from(ExpectedValid {
                 span: self.input,
                 input: self.input,
-                context: ExpectedContext {
+                context: RootContext {
                     expected,
                     operation: "try expect erased",
                 },

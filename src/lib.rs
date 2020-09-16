@@ -38,7 +38,7 @@
 )]
 #![forbid(
     anonymous_parameters,
-    missing_docs,
+    // missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
@@ -54,7 +54,7 @@
     clippy::type_repetition_in_bounds
 )]
 
-#[cfg(feature = "context-chain")]
+#[cfg(feature = "full-context")]
 extern crate alloc;
 
 #[macro_use]

@@ -79,28 +79,3 @@ macro_rules! read_num {
         Ok(<$num_ty>::$from_xx_bytes(arr))
     }};
 }
-
-macro_rules! impl_expected_error {
-    ($name:ident) => {
-        impl<'i> fmt::Display for $name<'i> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                self.display().fmt(f)
-            }
-        }
-
-        impl<'i> fmt::Debug for $name<'i> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt_debug_error(self, f)
-            }
-        }
-
-        impl<'i> From<$name<'i>> for crate::error::Invalid {
-            fn from(err: $name<'i>) -> Self {
-                err.to_retry_requirement().into()
-            }
-        }
-
-        #[cfg(feature = "std")]
-        impl<'i> std::error::Error for $name<'i> {}
-    };
-}

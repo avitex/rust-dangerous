@@ -17,40 +17,78 @@ pub trait Context: Any + Debug {
     fn expected(&self) -> Option<&dyn fmt::Display>;
 }
 
-/// The context surrounding an error with possible child contexts.
-pub trait ParentContext: Context {
-    /// The more granular context of where the error occured.
-    ///
-    /// # Example
-    ///
-    /// Say we attempted to process a UTF-8 string from the input via
-    /// [`Input::to_dangerous_str()`] within a parent operation described
-    /// `decode name`. The final context produced would be that of around
-    /// `decode name`. The `child` context would be that of
-    /// [`Input::to_dangerous_str()`].
-    ///
-    /// This would allow us to walk the contexts, so we can present the
-    /// following information for use in debugging:
-    ///
-    /// ```text
-    /// error attempting to read all: invalid utf-8 code point
-    ///
-    /// context backtrace:
-    /// 1. `decode name` (expected valid name)
-    /// 2. `decode utf-8 code point` (expected valid utf-8 code point)
-    /// ```
-    ///
-    /// [`Input::to_dangerous_str()`]: crate::Input::to_dangerous_str()
-    fn child(&self) -> Option<&dyn ParentContext>;
+pub trait ContextStack {
+    fn push<C>(&mut self, context: C)
+    where
+        C: Context;
 
-    /// The number of child contexts consolidated into `self`.
-    ///
-    /// Any context returned from `child` is the next deeper than those that
-    /// were consolidated.
-    fn consolidated(&self) -> usize {
-        0
+    fn walk<F, E>(&self, f: F) -> Result<(), E>
+    where
+        F: FnMut(usize, &dyn Context) -> Result<(), E>;
+}
+
+#[cfg(feature = "full-context")]
+use alloc::{boxed::Box, vec::Vec};
+
+#[cfg(feature = "full-context")]
+#[derive(Default)]
+pub struct FullContextStack {
+    root: Option<RootContext>,
+    stack: Vec<Box<dyn Context>>,
+}
+
+#[cfg(feature = "full-context")]
+impl ContextStack for FullContextStack {
+    fn push<C>(&mut self, context: C)
+    where
+        C: Context,
+    {
+        if let Some(root) = Any::downcast_ref::<RootContext>(&context) {
+            self.root = Some(*root);
+        } else {
+            self.stack.push(Box::new(context))
+        }
+    }
+
+    fn walk<F, E>(&self, f: F) -> Result<(), E>
+    where
+        F: FnMut(usize, &dyn Context) -> Result<(), E>,
+    {
+        if let Some(root) = self.root {
+            f(1, &root)
+        } else {
+            Ok(())
+        }
     }
 }
+
+pub struct ContextDisplay<'a, T> {
+    stack: &'a T,
+}
+
+impl<'a, T> ContextDisplay<'a, T> {
+    pub fn new(stack: &'a T) -> Self {
+        Self { stack }
+    }
+}
+
+impl<'a, T> fmt::Display for ContextDisplay<'a, T>
+where
+    T: ContextStack,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.stack.walk(|i, c| {
+            write!(f, "\n  {}. `{}`", i, c.operation())?;
+            if let Some(expected) = c.expected() {
+                write!(f, " (expected {})", expected)?;
+            }
+            Ok(())
+        })
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Basic expected context
 
 impl Context for &'static str {
     fn operation(&self) -> &'static str {
@@ -63,6 +101,7 @@ impl Context for &'static str {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Operation context
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct OperationContext(pub(crate) &'static str);
@@ -78,14 +117,15 @@ impl Context for OperationContext {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Root context
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct ExpectedContext {
+pub(crate) struct RootContext {
     pub(crate) operation: &'static str,
     pub(crate) expected: &'static str,
 }
 
-impl Context for ExpectedContext {
+impl Context for RootContext {
     fn operation(&self) -> &'static str {
         self.operation
     }
@@ -95,62 +135,17 @@ impl Context for ExpectedContext {
     }
 }
 
-impl ParentContext for ExpectedContext {
-    fn child(&self) -> Option<&dyn ParentContext> {
-        None
-    }
-}
-
-#[cfg(feature = "context-chain")]
-pub(crate) use self::context_chain::ContextChain;
-
-#[cfg(feature = "context-chain")]
-mod context_chain {
-    use super::{fmt, Context, Debug, ParentContext};
-
-    use alloc::boxed::Box;
-
-    #[derive(Debug)]
-    pub(crate) struct ContextChain {
-        this: Box<dyn Context>,
-        child: Option<Box<dyn ParentContext>>,
+impl ContextStack for RootContext {
+    fn push<C>(&mut self, context: C)
+    where
+        C: Context,
+    {
     }
 
-    impl ContextChain {
-        pub(crate) fn new<C>(context: C) -> Self
-        where
-            C: Context,
-        {
-            Self {
-                this: Box::new(context),
-                child: None,
-            }
-        }
-
-        pub(crate) fn with_parent<C>(self, parent: C) -> Self
-        where
-            C: Context,
-        {
-            Self {
-                this: Box::new(parent),
-                child: Some(Box::new(self)),
-            }
-        }
-    }
-
-    impl Context for ContextChain {
-        fn expected(&self) -> Option<&dyn fmt::Display> {
-            self.this.expected()
-        }
-
-        fn operation(&self) -> &'static str {
-            self.this.operation()
-        }
-    }
-
-    impl ParentContext for ContextChain {
-        fn child(&self) -> Option<&dyn ParentContext> {
-            self.child.as_ref().map(AsRef::as_ref)
-        }
+    fn walk<F, E>(&self, f: F) -> Result<(), E>
+    where
+        F: FnMut(usize, &dyn Context) -> Result<(), E>,
+    {
+        f(1, self)
     }
 }

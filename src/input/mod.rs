@@ -3,7 +3,7 @@ mod internal;
 
 use core::{fmt, str};
 
-use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext};
+use crate::error::{Error, ExpectedLength, ExpectedValid, OperationContext, RootContext};
 use crate::reader::Reader;
 
 pub use self::display::InputDisplay;
@@ -105,7 +105,7 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                context: ExpectedContext {
+                context: RootContext {
                     operation: "input to non-empty slice",
                     expected: "non-empty input",
                 },
@@ -153,7 +153,7 @@ impl Input {
                         max: None,
                         span: input(invalid),
                         input: self,
-                        context: ExpectedContext {
+                        context: RootContext {
                             operation: "input to str",
                             expected: "complete utf-8 code point",
                         },
@@ -166,7 +166,7 @@ impl Input {
                     Err(E::from(ExpectedValid {
                         span: input(&bytes[error_start..error_end]),
                         input: self,
-                        context: ExpectedContext {
+                        context: RootContext {
                             operation: "input to str",
                             expected: "utf-8 code point",
                         },
@@ -198,7 +198,7 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                context: ExpectedContext {
+                context: RootContext {
                     operation: "input to non-empty str",
                     expected: "non empty input",
                 },
@@ -230,7 +230,7 @@ impl Input {
                 max: Some(0),
                 span: self,
                 input: self,
-                context: ExpectedContext {
+                context: RootContext {
                     operation: "read all",
                     expected: "no trailing input",
                 },

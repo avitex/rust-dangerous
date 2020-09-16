@@ -1,142 +1,179 @@
 use core::fmt;
 
 use crate::error::{
-    fmt_debug_error, Context, Error, ErrorDetails, ErrorDisplay, ExpectedContext, ParentContext,
-    RetryRequirement, ToRetryRequirement,
+    fmt_debug_error, Context, ContextStack, Error, ErrorDetails, ErrorDisplay, Invalid,
+    RetryRequirement, RootContext, RootContextStack, ToRetryRequirement,
 };
 use crate::input::{input, Input};
 use crate::utils::ByteCount;
 
-#[cfg(feature = "context-chain")]
-pub(crate) use crate::error::ContextChain;
+#[cfg(feature = "full-context")]
+type ExpectedStack = crate::error::FullContextStack;
+#[cfg(not(feature = "full-context"))]
+type ExpectedStack = crate::error::EmptyContextStack;
 
-/// A catch-all error for all expected errors supported in this crate.
-pub struct Expected<'i> {
-    inner: ExpectedInner<'i>,
-    #[cfg(feature = "context-chain")]
-    context: ContextChain,
-}
+// /// A catch-all error for all expected errors supported in this crate.
+// pub struct Expected<'i, S = ExpectedStack>
+// where
+//     S: ContextStack,
+// {
+//     stack: S,
+//     input: &'i Input,
+//     inner: ExpectedInner<'i>,
+// }
 
-enum ExpectedInner<'i> {
-    /// An exact value was expected in a context.
-    Value(ExpectedValue<'i>),
-    /// A valid value was expected in a context.
-    Valid(ExpectedValid<'i>),
-    /// A length was expected in a context.
-    Length(ExpectedLength<'i>),
-}
+// enum ExpectedInner<'i> {
+//     /// An exact value was expected in a context.
+//     Value(ExpectedValue<'i>),
+//     /// A valid value was expected in a context.
+//     Valid(ExpectedValid<'i>),
+//     /// A length was expected in a context.
+//     Length(ExpectedLength<'i>),
+// }
 
-impl<'i> Expected<'i> {
-    /// Returns an `ErrorDisplay` for formatting.
-    pub fn display(&self) -> ErrorDisplay<&Self> {
-        ErrorDisplay::new(self)
-    }
+// impl<'i, S> Expected<'i, S>
+// where
+//     S: ContextStack + Default,
+// {
+//     /// Returns an `ErrorDisplay` for formatting.
+//     pub fn display(&self) -> ErrorDisplay<&Self> {
+//         ErrorDisplay::new(self)
+//     }
 
-    fn details(&self) -> &(dyn ErrorDetails<'i>) {
-        match self.inner {
-            ExpectedInner::Value(ref err) => err,
-            ExpectedInner::Valid(ref err) => err,
-            ExpectedInner::Length(ref err) => err,
-        }
-    }
+//     fn from_inner(inner: ExpectedInner<'i>) -> Self {
+//         Self {
+//             inner,
+//             stack: Default::default(),
+//         }
+//     }
+// }
 
-    fn update_input(&mut self, input: &'i Input) {
-        match self.inner {
-            ExpectedInner::Value(ref mut err) => err.update_input(input),
-            ExpectedInner::Valid(ref mut err) => err.update_input(input),
-            ExpectedInner::Length(ref mut err) => err.update_input(input),
-        }
-    }
-}
+// impl<'i, S> ErrorDetails<'i, S> for Expected<'i, S>
+// where
+//     S: ContextStack,
+// {
+//     fn input(&self) -> &'i Input {
+//         match self.inner {
+//             ExpectedInner::Value(ref err) => err.input(),
+//             ExpectedInner::Valid(ref err) => err.input(),
+//             ExpectedInner::Length(ref err) => err.input(),
+//         }
+//     }
 
-impl<'i> ErrorDetails<'i> for Expected<'i> {
-    fn input(&self) -> &'i Input {
-        self.details().input()
-    }
+//     fn span(&self) -> &'i Input {
+//         match self.inner {
+//             ExpectedInner::Value(ref err) => err.span(),
+//             ExpectedInner::Valid(ref err) => err.span(),
+//             ExpectedInner::Length(ref err) => err.input(),
+//         }
+//     }
 
-    fn span(&self) -> &'i Input {
-        self.details().span()
-    }
+//     fn found_value(&self) -> Option<&Input> {
+//         match self.inner {
+//             ExpectedInner::Value(ref err) => err.found_value(),
+//             ExpectedInner::Valid(ref err) => err.found_value(),
+//             ExpectedInner::Length(ref err) => err.found_value(),
+//         }
+//     }
 
-    #[cfg(feature = "context-chain")]
-    fn context(&self) -> &dyn ParentContext {
-        &self.context
-    }
+//     fn expected_value(&self) -> Option<&Input> {
+//         match self.inner {
+//             ExpectedInner::Value(ref err) => err.expected_value(),
+//             ExpectedInner::Valid(ref err) => err.expected_value(),
+//             ExpectedInner::Length(ref err) => err.expected_value(),
+//         }
+//     }
 
-    #[cfg(not(feature = "context-chain"))]
-    fn context(&self) -> &dyn ParentContext {
-        self.details().context()
-    }
+//     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self.inner {
+//             ExpectedInner::Value(ref err) => err.description(f),
+//             ExpectedInner::Valid(ref err) => err.description(f),
+//             ExpectedInner::Length(ref err) => err.description(f),
+//         }
+//     }
+// }
 
-    fn found_value(&self) -> Option<&Input> {
-        self.details().found_value()
-    }
+// impl<'i, S> ToRetryRequirement for Expected<'i, S>
+// where
+//     S: ContextStack,
+// {
+//     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
+//         match self.inner {
+//             ExpectedInner::Value(ref err) => err.to_retry_requirement(),
+//             ExpectedInner::Valid(ref err) => err.to_retry_requirement(),
+//             ExpectedInner::Length(ref err) => err.to_retry_requirement(),
+//         }
+//     }
+// }
 
-    fn expected_value(&self) -> Option<&Input> {
-        self.details().expected_value()
-    }
+// impl<'i, S> Error<'i> for Expected<'i, S>
+// where
+//     S: ContextStack,
+// {
+//     fn from_input_context<C>(mut self, input: &'i Input, context: C) -> Self
+//     where
+//         C: Context,
+//     {
+//         let curr_input = match self.inner {
+//             ExpectedInner::Value(ref mut err) => &mut err.input,
+//             ExpectedInner::Valid(ref mut err) => &mut err.input,
+//             ExpectedInner::Length(ref mut err) => &mut err.input,
+//         };
+//         if curr_input.is_within(input) {
+//             *curr_input = input
+//         }
+//         self.stack.push(context);
+//         self
+//     }
+// }
 
-    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.details().description(f)
-    }
-}
+// impl<'i> fmt::Display for Expected<'i> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         self.display().fmt(f)
+//     }
+// }
 
-impl<'i> ToRetryRequirement for Expected<'i> {
-    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        match self.inner {
-            ExpectedInner::Value(ref err) => err.to_retry_requirement(),
-            ExpectedInner::Valid(ref err) => err.to_retry_requirement(),
-            ExpectedInner::Length(ref err) => err.to_retry_requirement(),
-        }
-    }
-}
+// impl<'i> fmt::Debug for Expected<'i> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         fmt_debug_error(self, f)
+//     }
+// }
 
-impl<'i> Error<'i> for Expected<'i> {
-    fn from_context<C>(mut self, input: &'i Input, context: C) -> Self
-    where
-        C: Context,
-    {
-        let _ = &context;
-        #[cfg(feature = "context-chain")]
-        {
-            self.context = self.context.with_parent(context);
-        }
-        self.update_input(input);
-        self
-    }
-}
+// impl<'i, S> From<ExpectedLength<'i>> for Expected<'i, S>
+// where
+//     S: ContextStack + Default,
+// {
+//     fn from(err: ExpectedLength<'i>) -> Self {
+//         Self::from_inner(ExpectedInner::Length(err))
+//     }
+// }
 
-impl<'i> From<ExpectedLength<'i>> for Expected<'i> {
-    fn from(err: ExpectedLength<'i>) -> Self {
-        Self {
-            #[cfg(feature = "context-chain")]
-            context: ContextChain::new(err.context),
-            inner: ExpectedInner::Length(err),
-        }
-    }
-}
+// impl<'i, S> From<ExpectedValid<'i>> for Expected<'i, S>
+// where
+//     S: ContextStack + Default,
+// {
+//     fn from(err: ExpectedValid<'i>) -> Self {
+//         Self::from_inner(ExpectedInner::Valid(err))
+//     }
+// }
 
-impl<'i> From<ExpectedValid<'i>> for Expected<'i> {
-    fn from(err: ExpectedValid<'i>) -> Self {
-        Self {
-            #[cfg(feature = "context-chain")]
-            context: ContextChain::new(err.context),
-            inner: ExpectedInner::Valid(err),
-        }
-    }
-}
+// impl<'i, S> From<ExpectedValue<'i>> for Expected<'i, S>
+// where
+//     S: ContextStack + Default,
+// {
+//     fn from(err: ExpectedValue<'i>) -> Self {
+//         Self::from_inner(ExpectedInner::Value(err))
+//     }
+// }
 
-impl<'i> From<ExpectedValue<'i>> for Expected<'i> {
-    fn from(err: ExpectedValue<'i>) -> Self {
-        Self {
-            #[cfg(feature = "context-chain")]
-            context: ContextChain::new(err.context),
-            inner: ExpectedInner::Value(err),
-        }
-    }
-}
+// impl<'i> From<Expected<'i>> for Invalid {
+//     fn from(err: Expected<'i>) -> Self {
+//         err.to_retry_requirement().into()
+//     }
+// }
 
-impl_expected_error!(Expected);
+// #[cfg(feature = "std")]
+// impl<'i> std::error::Error for Expected<'i> {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
@@ -163,7 +200,7 @@ pub struct ExpectedValue<'i> {
     pub(crate) value: Value<'i>,
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
-    pub(crate) context: ExpectedContext,
+    pub(crate) stack: RootContextStack,
 }
 
 impl<'i> ExpectedValue<'i> {
@@ -182,12 +219,6 @@ impl<'i> ExpectedValue<'i> {
     pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
     }
-
-    fn update_input(&mut self, input: &'i Input) {
-        if self.input.is_within(input) {
-            self.input = input;
-        }
-    }
 }
 
 impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
@@ -197,10 +228,6 @@ impl<'i> ErrorDetails<'i> for ExpectedValue<'i> {
 
     fn span(&self) -> &'i Input {
         self.span
-    }
-
-    fn context(&self) -> &dyn ParentContext {
-        &self.context
     }
 
     fn found_value(&self) -> Option<&Input> {
@@ -228,17 +255,26 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     }
 }
 
-impl<'i> Error<'i> for ExpectedValue<'i> {
-    fn from_context<C>(mut self, input: &'i Input, _context: C) -> Self
-    where
-        C: Context,
-    {
-        self.update_input(input);
-        self
+impl<'i> fmt::Display for ExpectedValue<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.display().fmt(f)
     }
 }
 
-impl_expected_error!(ExpectedValue);
+impl<'i> fmt::Debug for ExpectedValue<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt_debug_error(self, f)
+    }
+}
+
+impl<'i> From<ExpectedValue<'i>> for Invalid {
+    fn from(err: ExpectedValue<'i>) -> Self {
+        err.to_retry_requirement().into()
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'i> std::error::Error for ExpectedValue<'i> {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected length error
@@ -250,7 +286,7 @@ pub struct ExpectedLength<'i> {
     pub(crate) max: Option<usize>,
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
-    pub(crate) context: ExpectedContext,
+    pub(crate) stack: RootContext,
 }
 
 impl<'i> ExpectedLength<'i> {
@@ -298,25 +334,15 @@ impl<'i> ExpectedLength<'i> {
     pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
     }
-
-    fn update_input(&mut self, input: &'i Input) {
-        if self.input.is_within(input) {
-            self.input = input;
-        }
-    }
 }
 
-impl<'i> ErrorDetails<'i> for ExpectedLength<'i> {
+impl<'i> ErrorDetails<'i, RootContextStack> for ExpectedLength<'i> {
     fn input(&self) -> &'i Input {
         self.input
     }
 
     fn span(&self) -> &'i Input {
         self.span
-    }
-
-    fn context(&self) -> &dyn ParentContext {
-        &self.context
     }
 
     fn found_value(&self) -> Option<&Input> {
@@ -356,17 +382,26 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     }
 }
 
-impl<'i> Error<'i> for ExpectedLength<'i> {
-    fn from_context<C>(mut self, input: &'i Input, _context: C) -> Self
-    where
-        C: Context,
-    {
-        self.update_input(input);
-        self
+impl<'i> fmt::Display for ExpectedLength<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.display().fmt(f)
     }
 }
 
-impl_expected_error!(ExpectedLength);
+impl<'i> fmt::Debug for ExpectedLength<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt_debug_error(self, f)
+    }
+}
+
+impl<'i> From<ExpectedLength<'i>> for Invalid {
+    fn from(err: ExpectedLength<'i>) -> Self {
+        err.to_retry_requirement().into()
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'i> std::error::Error for ExpectedLength<'i> {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected valid error
@@ -376,7 +411,7 @@ impl_expected_error!(ExpectedLength);
 pub struct ExpectedValid<'i> {
     pub(crate) span: &'i Input,
     pub(crate) input: &'i Input,
-    pub(crate) context: ExpectedContext,
+    pub(crate) context: RootContext,
     pub(crate) retry_requirement: Option<RetryRequirement>,
 }
 
@@ -384,12 +419,6 @@ impl<'i> ExpectedValid<'i> {
     /// Returns an `ErrorDisplay` for formatting.
     pub fn display(&self) -> ErrorDisplay<&Self> {
         ErrorDisplay::new(self)
-    }
-
-    fn update_input(&mut self, input: &'i Input) {
-        if self.input.is_within(input) {
-            self.input = input;
-        }
     }
 }
 
@@ -400,10 +429,6 @@ impl<'i> ErrorDetails<'i> for ExpectedValid<'i> {
 
     fn span(&self) -> &'i Input {
         self.span
-    }
-
-    fn context(&self) -> &dyn ParentContext {
-        &self.context
     }
 
     fn found_value(&self) -> Option<&Input> {
@@ -425,17 +450,28 @@ impl<'i> ToRetryRequirement for ExpectedValid<'i> {
     }
 }
 
-impl<'i> Error<'i> for ExpectedValid<'i> {
-    fn from_context<C>(mut self, input: &'i Input, _context: C) -> Self
-    where
-        C: Context,
-    {
-        self.update_input(input);
-        self
+impl<'i> fmt::Display for ExpectedValid<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.display().fmt(f)
     }
 }
 
-impl_expected_error!(ExpectedValid);
+impl<'i> fmt::Debug for ExpectedValid<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt_debug_error(self, f)
+    }
+}
+
+impl<'i> From<ExpectedValid<'i>> for Invalid {
+    fn from(err: ExpectedValid<'i>) -> Self {
+        err.to_retry_requirement().into()
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'i> std::error::Error for ExpectedValid<'i> {}
+
+///////////////////////////////////////////////////////////////////////////////
 
 /// Convenience trait for specifying a catch of all possible expected errors.
 pub trait FromExpected<'i>:

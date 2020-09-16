@@ -10,15 +10,15 @@ use core::fmt;
 
 use crate::input::Input;
 
-pub use self::context::{Context, ParentContext};
+#[cfg(feature = "full-context")]
+pub use self::context::FullContextStack;
+pub use self::context::{Context, ContextWalk, ContextWalker};
 pub use self::display::ErrorDisplay;
-pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue, FromExpected};
+pub use self::expected::{ExpectedLength, ExpectedValid, ExpectedValue, FromExpected};
 pub use self::invalid::Invalid;
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
 
-#[cfg(feature = "context-chain")]
-pub(crate) use self::context::ContextChain;
-pub(crate) use self::context::{ExpectedContext, OperationContext};
+pub(crate) use self::context::{OperationContext, RootContext};
 pub(crate) use self::display::fmt_debug_error;
 pub(crate) use self::expected::Value;
 
@@ -28,7 +28,7 @@ pub trait Error<'i>: ToRetryRequirement {
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
     /// How child and parent contexts are handled are upstream concerns.
-    fn from_context<C>(self, input: &'i Input, context: C) -> Self
+    fn from_input_context<C>(self, input: &'i Input, context: C) -> Self
     where
         C: Context;
 }
@@ -53,9 +53,6 @@ pub trait ErrorDetails<'i> {
     /// The specific section of input that caused an error.
     fn span(&self) -> &'i Input;
 
-    /// The context around the error.
-    fn context(&self) -> &dyn ParentContext;
-
     /// The unexpected value, if applicable, that was found.
     fn found_value(&self) -> Option<&Input>;
 
@@ -70,6 +67,10 @@ pub trait ErrorDetails<'i> {
     ///
     /// Returns a [`fmt::Error`] if failed to write to the formatter.
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+
+    fn root_context(&self) -> &dyn Context;
+
+    fn full_context(&self) -> &dyn fmt::Display;
 }
 
 impl<'i, T> ErrorDetails<'i> for &T
@@ -84,10 +85,6 @@ where
         (**self).span()
     }
 
-    fn context(&self) -> &dyn ParentContext {
-        (**self).context()
-    }
-
     fn found_value(&self) -> Option<&Input> {
         (**self).found_value()
     }
@@ -98,5 +95,13 @@ where
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).description(f)
+    }
+
+    fn root_context(&self) -> &dyn Context {
+        (**self).root_context()
+    }
+
+    fn full_context(&self) -> &dyn fmt::Display {
+        (**self).full_context()
     }
 }

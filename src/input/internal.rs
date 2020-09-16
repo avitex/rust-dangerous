@@ -1,7 +1,7 @@
 use core::ops::Range;
 use core::slice;
 
-use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValue, Value};
+use crate::error::{Error, ExpectedLength, ExpectedValue, RootContext, Value};
 use crate::input::{input, Input};
 use crate::reader::Reader;
 use crate::utils::with_operation_context;
@@ -17,6 +17,7 @@ use crate::utils::with_operation_context;
 // - Will be inlined into the callee
 
 impl Input {
+    #[inline(always)]
     pub(crate) fn from_u8(byte: &u8) -> &Input {
         input(slice::from_ref(byte))
     }
@@ -43,7 +44,7 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                context: ExpectedContext {
+                context: RootContext {
                     operation,
                     expected: "non-empty input",
                 },
@@ -80,7 +81,7 @@ impl Input {
                 span: maybe_prefix,
                 value: prefix_value,
                 input: self,
-                context: ExpectedContext {
+                context: RootContext {
                     operation,
                     expected: "exact value",
                 },
@@ -125,7 +126,7 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                context: ExpectedContext {
+                context: RootContext {
                     operation,
                     expected: "enough input",
                 },
@@ -254,6 +255,7 @@ impl Input {
     ///////////////////////////////////////////////////////////////////////////
     // FIXME: replace with const generics when stable
 
+    #[inline(always)]
     pub(crate) fn split_arr_1<'i, E>(
         &'i self,
         operation: &'static str,
@@ -265,6 +267,7 @@ impl Input {
         Ok(([byte], tail))
     }
 
+    #[inline(always)]
     pub(crate) fn split_arr_2<'i, E>(
         &'i self,
         operation: &'static str,
@@ -277,6 +280,7 @@ impl Input {
         Ok(([bytes[0], bytes[1]], tail))
     }
 
+    #[inline(always)]
     pub(crate) fn split_arr_4<'i, E>(
         &'i self,
         operation: &'static str,
@@ -289,6 +293,7 @@ impl Input {
         Ok(([bytes[0], bytes[1], bytes[2], bytes[3]], tail))
     }
 
+    #[inline(always)]
     pub(crate) fn split_arr_8<'i, E>(
         &'i self,
         operation: &'static str,
@@ -306,6 +311,7 @@ impl Input {
         ))
     }
 
+    #[inline(always)]
     pub(crate) fn split_arr_16<'i, E>(
         &'i self,
         operation: &'static str,

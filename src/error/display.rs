@@ -60,12 +60,12 @@ where
         W: Write,
     {
         let error = &self.error;
-        let context = error.context();
+        let root_context = error.root_context();
         let input = error.input();
         writeln!(
             w,
             "error attempting to {}: {}",
-            context.operation(),
+            root_context.operation(),
             WithFormatter(|f| self.error.description(f)),
         )?;
         w.write_str(INPUT_PREFIX)?;
@@ -77,22 +77,7 @@ where
         } else {
             write!(w, "{}", input)?;
         }
-        write!(w, "\ncontext bracktrace:")?;
-        let mut context_level = context;
-        let mut index = 1;
-        loop {
-            write!(w, "\n  {}. `{}`", index, context_level.operation())?;
-            if let Some(expected) = context_level.expected() {
-                write!(w, " (expected {})", expected)?;
-            }
-            if let Some(next_context) = context_level.child() {
-                context_level = next_context;
-                index += 1;
-            } else {
-                break;
-            }
-        }
-        Ok(())
+        write!(w, "\ncontext bracktrace:\n{}", error.full_context())
     }
 }
 
