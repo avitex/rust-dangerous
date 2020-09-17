@@ -1,7 +1,7 @@
 use core::ops::Range;
 use core::slice;
 
-use crate::error::{Error, ExpectedLength, ExpectedValue, RootContext, Value};
+use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValue, Value};
 use crate::input::{input, Input};
 use crate::reader::Reader;
 use crate::utils::with_operation_context;
@@ -44,7 +44,7 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                context: RootContext {
+                context: ExpectedContext {
                     operation,
                     expected: "non-empty input",
                 },
@@ -78,10 +78,10 @@ impl Input {
             Ok(tail)
         } else {
             Err(E::from(ExpectedValue {
-                span: maybe_prefix,
-                value: prefix_value,
+                actual: maybe_prefix,
+                expected: prefix_value,
                 input: self,
-                context: RootContext {
+                context: ExpectedContext {
                     operation,
                     expected: "exact value",
                 },
@@ -126,7 +126,7 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                context: RootContext {
+                context: ExpectedContext {
                     operation,
                     expected: "enough input",
                 },

@@ -1,4 +1,4 @@
-//! All errors supported.
+//! Error support
 
 mod context;
 mod display;
@@ -12,18 +12,20 @@ use crate::input::Input;
 
 #[cfg(feature = "full-context")]
 pub use self::context::FullContextStack;
-pub use self::context::{Context, ContextWalk, ContextWalker};
+pub use self::context::{
+    Context, ContextStack, ContextStackBuilder, ContextStackWalker, ExpectedContext,
+    RootContextStack,
+};
 pub use self::display::ErrorDisplay;
-pub use self::expected::{ExpectedLength, ExpectedValid, ExpectedValue, FromExpected};
+pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue, FromExpected};
 pub use self::invalid::Invalid;
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
 
-pub(crate) use self::context::{OperationContext, RootContext};
-pub(crate) use self::display::fmt_debug_error;
+pub(crate) use self::context::OperationContext;
 pub(crate) use self::expected::Value;
 
 /// Core error that collects contexts.
-pub trait Error<'i>: ToRetryRequirement {
+pub trait Error<'i> {
     /// Return `Self` with context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
@@ -68,9 +70,8 @@ pub trait ErrorDetails<'i> {
     /// Returns a [`fmt::Error`] if failed to write to the formatter.
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
-    fn root_context(&self) -> &dyn Context;
-
-    fn full_context(&self) -> &dyn fmt::Display;
+    /// The walkable [`ContextStack`] to the original error that occured.
+    fn context_stack(&self) -> &dyn ContextStack;
 }
 
 impl<'i, T> ErrorDetails<'i> for &T
@@ -97,11 +98,7 @@ where
         (**self).description(f)
     }
 
-    fn root_context(&self) -> &dyn Context {
-        (**self).root_context()
-    }
-
-    fn full_context(&self) -> &dyn fmt::Display {
-        (**self).full_context()
+    fn context_stack(&self) -> &dyn ContextStack {
+        (**self).context_stack()
     }
 }

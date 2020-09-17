@@ -1,42 +1,3 @@
-macro_rules! split_arr {
-    ($input:expr, u8, $expected:expr) => {
-        $input.split_arr_1($expected)
-    };
-    ($input:expr, u16, $expected:expr) => {
-        $input.split_arr_2($expected)
-    };
-    ($input:expr, u32, $expected:expr) => {
-        $input.split_arr_4($expected)
-    };
-    ($input:expr, u64, $expected:expr) => {
-        $input.split_arr_8($expected)
-    };
-    ($input:expr, u128, $expected:expr) => {
-        $input.split_arr_16($expected)
-    };
-    ($input:expr, i8, $expected:expr) => {
-        $input.split_arr_1($expected)
-    };
-    ($input:expr, i16, $expected:expr) => {
-        $input.split_arr_2($expected)
-    };
-    ($input:expr, i32, $expected:expr) => {
-        $input.split_arr_4($expected)
-    };
-    ($input:expr, i64, $expected:expr) => {
-        $input.split_arr_8($expected)
-    };
-    ($input:expr, i128, $expected:expr) => {
-        $input.split_arr_16($expected)
-    };
-    ($input:expr, f32, $expected:expr) => {
-        $input.split_arr_4($expected)
-    };
-    ($input:expr, f64, $expected:expr) => {
-        $input.split_arr_8($expected)
-    };
-}
-
 macro_rules! impl_read_num {
     ($ty:ident, le: $read_le:ident, be: $read_be:ident) => {
         impl_read_num!($ty, stringify!($ty), le: $read_le, be: $read_be);
@@ -78,4 +39,43 @@ macro_rules! read_num {
         $reader.input = tail;
         Ok(<$num_ty>::$from_xx_bytes(arr))
     }};
+}
+
+macro_rules! split_arr {
+    ($input:expr, u8, $expected:expr) => {
+        $input.split_arr_1($expected)
+    };
+    ($input:expr, u16, $expected:expr) => {
+        $input.split_arr_2($expected)
+    };
+    ($input:expr, u32, $expected:expr) => {
+        $input.split_arr_4($expected)
+    };
+    ($input:expr, u64, $expected:expr) => {
+        $input.split_arr_8($expected)
+    };
+    ($input:expr, u128, $expected:expr) => {
+        $input.split_arr_16($expected)
+    };
+    ($input:expr, i8, $expected:expr) => {
+        $input.split_arr_1($expected)
+    };
+    ($input:expr, i16, $expected:expr) => {
+        $input.split_arr_2($expected)
+    };
+    ($input:expr, i32, $expected:expr) => {
+        $input.split_arr_4($expected)
+    };
+    ($input:expr, i64, $expected:expr) => {
+        $input.split_arr_8($expected)
+    };
+    ($input:expr, i128, $expected:expr) => {
+        $input.split_arr_16($expected)
+    };
+    ($input:expr, f32, $expected:expr) => {
+        $input.split_arr_4($expected)
+    };
+    ($input:expr, f64, $expected:expr) => {
+        $input.split_arr_8($expected)
+    };
 }

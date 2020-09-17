@@ -2,8 +2,8 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    Context, Error, ExpectedLength, ExpectedValid, ExpectedValue, RootContext, ToRetryRequirement,
-    Value,
+    Context, Error, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue,
+    ToRetryRequirement, Value,
 };
 use crate::input::Input;
 use crate::utils::{with_context, with_operation_context};
@@ -273,7 +273,7 @@ where
             None => Err(E::from(ExpectedValid {
                 span: self.input,
                 input: self.input,
-                context: RootContext {
+                context: ExpectedContext {
                     expected,
                     operation: "expect",
                 },
@@ -293,7 +293,7 @@ where
         E: Error<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        let context = RootContext {
+        let context = ExpectedContext {
             expected,
             operation: "try expect",
         };
@@ -319,14 +319,13 @@ where
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{Error, Invalid, Expected, ExpectedLength, ExpectedValid};
+    /// use dangerous::{Error, Invalid, Expected, FromExpected};
     ///
     /// // Our custom reader function
     /// fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
     /// where
     ///   E: Error<'i>,
-    ///   E: From<ExpectedValid<'i>>,
-    ///   E: From<ExpectedLength<'i>>,
+    ///   E: FromExpected<'i>,
     /// {
     ///     input.read_all(|r| {
     ///         r.try_expect_erased("ipv4 addr", |i| {
@@ -359,7 +358,7 @@ where
             E::from(ExpectedValid {
                 span: self.input,
                 input: self.input,
-                context: RootContext {
+                context: ExpectedContext {
                     expected,
                     operation: "try expect erased",
                 },

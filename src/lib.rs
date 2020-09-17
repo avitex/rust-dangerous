@@ -27,6 +27,7 @@
 //!
 //! **No other instances of `unsafe` are permitted.**
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     // For byte slice to `Input` cast.
@@ -38,7 +39,7 @@
 )]
 #![forbid(
     anonymous_parameters,
-    // missing_docs,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
@@ -60,11 +61,13 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 
-mod error;
+pub mod error;
 mod input;
 mod reader;
 mod utils;
 
-pub use self::error::*;
+pub use self::error::{
+    Error, Expected, FromExpected, Invalid, RetryRequirement, ToRetryRequirement,
+};
 pub use self::input::{input, Input, InputDisplay};
 pub use self::reader::Reader;

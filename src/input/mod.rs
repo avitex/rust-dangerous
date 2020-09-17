@@ -3,7 +3,7 @@ mod internal;
 
 use core::{fmt, str};
 
-use crate::error::{Error, ExpectedLength, ExpectedValid, OperationContext, RootContext};
+use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext};
 use crate::reader::Reader;
 
 pub use self::display::InputDisplay;
@@ -98,18 +98,21 @@ impl Input {
     ///
     /// Returns [`ExpectedLength`] if the the input is empty.
     #[inline(always)]
-    pub fn to_dangerous_non_empty(&self) -> Result<&[u8], ExpectedLength<'_>> {
+    pub fn to_dangerous_non_empty<'i, E>(&'i self) -> Result<&'i [u8], E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
         if self.is_empty() {
-            Err(ExpectedLength {
+            Err(E::from(ExpectedLength {
                 min: 1,
                 max: None,
                 span: self,
                 input: self,
-                context: RootContext {
+                context: ExpectedContext {
                     operation: "input to non-empty slice",
                     expected: "non-empty input",
                 },
-            })
+            }))
         } else {
             Ok(self.as_dangerous())
         }
@@ -153,7 +156,7 @@ impl Input {
                         max: None,
                         span: input(invalid),
                         input: self,
-                        context: RootContext {
+                        context: ExpectedContext {
                             operation: "input to str",
                             expected: "complete utf-8 code point",
                         },
@@ -166,7 +169,7 @@ impl Input {
                     Err(E::from(ExpectedValid {
                         span: input(&bytes[error_start..error_end]),
                         input: self,
-                        context: RootContext {
+                        context: ExpectedContext {
                             operation: "input to str",
                             expected: "utf-8 code point",
                         },
@@ -198,7 +201,7 @@ impl Input {
                 max: None,
                 span: self,
                 input: self,
-                context: RootContext {
+                context: ExpectedContext {
                     operation: "input to non-empty str",
                     expected: "non empty input",
                 },
@@ -230,7 +233,7 @@ impl Input {
                 max: Some(0),
                 span: self,
                 input: self,
-                context: RootContext {
+                context: ExpectedContext {
                     operation: "read all",
                     expected: "no trailing input",
                 },

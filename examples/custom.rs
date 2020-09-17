@@ -1,6 +1,6 @@
 use std::net::Ipv4Addr;
 
-use dangerous::{Error, Expected, ExpectedLength, ExpectedValid, Invalid};
+use dangerous::{Error, Expected, FromExpected, Invalid};
 
 fn main() {
     let input = dangerous::input(b"192.168.1.x");
@@ -12,8 +12,7 @@ fn main() {
 fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
 where
     E: Error<'i>,
-    E: From<ExpectedValid<'i>>,
-    E: From<ExpectedLength<'i>>,
+    E: FromExpected<'i>,
 {
     input.read_all(|r| {
         r.try_expect_erased("ipv4 addr", |i| {

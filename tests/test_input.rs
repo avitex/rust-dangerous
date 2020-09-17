@@ -14,9 +14,16 @@ fn as_dangerous() {
 #[test]
 fn to_dangerous_non_empty() {
     // Valid
-    assert_eq!(input!(b"hello").to_dangerous_non_empty().unwrap(), b"hello");
+    assert_eq!(
+        input!(b"hello")
+            .to_dangerous_non_empty::<Expected>()
+            .unwrap(),
+        b"hello"
+    );
     // Invalid
-    input!(b"").to_dangerous_non_empty().unwrap_err();
+    input!(b"")
+        .to_dangerous_non_empty::<Expected>()
+        .unwrap_err();
 }
 
 #[test]

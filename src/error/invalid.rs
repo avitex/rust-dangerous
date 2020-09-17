@@ -1,6 +1,9 @@
 use core::fmt;
 
-use crate::error::{Context, Error, RetryRequirement, ToRetryRequirement};
+use crate::error::{
+    Context, ContextStack, Error, Expected, ExpectedLength, ExpectedValid, ExpectedValue,
+    RetryRequirement, ToRetryRequirement,
+};
 use crate::input::Input;
 
 /// `Invalid` contains no details about what happened, other than the number of
@@ -64,6 +67,33 @@ impl<'i> Error<'i> for Invalid {
     }
 }
 
+impl<'i, S> From<Expected<'i, S>> for Invalid
+where
+    S: ContextStack,
+{
+    fn from(err: Expected<'i, S>) -> Self {
+        err.to_retry_requirement().into()
+    }
+}
+
+impl<'i> From<ExpectedValue<'i>> for Invalid {
+    fn from(err: ExpectedValue<'i>) -> Self {
+        err.to_retry_requirement().into()
+    }
+}
+
+impl<'i> From<ExpectedValid<'i>> for Invalid {
+    fn from(err: ExpectedValid<'i>) -> Self {
+        err.to_retry_requirement().into()
+    }
+}
+
+impl<'i> From<ExpectedLength<'i>> for Invalid {
+    fn from(err: ExpectedLength<'i>) -> Self {
+        err.to_retry_requirement().into()
+    }
+}
+
 impl From<Option<RetryRequirement>> for Invalid {
     fn from(retry_requirement: Option<RetryRequirement>) -> Self {
         Self { retry_requirement }
@@ -71,4 +101,5 @@ impl From<Option<RetryRequirement>> for Invalid {
 }
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl std::error::Error for Invalid {}

@@ -11,10 +11,10 @@
 // RUSTFLAGS=-Zpolonius cargo run --example streaming --features std
 // ```
 
-use std::error::Error;
+use std::error::Error as StdError;
 use std::io;
 
-use dangerous::{Expected, FromExpected, ToRetryRequirement};
+use dangerous::{Error, Expected, FromExpected, ToRetryRequirement};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
@@ -50,7 +50,7 @@ fn main() {
 fn read_and_decode_message<'i, R>(
     read: &mut R,
     buf: &'i mut [u8],
-) -> Result<Message<'i>, Box<dyn Error + 'i>>
+) -> Result<Message<'i>, Box<dyn StdError + 'i>>
 where
     R: io::Read,
 {
@@ -82,6 +82,7 @@ where
 
 fn decode_message<'i, E>(input: &'i dangerous::Input) -> Result<Message<'i>, E>
 where
+    E: Error<'i>,
     E: FromExpected<'i>,
 {
     input.read_all::<_, _, E>(|r| {

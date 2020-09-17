@@ -27,13 +27,14 @@ dangerous = "0.1"
 
 - Fast.
 - Zero panics.
-- Zero heap-allocations.
 - Zero-cost abstractions.
-- Minimal dependencies \[1].
+- Zero heap-allocations on success \[1].
+- Minimal dependencies \[2].
 - Primitive type support.
 - Optional verbose errors.
 
-\[1] Zero-dependencies if the `unicode` feature is disabled.
+\[1] Zero-allocations if the `full-context` feature is disabled.
+\[2] Zero-dependencies if the `unicode` feature is disabled.
 
 This library intentions are to provide a simple interface for explicitly handling user-generated data safely.
 It tries to achieve this by providing useful primitives for parsing data and an optional, but solid, debugging
@@ -52,7 +53,7 @@ Ever tried working backwards from something like this?
 Wouldn't it be better if this was the alternative?
 
 ```
-[ERRO]: ahhh!: invalid utf-8 code point
+[ERRO]: ahhh!: expected utf-8 code point
 > [.. "aaaa" ff "aaaa" ..]
              ^^
 context bracktrace:
