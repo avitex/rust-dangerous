@@ -1,12 +1,10 @@
-mod display;
 mod internal;
 
 use core::{fmt, str};
 
+use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
-
-pub use self::display::InputDisplay;
 
 /// Creates a new `Input` from a byte slice.
 ///

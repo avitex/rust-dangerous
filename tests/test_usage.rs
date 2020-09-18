@@ -1,6 +1,6 @@
 #[test]
 fn usage_with_fn() {
-    use dangerous::{Invalid, RetryRequirement, ToRetryRequirement};
+    use dangerous::error::{Invalid, RetryRequirement, ToRetryRequirement};
 
     let input = dangerous::input(b"a");
 

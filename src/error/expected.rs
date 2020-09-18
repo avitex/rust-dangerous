@@ -1,8 +1,9 @@
 use core::fmt;
 
+use crate::display::ErrorDisplay;
 use crate::error::{
-    Context, ContextStack, ContextStackBuilder, ErrorDetails, ErrorDisplay, ExpectedContext,
-    FromContext, RetryRequirement, ToRetryRequirement,
+    Context, ContextStack, ContextStackBuilder, ErrorDetails, ExpectedContext, FromContext,
+    RetryRequirement, ToRetryRequirement,
 };
 use crate::input::{input, Input};
 use crate::utils::ByteCount;
@@ -390,16 +391,4 @@ impl<'i> ToRetryRequirement for ExpectedValid<'i> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         self.retry_requirement
     }
-}
-
-/// Convenience trait for specifying a catch of [`ExpectedValue`],
-/// [`ExpectedLength`] or [`ExpectedValid`].
-pub trait FromExpected<'i>:
-    From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
-{
-}
-
-impl<'i, T> FromExpected<'i> for T where
-    T: From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
-{
 }

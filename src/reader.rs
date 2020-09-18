@@ -354,7 +354,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if either the provided function does, or there is
     /// trailing input.
     ///
-    /// [`RetryRequirement`]: crate::RetryRequirement
+    /// [`RetryRequirement`]: crate::error::RetryRequirement
     pub fn try_expect_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
         E: FromContext<'i>,

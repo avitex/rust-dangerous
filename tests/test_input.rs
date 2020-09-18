@@ -3,7 +3,7 @@
 #[macro_use]
 mod common;
 
-use dangerous::{Expected, RetryRequirement, ToRetryRequirement};
+use dangerous::error::{Expected, RetryRequirement, ToRetryRequirement};
 
 #[test]
 fn as_dangerous() {

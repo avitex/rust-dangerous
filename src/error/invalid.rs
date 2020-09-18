@@ -6,8 +6,8 @@ use crate::error::{
 };
 use crate::input::Input;
 
-/// `Invalid` contains no details about what happened, other than the number of
-/// additional bytes required to continue processing if the error is not fatal.
+/// `Invalid` contains no details around what went wrong other than a
+/// [`RetryRequirement`] if the error is not fatal.
 ///
 /// This is the most performant and simplistic catch-all error, but it doesn't
 /// provide any context to debug problems well.
