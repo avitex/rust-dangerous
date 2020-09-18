@@ -396,14 +396,14 @@ impl<'i> ToRetryRequirement for ExpectedValid<'i> {
     }
 }
 
-/// Convenience trait for specifying a catch of [`ExpectedLength`],
-/// [`ExpectedValue`] or [`ExpectedValid`].
+/// Convenience trait for specifying a catch of [`ExpectedValue`],
+/// [`ExpectedLength`] or [`ExpectedValid`].
 pub trait FromExpected<'i>:
-    From<ExpectedLength<'i>> + From<ExpectedValue<'i>> + From<ExpectedValid<'i>>
+    From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
 {
 }
 
 impl<'i, T> FromExpected<'i> for T where
-    T: From<ExpectedLength<'i>> + From<ExpectedValue<'i>> + From<ExpectedValid<'i>>
+    T: From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
 {
 }

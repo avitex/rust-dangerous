@@ -7,7 +7,7 @@
 //! - If you require more verbosity, consider creating custom [`Context`]s
 //!   before jumping to custom errors. If you do require a custom error,
 //!   implementing it is easy enough. Just implement [`Error`] and [`From`] for
-//!   [`ExpectedValue`], [`ExpectedValid`] and [`ExpectedLength`] and you'll be
+//!   [`ExpectedValue`], [`ExpectedLength`] and [`ExpectedValid`] and you'll be
 //!   on your merry way. Additionally implement [`ErrorDisplay`] to support
 //!   lovely error printing and [`ToRetryRequirement`] for streaming protocols.
 //!

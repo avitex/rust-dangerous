@@ -12,32 +12,19 @@
 //!
 //! assert_eq!(result, Ok((b'h', dangerous::input(b"ello"))));
 //! ```
-//!
-//! # Guarantees
-//!
-//! - Zero panics.
-//! - Zero heap-allocations.
-//!
-//! Once an input is cast with `to_dangerous*`, these guarantees end.
-//!
-//! # Safety
-//!
-//! This library has one instance of `unsafe` required for wrapping a byte slice
-//! into the `Input` DST.
-//!
-//! **No other instances of `unsafe` are permitted.**
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
-    // For byte slice to `Input` cast.
+    // Exception: Byte slice to `Input` cast
     unsafe_code,
-    // For derived implementations.
+    // Exception: Derived implementations
     unused_qualifications,
+    // Exception: `error::Value`
     variant_size_differences,
-    clippy::pedantic
 )]
 #![forbid(
+    clippy::pedantic,
     anonymous_parameters,
     missing_docs,
     trivial_casts,

@@ -82,14 +82,14 @@ impl<'i> From<ExpectedValue<'i>> for Invalid {
     }
 }
 
-impl<'i> From<ExpectedValid<'i>> for Invalid {
-    fn from(err: ExpectedValid<'i>) -> Self {
+impl<'i> From<ExpectedLength<'i>> for Invalid {
+    fn from(err: ExpectedLength<'i>) -> Self {
         err.to_retry_requirement().into()
     }
 }
 
-impl<'i> From<ExpectedLength<'i>> for Invalid {
-    fn from(err: ExpectedLength<'i>) -> Self {
+impl<'i> From<ExpectedValid<'i>> for Invalid {
+    fn from(err: ExpectedValid<'i>) -> Self {
         err.to_retry_requirement().into()
     }
 }
