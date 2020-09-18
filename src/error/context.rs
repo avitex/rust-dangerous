@@ -18,10 +18,18 @@ pub trait Context: Any + Debug {
 
     /// Returns a [`fmt::Display`] formattable value of what was expected.
     fn expected(&self) -> Option<&dyn fmt::Display>;
+
+    /// Return a reference of self as [`Any`].
+    // FIXME: An ideal implementation wouldn't require this function and we
+    // would just lean on the super trait requirement, but doesn't seem possible
+    // today with trait objects.
+    //
+    // See: https://github.com/rust-lang/rfcs/issues/2035
+    fn as_any(&self) -> &dyn Any;
 }
 
 /// A walkable stack of contexts collected from an error.
-pub trait ContextStack {
+pub trait ContextStack: 'static {
     /// The root context.
     fn root(&self) -> ExpectedContext;
 
@@ -50,7 +58,7 @@ pub trait ContextStackBuilder {
 ///
 /// - `index` (the index of the context starting from `1`).
 /// - `context` (the context at the provided index).
-pub type ContextStackWalker<'a> = dyn FnMut(usize, &'a dyn Context) -> bool + 'a;
+pub type ContextStackWalker<'a> = dyn FnMut(usize, &(dyn Context + 'static)) -> bool + 'a;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Basic expected context
@@ -62,6 +70,10 @@ impl Context for &'static str {
 
     fn expected(&self) -> Option<&dyn fmt::Display> {
         Some(self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -83,6 +95,10 @@ impl Context for ExpectedContext {
     fn expected(&self) -> Option<&dyn fmt::Display> {
         Some(&self.expected)
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -98,6 +114,10 @@ impl Context for OperationContext {
 
     fn expected(&self) -> Option<&dyn fmt::Display> {
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

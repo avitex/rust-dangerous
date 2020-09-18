@@ -3,8 +3,8 @@
 
 #[macro_use]
 mod common;
-
-use dangerous::{RetryRequirement, ToRetryRequirement};
+use dangerous::error::{ErrorDetails, ExpectedContext, RetryRequirement, ToRetryRequirement};
+use std::any::Any;
 
 #[test]
 
@@ -20,6 +20,37 @@ fn read_nums() {
     validate_read_num!(i64, le: read_i64_le, be: read_i64_be);
     validate_read_num!(f32, le: read_f32_le, be: read_f32_be);
     validate_read_num!(f64, le: read_f64_le, be: read_f64_be);
+}
+
+#[test]
+fn at_end() {
+    assert_eq!(
+        read_all!(b"hello", |r| {
+            r.consume(b"hello")?;
+            Ok(r.at_end())
+        })
+        .unwrap(),
+        true
+    );
+}
+
+#[test]
+fn context() {
+    let err = read_all!(b"hello", |r| { r.context("bob", |r| r.consume(b"world")) }).unwrap_err();
+    err.context_stack().walk(&mut |i, c| {
+        // i == 1 is an operation context which cannot be downcast
+        if i == 2 {
+            let c = Any::downcast_ref::<&'static str>(c.as_any());
+            assert_eq!(c, Some(&"bob"));
+        }
+        // i == 3 is an operation context which cannot be downcast
+        if i == 4 {
+            let c = Any::downcast_ref::<ExpectedContext>(c.as_any());
+            assert!(c.is_some());
+        }
+        assert!(i != 5);
+        true
+    });
 }
 
 #[test]
@@ -42,7 +73,6 @@ fn skip_while() {
 
 #[test]
 fn try_skip_while() {
-    // Valid
     assert_eq!(
         read_all!(b"hello!", |r| {
             let v = r.try_skip_while(|c| Ok(c.is_ascii_alphabetic()))?;
@@ -52,19 +82,20 @@ fn try_skip_while() {
         .unwrap(),
         5
     );
-
-    // TODO
-    // // Invalid
-    // read_all!(b"hello", |r| {
-    //     r.try_take_while(|i, _| i.read_all(|r| r.consume(b"world")).map(|_| true))
-    // })
-    // .unwrap_err();
 }
 
 #[test]
 fn take() {
     assert_eq!(
         read_all!(b"hello", |r| { r.take(5) }).unwrap(),
+        &b"hello"[..]
+    );
+}
+
+#[test]
+fn take_remaining() {
+    assert_eq!(
+        read_all!(b"hello", |r| { Ok(r.take_remaining()) }).unwrap(),
         &b"hello"[..]
     );
 }
@@ -84,7 +115,6 @@ fn take_while() {
 
 #[test]
 fn try_take_while() {
-    // Valid
     assert_eq!(
         read_all!(b"hello!", |r| {
             let v = r.try_take_while(|c| Ok(c.is_ascii_alphabetic()))?;
@@ -94,13 +124,30 @@ fn try_take_while() {
         .unwrap(),
         &b"hello"[..]
     );
+}
 
-    // TODO
-    // // Invalid
-    // read_all!(b"hello", |r| {
-    //     r.try_take_while(|i, _| i.read_all(|r| r.consume(b"world")).map(|_| true))
-    // })
-    // .unwrap_err();
+#[test]
+fn take_consumed() {
+    assert_eq!(
+        read_all!(b"hello", |r| {
+            Ok(r.take_consumed(|r| {
+                r.take_remaining();
+            }))
+        })
+        .unwrap(),
+        &b"hello"[..]
+    );
+}
+
+#[test]
+fn try_take_consumed() {
+    assert_eq!(
+        read_all!(b"hello", |r| {
+            r.try_take_consumed(|r| r.consume(b"hello"))
+        })
+        .unwrap(),
+        &b"hello"[..]
+    );
 }
 
 #[test]

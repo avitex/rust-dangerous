@@ -87,10 +87,10 @@ where
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.inner {
-            ExpectedInner::Value(ref err) => fmt::Display::fmt(err, f),
-            ExpectedInner::Valid(ref err) => fmt::Display::fmt(err, f),
-            ExpectedInner::Length(ref err) => fmt::Display::fmt(err, f),
+        match &self.inner {
+            ExpectedInner::Value(err) => fmt::Display::fmt(err, f),
+            ExpectedInner::Valid(err) => fmt::Display::fmt(err, f),
+            ExpectedInner::Length(err) => fmt::Display::fmt(err, f),
         }
     }
 
@@ -104,10 +104,10 @@ where
     S: ContextStack,
 {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        match self.inner {
-            ExpectedInner::Value(ref err) => err.to_retry_requirement(),
-            ExpectedInner::Valid(ref err) => err.to_retry_requirement(),
-            ExpectedInner::Length(ref err) => err.to_retry_requirement(),
+        match &self.inner {
+            ExpectedInner::Value(err) => err.to_retry_requirement(),
+            ExpectedInner::Valid(err) => err.to_retry_requirement(),
+            ExpectedInner::Length(err) => err.to_retry_requirement(),
         }
     }
 }
@@ -121,10 +121,10 @@ where
     where
         C: Context,
     {
-        let curr_input = match self.inner {
-            ExpectedInner::Value(ref mut err) => &mut err.input,
-            ExpectedInner::Valid(ref mut err) => &mut err.input,
-            ExpectedInner::Length(ref mut err) => &mut err.input,
+        let curr_input = match &mut self.inner {
+            ExpectedInner::Value(err) => &mut err.input,
+            ExpectedInner::Valid(err) => &mut err.input,
+            ExpectedInner::Length(err) => &mut err.input,
         };
         if curr_input.is_within(input) {
             *curr_input = input
@@ -189,7 +189,7 @@ pub(crate) enum Value<'a> {
 impl<'i> Value<'i> {
     pub(crate) fn as_input(&self) -> &Input {
         match self {
-            Self::Byte(ref b) => Input::from_u8(b),
+            Self::Byte(b) => Input::from_u8(b),
             Self::Bytes(bytes) => input(bytes),
         }
     }
