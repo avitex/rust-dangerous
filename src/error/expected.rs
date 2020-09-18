@@ -136,13 +136,13 @@ where
 
 impl<'i> fmt::Display for Expected<'i> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.display().fmt(f)
+        ErrorDisplay::from_formatter(self, f).fmt(f)
     }
 }
 
 impl<'i> fmt::Debug for Expected<'i> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.display().banner(true).fmt(f)
+        ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
     }
 }
 

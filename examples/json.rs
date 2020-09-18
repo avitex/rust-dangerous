@@ -18,7 +18,7 @@ fn main() {
     let input = dangerous::input(input_str.as_bytes());
     match input.read_all::<_, _, Expected>(read_value) {
         Ok(json) => println!("{:#?}", json),
-        Err(e) => eprintln!("error: {:#}", e.display().str_hint(true)),
+        Err(e) => eprintln!("error: {:#}", e),
     }
 }
 
