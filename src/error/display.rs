@@ -11,6 +11,7 @@ const DEFAULT_MAX_WIDTH: usize = 80;
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
     banner: bool,
+    str_hint: bool,
     max_width: Option<usize>,
 }
 
@@ -23,14 +24,14 @@ where
         Self {
             error,
             banner: false,
+            str_hint: false,
             max_width: Some(DEFAULT_MAX_WIDTH),
         }
     }
 
     /// Derive an `ErrorDisplay` from a [`fmt::Formatter`] with defaults.
     pub fn from_formatter(error: &'a T, f: &fmt::Formatter<'_>) -> Self {
-        let _ = f;
-        Self::new(error)
+        Self::new(error).str_hint(f.alternate())
     }
 
     /// Set whether or not a banner should printed around the error.
@@ -42,6 +43,12 @@ where
     /// Set the `max-width` for wrapping error output.
     pub fn max_width(mut self, value: Option<usize>) -> Self {
         self.max_width = value;
+        self
+    }
+
+    /// Hint to the formatter that the [`Input`] is a UTF-8 `str`.
+    pub fn str_hint(mut self, value: bool) -> Self {
+        self.str_hint = value;
         self
     }
 
@@ -70,6 +77,7 @@ where
         let error = &self.error;
         let context_stack = error.context_stack();
         let input = error.input();
+        let input_display = input.display().str_hint(self.str_hint);
         writeln!(
             w,
             "error attempting to {}: {}",
@@ -78,12 +86,12 @@ where
         )?;
         w.write_str(INPUT_PREFIX)?;
         if error.span().is_empty() {
-            writeln!(w, "{}", input)?;
+            writeln!(w, "{}", input_display)?;
         } else if let Some((_before, _after)) = input.split_sub(error.span()) {
             // before.display().max(40)
-            write!(w, "{}", input)?;
+            write!(w, "{}", input_display)?;
         } else {
-            write!(w, "{}", input)?;
+            write!(w, "{}", input_display)?;
         }
         write!(w, "\ncontext bracktrace:")?;
         let write_success = context_stack.walk(&mut |i, c| {
