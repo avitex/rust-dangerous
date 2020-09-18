@@ -57,10 +57,10 @@ where
         skip_whitespace(r);
         if r.peek_u8()? != b']' {
             loop {
-                let val = r.context("map val", read_value)?;
+                let val = read_value(r)?;
                 items.push(val);
                 if !r.at_end() && r.peek_u8()? == b',' {
-                    r.context("item delim", |r| r.skip(1))?;
+                    r.skip(1)?;
                     continue;
                 } else {
                     break;
@@ -84,15 +84,15 @@ where
         skip_whitespace(r);
         if r.peek_u8()? != b'}' {
             loop {
-                let key = r.context("key", read_str)?;
+                let key = r.context("json object key", read_str)?;
                 skip_whitespace(r);
-                r.context("kv sep", |r| r.consume_u8(b':'))?;
+                r.consume_u8(b':')?;
                 skip_whitespace(r);
-                let val = r.context("val", read_value)?;
+                let val = read_value(r)?;
                 skip_whitespace(r);
                 items.push((key, val));
                 if !r.at_end() && r.peek_u8()? == b',' {
-                    r.context("kv delim", |r| r.skip(1))?;
+                    r.skip(1)?;
                     continue;
                 } else {
                     break;
