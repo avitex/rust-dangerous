@@ -1,4 +1,20 @@
 //! Error support
+//!
+//! - If you want the fastest error which has no debugging information,
+//!   [`Invalid`] has you covered.
+//! - If you want an error that is still designed to be fast, but also includes
+//!   debugging information, [`Expected`] will meet your uh, expectations...
+//! - If you require more verbosity, consider creating custom [`Context`]s
+//!   before jumping to custom errors. If you do require a custom error,
+//!   implementing it is easy enough. Just implement [`Error`] and [`From`] for
+//!   [`ExpectedValue`], [`ExpectedValid`] and [`ExpectedLength`] and you'll be
+//!   on your merry way. Additionally implement [`ErrorDisplay`] to support
+//!   lovely error printing and [`ToRetryRequirement`] for streaming protocols.
+//!
+//! Most of what `dangerous` supports out of the box is good to go. If you need
+//! to stretch out performance more, or provide additional functionality on what
+//! is provided, the error system should be flexible for those requirements. If
+//! it's not, consider opening an issue.
 
 mod context;
 mod display;
@@ -70,7 +86,8 @@ pub trait ErrorDetails<'i> {
     /// Returns a [`fmt::Error`] if failed to write to the formatter.
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
-    /// The walkable [`ContextStack`] to the original error that occured.
+    /// The walkable [`ContextStack`] to the original context around the error
+    /// that occured.
     fn context_stack(&self) -> &dyn ContextStack;
 }
 

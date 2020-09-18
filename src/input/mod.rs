@@ -97,7 +97,7 @@ impl Input {
     /// # Errors
     ///
     /// Returns [`ExpectedLength`] if the the input is empty.
-    #[inline(always)]
+    #[inline]
     pub fn to_dangerous_non_empty<'i, E>(&'i self) -> Result<&'i [u8], E>
     where
         E: From<ExpectedLength<'i>>,

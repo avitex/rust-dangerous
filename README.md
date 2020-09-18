@@ -14,14 +14,11 @@ dangerous = "0.1"
 
 ## TODO
 
-- [ ] Documentation
-- [ ] Unit test coverage
-- [ ] Review `must_use` and `inline` usage
-- [ ] Error display
-- [ ] Input display
-- [ ] Stabilize errors
-- [ ] Stabilize `Reader` interface
 - [ ] Terminal support
+- [ ] Unit test coverage
+- [ ] Error and Input display
+- [ ] Review `must_use` usage
+- [ ] Review `Reader` interface
 
 ## Goals
 
@@ -33,8 +30,8 @@ dangerous = "0.1"
 - Primitive type support.
 - Optional verbose errors.
 
-\[1] Zero-allocations if the `full-context` feature is disabled.
-\[2] Zero-dependencies if the `unicode` feature is disabled.
+**\[1]** Zero-allocations if the `full-context` feature is disabled.  
+**\[2]** Zero-dependencies if the `unicode` feature is disabled.
 
 This library intentions are to provide a simple interface for explicitly handling user-generated data safely.
 It tries to achieve this by providing useful primitives for parsing data and an optional, but solid, debugging

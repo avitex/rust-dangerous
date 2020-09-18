@@ -37,6 +37,7 @@ fn at_end() {
 #[test]
 fn context() {
     let err = read_all!(b"hello", |r| { r.context("bob", |r| r.consume(b"world")) }).unwrap_err();
+    assert_eq!(err.context_stack().count(), 4);
     err.context_stack().walk(&mut |i, c| {
         // i == 1 is an operation context which cannot be downcast
         if i == 2 {

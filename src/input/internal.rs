@@ -242,7 +242,7 @@ impl Input {
         }
     }
 
-    // TODO: use https://github.com/rust-lang/rust/issues/65807 when stable
+    // FIXME: use https://github.com/rust-lang/rust/issues/65807 when stable
     #[inline(always)]
     fn as_dangerous_ptr_range(&self) -> Range<*const u8> {
         let bytes = self.as_dangerous();

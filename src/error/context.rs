@@ -33,6 +33,9 @@ pub trait ContextStack: 'static {
     /// The root context.
     fn root(&self) -> ExpectedContext;
 
+    /// Return the total number of contexts.
+    fn count(&self) -> usize;
+
     /// Walk the context stack, starting with the highest context to the root.
     ///
     /// Returns `true` if all of the stack available was walked, `false` if not.
@@ -58,7 +61,7 @@ pub trait ContextStackBuilder {
 ///
 /// - `index` (the index of the context starting from `1`).
 /// - `context` (the context at the provided index).
-pub type ContextStackWalker<'a> = dyn FnMut(usize, &(dyn Context + 'static)) -> bool + 'a;
+pub type ContextStackWalker<'a> = dyn FnMut(usize, &dyn Context) -> bool + 'a;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Basic expected context
@@ -146,6 +149,10 @@ impl ContextStack for RootContextStack {
         self.context
     }
 
+    fn count(&self) -> usize {
+        1
+    }
+
     fn walk<'a>(&'a self, f: &mut ContextStackWalker<'a>) -> bool {
         f(1, &self.context)
     }
@@ -183,6 +190,10 @@ impl ContextStackBuilder for FullContextStack {
 impl ContextStack for FullContextStack {
     fn root(&self) -> ExpectedContext {
         self.root
+    }
+
+    fn count(&self) -> usize {
+        self.stack.len()
     }
 
     fn walk<'a>(&'a self, f: &mut ContextStackWalker<'a>) -> bool {
