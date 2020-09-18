@@ -4,6 +4,8 @@
 //!   [`Invalid`] has you covered.
 //! - If you want an error that is still designed to be fast, but also includes
 //!   debugging information, [`Expected`] will meet your uh, expectations...
+//!   If the feature `full-context` is enabled, [`Expected`] uses
+//!   [`FullContextStack`], [`RootContextStack`] if not.
 //! - If you require more verbosity, consider creating custom [`Context`]s
 //!   before jumping to custom errors. If you do require a custom error,
 //!   implementing it is easy enough. Just implement [`Error`] and [`From`] for
