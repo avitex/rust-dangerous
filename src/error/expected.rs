@@ -1,5 +1,8 @@
 use core::fmt;
 
+#[cfg(feature = "full-context")]
+use alloc::boxed::Box;
+
 use crate::display::ErrorDisplay;
 use crate::error::{
     Context, ContextStack, ContextStackBuilder, ErrorDetails, ExpectedContext, FromContext,
@@ -9,18 +12,30 @@ use crate::input::{input, Input};
 use crate::utils::ByteCount;
 
 #[cfg(feature = "full-context")]
-type ExpectedStack = crate::error::FullContextStack;
+type ExpectedContextStack = crate::error::FullContextStack;
 #[cfg(not(feature = "full-context"))]
-type ExpectedStack = crate::error::RootContextStack;
+type ExpectedContextStack = crate::error::RootContextStack;
 
 /// A catch-all error for all expected errors supported in this crate.
-pub struct Expected<'i, S = ExpectedStack> {
-    stack: S,
-    input: &'i Input,
-    inner: ExpectedInner<'i>,
+///
+/// - Enable the `full-context` feature (enabled by default), for full-context
+///   stacks.
+/// - It's recommended to have the `alloc` feature enabled (enabled by default)
+///   for better performance with this error.
+pub struct Expected<'i, S = ExpectedContextStack> {
+    #[cfg(feature = "alloc")]
+    inner: Box<ExpectedInner<'i, S>>,
+    #[cfg(not(feature = "alloc"))]
+    inner: ExpectedInner<'i, S>,
 }
 
-enum ExpectedInner<'i> {
+struct ExpectedInner<'i, S> {
+    stack: S,
+    input: &'i Input,
+    kind: ExpectedKind<'i>,
+}
+
+enum ExpectedKind<'i> {
     /// An exact value was expected in a context.
     Value(ExpectedValue<'i>),
     /// A valid value was expected in a context.
@@ -43,17 +58,29 @@ impl<'i, S> Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
-    fn from_inner(inner: ExpectedInner<'i>) -> Self {
-        let (input, context) = match &inner {
-            ExpectedInner::Valid(err) => (err.input(), err.context()),
-            ExpectedInner::Value(err) => (err.input(), err.context()),
-            ExpectedInner::Length(err) => (err.input(), err.context()),
+    fn from_kind(kind: ExpectedKind<'i>) -> Self {
+        let (input, context) = match &kind {
+            ExpectedKind::Valid(err) => (err.input(), err.context()),
+            ExpectedKind::Value(err) => (err.input(), err.context()),
+            ExpectedKind::Length(err) => (err.input(), err.context()),
         };
-        Self {
+        Self::from_inner(ExpectedInner {
+            kind,
             input,
-            inner,
             stack: S::from_root(context),
+        })
+    }
+
+    #[cfg(feature = "alloc")]
+    fn from_inner(inner: ExpectedInner<'i, S>) -> Self {
+        Self {
+            inner: Box::new(inner),
         }
+    }
+
+    #[cfg(not(feature = "alloc"))]
+    fn from_inner(inner: ExpectedInner<'i, S>) -> Self {
+        Self { inner }
     }
 }
 
@@ -62,50 +89,50 @@ where
     S: ContextStack,
 {
     fn input(&self) -> &'i Input {
-        self.input
+        self.inner.input
     }
 
     fn span(&self) -> &'i Input {
-        match &self.inner {
-            ExpectedInner::Value(err) => err.found(),
-            ExpectedInner::Valid(err) => err.span(),
-            ExpectedInner::Length(err) => err.span(),
+        match &self.inner.kind {
+            ExpectedKind::Value(err) => err.found(),
+            ExpectedKind::Valid(err) => err.span(),
+            ExpectedKind::Length(err) => err.span(),
         }
     }
 
     fn found_value(&self) -> Option<&Input> {
-        match &self.inner {
-            ExpectedInner::Value(err) => Some(err.found()),
-            ExpectedInner::Valid(_) | ExpectedInner::Length(_) => None,
+        match &self.inner.kind {
+            ExpectedKind::Value(err) => Some(err.found()),
+            ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,
         }
     }
 
     fn expected_value(&self) -> Option<&Input> {
-        match &self.inner {
-            ExpectedInner::Value(err) => Some(err.expected()),
-            ExpectedInner::Valid(_) | ExpectedInner::Length(_) => None,
+        match &self.inner.kind {
+            ExpectedKind::Value(err) => Some(err.expected()),
+            ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,
         }
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.inner {
-            ExpectedInner::Value(err) => fmt::Display::fmt(err, f),
-            ExpectedInner::Valid(err) => fmt::Display::fmt(err, f),
-            ExpectedInner::Length(err) => fmt::Display::fmt(err, f),
+        match &self.inner.kind {
+            ExpectedKind::Value(err) => fmt::Display::fmt(err, f),
+            ExpectedKind::Valid(err) => fmt::Display::fmt(err, f),
+            ExpectedKind::Length(err) => fmt::Display::fmt(err, f),
         }
     }
 
     fn context_stack(&self) -> &dyn ContextStack {
-        &self.stack
+        &self.inner.stack
     }
 }
 
 impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        match &self.inner {
-            ExpectedInner::Value(err) => err.to_retry_requirement(),
-            ExpectedInner::Valid(err) => err.to_retry_requirement(),
-            ExpectedInner::Length(err) => err.to_retry_requirement(),
+        match &self.inner.kind {
+            ExpectedKind::Value(err) => err.to_retry_requirement(),
+            ExpectedKind::Valid(err) => err.to_retry_requirement(),
+            ExpectedKind::Length(err) => err.to_retry_requirement(),
         }
     }
 }
@@ -118,15 +145,15 @@ where
     where
         C: Context,
     {
-        let curr_input = match &mut self.inner {
-            ExpectedInner::Value(err) => &mut err.input,
-            ExpectedInner::Valid(err) => &mut err.input,
-            ExpectedInner::Length(err) => &mut err.input,
+        let curr_input = match &mut self.inner.kind {
+            ExpectedKind::Value(err) => &mut err.input,
+            ExpectedKind::Valid(err) => &mut err.input,
+            ExpectedKind::Length(err) => &mut err.input,
         };
         if curr_input.is_within(input) {
             *curr_input = input
         }
-        self.stack.push(context);
+        self.inner.stack.push(context);
         self
     }
 }
@@ -148,7 +175,7 @@ where
     S: ContextStackBuilder,
 {
     fn from(err: ExpectedLength<'i>) -> Self {
-        Self::from_inner(ExpectedInner::Length(err))
+        Self::from_kind(ExpectedKind::Length(err))
     }
 }
 
@@ -157,7 +184,7 @@ where
     S: ContextStackBuilder,
 {
     fn from(err: ExpectedValid<'i>) -> Self {
-        Self::from_inner(ExpectedInner::Valid(err))
+        Self::from_kind(ExpectedKind::Valid(err))
     }
 }
 
@@ -166,7 +193,7 @@ where
     S: ContextStackBuilder,
 {
     fn from(err: ExpectedValue<'i>) -> Self {
-        Self::from_inner(ExpectedInner::Value(err))
+        Self::from_kind(ExpectedKind::Value(err))
     }
 }
 

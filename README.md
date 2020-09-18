@@ -30,7 +30,7 @@ dangerous = "0.1"
 - Primitive type support.
 - Optional verbose errors.
 
-**\[1]** Zero-allocations if the `full-context` feature is disabled.  
+**\[1]** Allocations for error cases (`alloc` feature is recommended for better perf).  
 **\[2]** Zero-dependencies if the `unicode` feature is disabled.
 
 This library intentions are to provide a simple interface for explicitly handling user-generated data safely.

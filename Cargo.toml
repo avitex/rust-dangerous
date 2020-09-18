@@ -13,15 +13,18 @@ readme = "README.md"
 
 [features]
 default = ["full-context", "unicode"]
-# If enabled, implements `std::error::Error` on errors.
+# Enables `std::error::Error` implementation for errors.
 std = []
-# If enabled, improves unicode printing support.
+# Enables allocation.
+# This feature also enables the boxing of `Expected`'s
+# internals, improving performance of successful parsing.
+alloc = []
+# Enables improved unicode printing support.
 unicode = ["unicode-width"]
-# If enabled, implements error terminal printing support.
+# Enables error terminal printing support.
 terminal = ["std", "termcolor"]
-# If enabled, shows full context backtraces.
-# This feature requires allocation.
-full-context = []
+# Enables full context backtraces.
+full-context = ["alloc"]
 
 [dependencies]
 termcolor = { version = "~1", optional = true }
