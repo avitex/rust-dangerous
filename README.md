@@ -30,16 +30,20 @@ dangerous = "0.1"
 - Primitive type support.
 - Optional verbose errors.
 
-**\[1]** Allocations for error cases (`alloc` feature is recommended for better perf).  
+**\[1]** Allocations for error cases (`alloc` feature is recommended for better
+perf).  
 **\[2]** Zero-dependencies if the `unicode` feature is disabled.
 
-This library intentions are to provide a simple interface for explicitly handling user-generated data safely.
-It tries to achieve this by providing useful primitives for parsing data and an optional, but solid, debugging
-interface with sane input formatting and errors to weed out problems before, or after they arise in production.
+This library's intentions are to provide a simple interface for explicitly
+handling user-generated data safely. It tries to achieve this by providing
+useful primitives for parsing data and an optional, but solid, debugging
+interface with sane input formatting and errors to weed out problems before, or
+after they arise in production.
 
-Passing down errors as simple as `core::str::Utf8Error` may be useful enough to debug while in development,
-however when just written into logs without the input/context, often amount to noise. At this stage 
-you are almost better off with a simple input error.
+Passing down errors as simple as `core::str::Utf8Error` may be useful enough to
+debug while in development, however when just written into logs without the
+input/context, often amount to noise. At this stage you are almost better off
+with a simple input error.
 
 Ever tried working backwards from something like this?
 
@@ -62,8 +66,8 @@ context bracktrace:
 
 ## Safety
 
-This library has one instance of `unsafe` required for wrapping a
-byte slice into the `Input` DST.
+This library has one instance of `unsafe` required for wrapping a byte slice
+into the `Input` DST.
 
 ## Inspiration
 
