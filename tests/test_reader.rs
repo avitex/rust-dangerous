@@ -37,15 +37,14 @@ fn at_end() {
 #[test]
 fn context() {
     let err = read_all!(b"hello", |r| { r.context("bob", |r| r.consume(b"world")) }).unwrap_err();
-    assert_eq!(err.context_stack().count(), 4);
+    assert_eq!(err.context_stack().count(), 3);
     err.context_stack().walk(&mut |i, c| {
         // i == 1 is an operation context which cannot be downcast
         if i == 2 {
             let c = Any::downcast_ref::<&'static str>(c.as_any());
             assert_eq!(c, Some(&"bob"));
         }
-        // i == 3 is an operation context which cannot be downcast
-        if i == 4 {
+        if i == 3 {
             let c = Any::downcast_ref::<ExpectedContext>(c.as_any());
             assert!(c.is_some());
         }

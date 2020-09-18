@@ -193,7 +193,7 @@ impl ContextStack for FullContextStack {
     }
 
     fn count(&self) -> usize {
-        self.stack.len()
+        self.stack.len() + 1
     }
 
     fn walk<'a>(&'a self, f: &mut ContextStackWalker<'a>) -> bool {
