@@ -17,10 +17,7 @@ pub struct Reader<'i, E> {
     error: PhantomData<E>,
 }
 
-impl<'i, E> Reader<'i, E>
-where
-    E: Error<'i>,
-{
+impl<'i, E> Reader<'i, E> {
     /// Mutably use the reader with a given context.
     ///
     /// # Errors
@@ -29,6 +26,7 @@ where
     /// specified context to it.
     pub fn context<C, F, O>(&mut self, context: C, f: F) -> Result<O, E>
     where
+        E: Error<'i>,
         C: Context,
         F: FnOnce(&mut Self) -> Result<O, E>,
     {
@@ -43,6 +41,7 @@ where
     /// specified context to it.
     pub fn peek_context<C, F, O>(&self, context: C, f: F) -> Result<O, E>
     where
+        E: Error<'i>,
         C: Context,
         F: FnOnce(&Self) -> Result<O, E>,
     {
@@ -96,6 +95,7 @@ where
     /// Returns any error the provided function does.
     pub fn try_skip_while<F>(&mut self, pred: F) -> Result<usize, E>
     where
+        E: Error<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         let (head, tail) = self.input.try_split_while(pred, "try skip while")?;
@@ -142,6 +142,7 @@ where
     /// Returns any error the provided function does.
     pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
     where
+        E: Error<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         let (head, tail) = self.input.try_split_while(pred, "try take while")?;
@@ -152,6 +153,7 @@ where
     /// Read a length of input that was successfully parsed.
     pub fn take_consumed<F>(&mut self, consumer: F) -> &'i Input
     where
+        E: Error<'i>,
         F: FnMut(&mut Self),
     {
         let (head, tail) = self.input.split_consumed(consumer);
@@ -166,6 +168,7 @@ where
     /// Returns an error if the provided function does.
     pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<&'i Input, E>
     where
+        E: Error<'i>,
         F: FnMut(&mut Self) -> Result<(), E>,
     {
         let (head, tail) = self
@@ -182,8 +185,8 @@ where
     /// Returns an error if the required length cannot be fullfilled.
     pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
-        F: FnOnce(&Input) -> O,
         E: From<ExpectedLength<'i>>,
+        F: FnOnce(&Input) -> O,
     {
         let (head, _) = self.input.split_at(len, "peek")?;
         Ok(f(head))
@@ -197,8 +200,10 @@ where
     /// or if the provided function returns one.
     pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
-        F: FnOnce(&'i Input) -> Result<O, E>,
+        E: Error<'i>,
         E: From<ExpectedLength<'i>>,
+        F: FnOnce(&'i Input) -> Result<O, E>,
+
         O: 'static,
     {
         let (head, _) = self.input.split_at(len, "try peek")?;
@@ -292,9 +297,9 @@ where
     /// Returns an error if failed to read, or the returned value was `None`.
     pub fn try_expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
-        F: FnOnce(&mut Self) -> Result<Option<O>, E>,
         E: Error<'i>,
         E: From<ExpectedValid<'i>>,
+        F: FnOnce(&mut Self) -> Result<Option<O>, E>,
     {
         let context = ExpectedContext {
             expected,
@@ -352,9 +357,9 @@ where
     /// [`RetryRequirement`]: crate::RetryRequirement
     pub fn try_expect_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
-        F: FnOnce(&mut Self) -> Result<O, R>,
         E: Error<'i>,
         E: From<ExpectedValid<'i>>,
+        F: FnOnce(&mut Self) -> Result<O, R>,
         R: ToRetryRequirement,
     {
         f(self).map_err(|err| {
