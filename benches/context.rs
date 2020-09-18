@@ -15,22 +15,23 @@ where
     })
 }
 
-fn bench_contexts(c: &mut Criterion) {
-    // Invalid
-    c.bench_function("invalid failure", |b| {
-        b.iter(|| expected::<Invalid>(black_box(b"1")))
-    });
-    c.bench_function("invalid success", |b| {
+fn bench_invalid(c: &mut Criterion) {
+    c.bench_function("invalid_ok", |b| {
         b.iter(|| expected::<Invalid>(black_box(b"2")))
     });
-    // Expected
-    c.bench_function("expected failure", |b| {
-        b.iter(|| expected::<Expected>(black_box(b"1")))
-    });
-    c.bench_function("expected success", |b| {
-        b.iter(|| expected::<Expected>(black_box(b"2")))
+    c.bench_function("invalid_err", |b| {
+        b.iter(|| expected::<Invalid>(black_box(b"1")))
     });
 }
 
-criterion_group!(benches, bench_contexts);
+fn bench_expected(c: &mut Criterion) {
+    c.bench_function("expected_ok", |b| {
+        b.iter(|| expected::<Expected>(black_box(b"2")))
+    });
+    c.bench_function("expected_err", |b| {
+        b.iter(|| expected::<Expected>(black_box(b"1")))
+    });
+}
+
+criterion_group!(benches, bench_invalid, bench_expected);
 criterion_main!(benches);
