@@ -65,8 +65,6 @@ context bracktrace:
 This library has one instance of `unsafe` required for wrapping a
 byte slice into the `Input` DST.
 
-**No other instances of `unsafe` are permitted.**
-
 ## Inspiration
 
-This project was inspired by [untrusted](https://github.com/briansmith/untrusted).
+This project was originally inspired by [untrusted](https://github.com/briansmith/untrusted).
