@@ -54,7 +54,7 @@ mod reader;
 mod utils;
 
 pub use self::error::{
-    Error, Expected, FromExpected, Invalid, RetryRequirement, ToRetryRequirement,
+    Expected, FromContext, FromExpected, Invalid, RetryRequirement, ToRetryRequirement,
 };
 pub use self::input::{input, Input, InputDisplay};
 pub use self::reader::Reader;

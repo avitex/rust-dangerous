@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::error::{
-    Context, ContextStack, Error, Expected, ExpectedLength, ExpectedValid, ExpectedValue,
+    Context, ContextStack, Expected, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
     RetryRequirement, ToRetryRequirement,
 };
 use crate::input::Input;
@@ -58,8 +58,8 @@ impl ToRetryRequirement for Invalid {
     }
 }
 
-impl<'i> Error<'i> for Invalid {
-    fn from_input_context<C>(self, _input: &'i Input, _context: C) -> Self
+impl<'i> FromContext<'i> for Invalid {
+    fn from_context<C>(self, _input: &'i Input, _context: C) -> Self
     where
         C: Context,
     {

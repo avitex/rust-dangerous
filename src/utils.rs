@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::error::{Context, Error, OperationContext};
+use crate::error::{Context, FromContext, OperationContext};
 use crate::input::Input;
 
 #[inline(always)]
@@ -11,7 +11,7 @@ pub(crate) fn with_operation_context<'i, F, T, E>(
 ) -> Result<T, E>
 where
     F: FnOnce() -> Result<T, E>,
-    E: Error<'i>,
+    E: FromContext<'i>,
 {
     with_context(input, OperationContext(operation), f)
 }
@@ -20,10 +20,10 @@ where
 pub(crate) fn with_context<'i, F, C, T, E>(input: &'i Input, context: C, f: F) -> Result<T, E>
 where
     F: FnOnce() -> Result<T, E>,
-    E: Error<'i>,
+    E: FromContext<'i>,
     C: Context,
 {
-    f().map_err(|err| err.from_input_context(input, context))
+    f().map_err(|err| err.from_context(input, context))
 }
 
 pub(crate) struct ByteCount(pub(crate) usize);

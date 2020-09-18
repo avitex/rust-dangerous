@@ -2,7 +2,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    Context, Error, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue,
+    Context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
     ToRetryRequirement, Value,
 };
 use crate::input::Input;
@@ -26,7 +26,7 @@ impl<'i, E> Reader<'i, E> {
     /// specified context to it.
     pub fn context<C, F, O>(&mut self, context: C, f: F) -> Result<O, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         C: Context,
         F: FnOnce(&mut Self) -> Result<O, E>,
     {
@@ -41,7 +41,7 @@ impl<'i, E> Reader<'i, E> {
     /// specified context to it.
     pub fn peek_context<C, F, O>(&self, context: C, f: F) -> Result<O, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         C: Context,
         F: FnOnce(&Self) -> Result<O, E>,
     {
@@ -95,7 +95,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns any error the provided function does.
     pub fn try_skip_while<F>(&mut self, pred: F) -> Result<usize, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         let (head, tail) = self.input.try_split_while(pred, "try skip while")?;
@@ -142,7 +142,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns any error the provided function does.
     pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         let (head, tail) = self.input.try_split_while(pred, "try take while")?;
@@ -153,7 +153,7 @@ impl<'i, E> Reader<'i, E> {
     /// Read a length of input that was successfully parsed.
     pub fn take_consumed<F>(&mut self, consumer: F) -> &'i Input
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         F: FnMut(&mut Self),
     {
         let (head, tail) = self.input.split_consumed(consumer);
@@ -168,7 +168,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if the provided function does.
     pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<&'i Input, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         F: FnMut(&mut Self) -> Result<(), E>,
     {
         let (head, tail) = self
@@ -200,7 +200,7 @@ impl<'i, E> Reader<'i, E> {
     /// or if the provided function returns one.
     pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         E: From<ExpectedLength<'i>>,
         F: FnOnce(&'i Input) -> Result<O, E>,
 
@@ -273,7 +273,7 @@ impl<'i, E> Reader<'i, E> {
     pub fn expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Self) -> Option<O>,
-        E: Error<'i>,
+        E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
         match f(self) {
@@ -297,7 +297,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if failed to read, or the returned value was `None`.
     pub fn try_expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Self) -> Result<Option<O>, E>,
     {
@@ -327,12 +327,12 @@ impl<'i, E> Reader<'i, E> {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{Error, Invalid, Expected, FromExpected};
+    /// use dangerous::{FromContext, Invalid, Expected, FromExpected};
     ///
     /// // Our custom reader function
     /// fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
     /// where
-    ///   E: Error<'i>,
+    ///   E: FromContext<'i>,
     ///   E: FromExpected<'i>,
     /// {
     ///     input.read_all(|r| {
@@ -357,7 +357,7 @@ impl<'i, E> Reader<'i, E> {
     /// [`RetryRequirement`]: crate::RetryRequirement
     pub fn try_expect_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Self) -> Result<O, R>,
         R: ToRetryRequirement,

@@ -3,7 +3,7 @@ mod internal;
 
 use core::{fmt, str};
 
-use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext};
+use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
 
 pub use self::display::InputDisplay;
@@ -220,7 +220,7 @@ impl Input {
     pub fn read_all<'i, F, O, E>(&'i self, f: F) -> Result<O, E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
-        E: Error<'i>,
+        E: FromContext<'i>,
         E: From<ExpectedLength<'i>>,
     {
         let mut r = Reader::new(self);
@@ -249,7 +249,7 @@ impl Input {
     pub fn read_partial<'i, F, O, E>(&'i self, f: F) -> Result<(O, &'i Input), E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
-        E: Error<'i>,
+        E: FromContext<'i>,
     {
         let mut r = Reader::new(self);
         let ok = r.context(OperationContext("read partial"), f)?;

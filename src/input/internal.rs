@@ -1,7 +1,7 @@
 use core::ops::Range;
 use core::slice;
 
-use crate::error::{Error, ExpectedContext, ExpectedLength, ExpectedValue, Value};
+use crate::error::{ExpectedContext, ExpectedLength, ExpectedValue, FromContext, Value};
 use crate::input::{input, Input};
 use crate::reader::Reader;
 use crate::utils::with_operation_context;
@@ -140,7 +140,7 @@ impl Input {
     #[inline(always)]
     pub(crate) fn split_consumed<'i, F, E>(&'i self, mut f: F) -> (&'i Input, &'i Input)
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         F: FnMut(&mut Reader<'i, E>),
     {
         let mut reader = Reader::new(self);
@@ -157,7 +157,7 @@ impl Input {
         operation: &'static str,
     ) -> Result<(&'i Input, &'i Input), E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         F: FnMut(&mut Reader<'i, E>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self);
@@ -213,7 +213,7 @@ impl Input {
         operation: &'static str,
     ) -> Result<(&'i Input, &'i Input), E>
     where
-        E: Error<'i>,
+        E: FromContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         let bytes = self.as_dangerous();

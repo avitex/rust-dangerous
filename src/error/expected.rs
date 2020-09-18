@@ -1,8 +1,8 @@
 use core::fmt;
 
 use crate::error::{
-    Context, ContextStack, ContextStackBuilder, Error, ErrorDetails, ErrorDisplay, ExpectedContext,
-    RetryRequirement, ToRetryRequirement,
+    Context, ContextStack, ContextStackBuilder, ErrorDetails, ErrorDisplay, ExpectedContext,
+    FromContext, RetryRequirement, ToRetryRequirement,
 };
 use crate::input::{input, Input};
 use crate::utils::ByteCount;
@@ -99,10 +99,7 @@ where
     }
 }
 
-impl<'i, S> ToRetryRequirement for Expected<'i, S>
-where
-    S: ContextStack,
-{
+impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         match &self.inner {
             ExpectedInner::Value(err) => err.to_retry_requirement(),
@@ -112,12 +109,11 @@ where
     }
 }
 
-impl<'i, S> Error<'i> for Expected<'i, S>
+impl<'i, S> FromContext<'i> for Expected<'i, S>
 where
-    S: ContextStack,
     S: ContextStackBuilder,
 {
-    fn from_input_context<C>(mut self, input: &'i Input, context: C) -> Self
+    fn from_context<C>(mut self, input: &'i Input, context: C) -> Self
     where
         C: Context,
     {

@@ -3,15 +3,16 @@
 //! - If you want the fastest error which has no debugging information,
 //!   [`Invalid`] has you covered.
 //! - If you want an error that is still designed to be fast, but also includes
-//!   debugging information, [`Expected`] will meet your uh, expectations...
-//!   If the feature `full-context` is enabled, [`Expected`] uses
+//!   debugging information, [`Expected`] will meet your uh, expectations... If
+//!   the feature `full-context` is enabled, [`Expected`] uses
 //!   [`FullContextStack`], [`RootContextStack`] if not.
 //! - If you require more verbosity, consider creating custom [`Context`]s
 //!   before jumping to custom errors. If you do require a custom error,
-//!   implementing it is easy enough. Just implement [`Error`] and [`From`] for
-//!   [`ExpectedValue`], [`ExpectedLength`] and [`ExpectedValid`] and you'll be
-//!   on your merry way. Additionally implement [`ErrorDisplay`] to support
-//!   lovely error printing and [`ToRetryRequirement`] for streaming protocols.
+//!   implementing it is easy enough. Just implement [`FromContext`] and
+//!   [`From`] for [`ExpectedValue`], [`ExpectedLength`] and [`ExpectedValid`]
+//!   and you'll be on your merry way. Additionally implement [`ErrorDetails`]
+//!   to support lovely error printing and [`ToRetryRequirement`] for streaming
+//!   protocols.
 //!
 //! Most of what `dangerous` supports out of the box is good to go. If you need
 //! to stretch out performance more, or provide additional functionality on what
@@ -31,7 +32,7 @@ use crate::input::Input;
 #[cfg(feature = "full-context")]
 pub use self::context::FullContextStack;
 pub use self::context::{
-    Context, ContextStack, ContextStackBuilder, ContextStackWalker, ExpectedContext,
+    Context, ContextStack, ContextStackBuilder, ContextStackWalker, ExpectedContext, FromContext,
     RootContextStack,
 };
 pub use self::display::ErrorDisplay;
@@ -41,17 +42,6 @@ pub use self::retry::{RetryRequirement, ToRetryRequirement};
 
 pub(crate) use self::context::OperationContext;
 pub(crate) use self::expected::Value;
-
-/// Core error that collects contexts.
-pub trait Error<'i> {
-    /// Return `Self` with context.
-    ///
-    /// This method is used for adding parent contexts to errors bubbling up.
-    /// How child and parent contexts are handled are upstream concerns.
-    fn from_input_context<C>(self, input: &'i Input, context: C) -> Self
-    where
-        C: Context;
-}
 
 /// The errors details around an error produced while attempting to process
 /// input providing the required properties to produce a verbose report on what

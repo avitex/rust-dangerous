@@ -4,6 +4,19 @@ use core::fmt::{self, Debug};
 #[cfg(feature = "full-context")]
 use alloc::{boxed::Box, vec::Vec};
 
+use crate::input::Input;
+
+/// Implemented for errors that collect contexts.
+pub trait FromContext<'i> {
+    /// Return `Self` with context.
+    ///
+    /// This method is used for adding parent contexts to errors bubbling up.
+    /// How child and parent contexts are handled are upstream concerns.
+    fn from_context<C>(self, input: &'i Input, context: C) -> Self
+    where
+        C: Context;
+}
+
 /// The base context surrounding an error.
 pub trait Context: Any + Debug {
     /// The operation that was attempted when an error occured.

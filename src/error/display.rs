@@ -46,7 +46,7 @@ where
         self
     }
 
-    /// Hint to the formatter that the [`Input`] is a UTF-8 `str`.
+    /// Hint to the formatter that the [`crate::Input`] is a UTF-8 `str`.
     pub fn str_hint(mut self, value: bool) -> Self {
         self.str_hint = value;
         self

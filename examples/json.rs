@@ -1,6 +1,6 @@
 //! This example demonstrates a simple JSON parser.
 
-use dangerous::{Error, Expected, FromExpected, Invalid, Reader};
+use dangerous::{Expected, FromContext, FromExpected, Invalid, Reader};
 use std::env;
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ fn main() {
 
 fn read_value<'i, E>(r: &mut Reader<'i, E>) -> Result<Value<'i>, E>
 where
-    E: Error<'i>,
+    E: FromContext<'i>,
     E: FromExpected<'i>,
 {
     skip_whitespace(r);
@@ -47,7 +47,7 @@ where
 
 fn read_arr<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Value<'i>>, E>
 where
-    E: Error<'i>,
+    E: FromContext<'i>,
     E: FromExpected<'i>,
 {
     skip_whitespace(r);
@@ -67,6 +67,7 @@ where
                 }
             }
         }
+        skip_whitespace(r);
         r.consume_u8(b']')?;
         Ok(items)
     })
@@ -74,7 +75,7 @@ where
 
 fn read_map<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<(&'i str, Value<'i>)>, E>
 where
-    E: Error<'i>,
+    E: FromContext<'i>,
     E: FromExpected<'i>,
 {
     skip_whitespace(r);
@@ -106,7 +107,7 @@ where
 
 fn read_str<'i, E>(r: &mut Reader<'i, E>) -> Result<&'i str, E>
 where
-    E: Error<'i>,
+    E: FromContext<'i>,
     E: FromExpected<'i>,
 {
     skip_whitespace(r);
@@ -135,7 +136,7 @@ where
 
 fn read_null<'i, E>(r: &mut Reader<'i, E>) -> Result<(), E>
 where
-    E: Error<'i>,
+    E: FromContext<'i>,
     E: FromExpected<'i>,
 {
     skip_whitespace(r);
@@ -144,7 +145,7 @@ where
 
 fn read_bool<'i, E>(r: &mut Reader<'i, E>) -> Result<bool, E>
 where
-    E: Error<'i>,
+    E: FromContext<'i>,
     E: FromExpected<'i>,
 {
     skip_whitespace(r);
@@ -157,7 +158,7 @@ where
 
 fn read_num<'i, E>(r: &mut Reader<'i, E>) -> Result<f64, E>
 where
-    E: Error<'i>,
+    E: FromContext<'i>,
     E: FromExpected<'i>,
 {
     skip_whitespace(r);
