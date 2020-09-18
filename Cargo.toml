@@ -27,6 +27,13 @@ full-context = []
 termcolor = { version = "~1", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "context"
+harness = false
+
 [[example]]
 name = "streaming"
 required-features = ["std"]
