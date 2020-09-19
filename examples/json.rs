@@ -56,6 +56,7 @@ where
         if r.peek_u8()? != b']' {
             loop {
                 let val = read_value(r)?;
+                skip_whitespace(r);
                 items.push(val);
                 if !r.at_end() && r.peek_u8()? == b',' {
                     r.skip(1)?;
