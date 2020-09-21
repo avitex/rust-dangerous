@@ -63,21 +63,15 @@ where
             ExpectedKind::Value(err) => err.context(),
             ExpectedKind::Length(err) => err.context(),
         };
-        Self::from_inner(ExpectedInner {
+
+        let inner = ExpectedInner {
             kind,
             stack: S::from_root(context),
-        })
-    }
+        };
 
-    #[cfg(feature = "alloc")]
-    fn from_inner(inner: ExpectedInner<'i, S>) -> Self {
-        Self {
-            inner: Box::new(inner),
-        }
-    }
+        #[cfg(feature = "alloc")]
+        let inner = Box::new(inner);
 
-    #[cfg(not(feature = "alloc"))]
-    fn from_inner(inner: ExpectedInner<'i, S>) -> Self {
         Self { inner }
     }
 }
