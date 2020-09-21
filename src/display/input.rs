@@ -276,7 +276,7 @@ where
             w.write_char(b as char)?;
             w.write_char('\'')
         } else {
-            write!(w, "{:x}", b)
+            write!(w, "{:0>2x}", b)
         }
     };
     if let Some(byte) = byte_iter.next() {

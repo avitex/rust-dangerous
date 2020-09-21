@@ -30,7 +30,6 @@ pub struct Expected<'i, S = ExpectedContextStack> {
 
 struct ExpectedInner<'i, S> {
     stack: S,
-    input: &'i Input,
     kind: ExpectedKind<'i>,
 }
 
@@ -57,15 +56,15 @@ impl<'i, S> Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
+    #[inline]
     fn from_kind(kind: ExpectedKind<'i>) -> Self {
-        let (input, context) = match &kind {
-            ExpectedKind::Valid(err) => (err.input(), err.context()),
-            ExpectedKind::Value(err) => (err.input(), err.context()),
-            ExpectedKind::Length(err) => (err.input(), err.context()),
+        let context = match &kind {
+            ExpectedKind::Valid(err) => err.context(),
+            ExpectedKind::Value(err) => err.context(),
+            ExpectedKind::Length(err) => err.context(),
         };
         Self::from_inner(ExpectedInner {
             kind,
-            input,
             stack: S::from_root(context),
         })
     }
@@ -88,7 +87,11 @@ where
     S: ContextStack,
 {
     fn input(&self) -> &'i Input {
-        self.inner.input
+        match &self.inner.kind {
+            ExpectedKind::Value(err) => err.input(),
+            ExpectedKind::Valid(err) => err.input(),
+            ExpectedKind::Length(err) => err.input(),
+        }
     }
 
     fn span(&self) -> &'i Input {
