@@ -41,7 +41,7 @@ impl Invalid {
 }
 
 impl fmt::Display for Invalid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("invalid input")?;
         if let Some(retry_requirement) = self.retry_requirement {
             f.write_str(": needs ")?;

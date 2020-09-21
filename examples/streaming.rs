@@ -4,17 +4,10 @@
 //! followed by a single byte that denotes the the UTF-8 body length we need to
 //! read. Our protocol expects a version of `1`.
 
-// FIXME: This example requires `RUSTFLAGS=-Zpolonius` to run because of
-// the mut ref reuse within the a loop.
-//
-// ```
-// RUSTFLAGS=-Zpolonius cargo run --example streaming --features std
-// ```
-
 use std::error::Error as StdError;
 use std::io;
 
-use dangerous::{Error, Expected, ToRetryRequirement};
+use dangerous::{Error, Expected, Invalid, ToRetryRequirement};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
@@ -34,49 +27,74 @@ struct Message<'a> {
 }
 
 fn main() {
-    let mut buf = [0u8; 256];
+    let mut decoder = Decoder::new();
 
     // Read a valid message
-    let message = read_and_decode_message(&mut Stream::new(VALID_MESSAGE), &mut buf[..]).unwrap();
+    let message = decoder
+        .read_and_decode_message(&mut Stream::new(VALID_MESSAGE))
+        .unwrap();
 
     println!("{}", message.body);
 
     // Read a invalid message
-    let err = read_and_decode_message(&mut Stream::new(INVALID_MESSAGE), &mut buf[..]).unwrap_err();
+    let err = decoder
+        .read_and_decode_message(&mut Stream::new(INVALID_MESSAGE))
+        .unwrap_err();
 
     eprintln!("error reading message: {}", err);
 }
 
-fn read_and_decode_message<'i, R>(
-    read: &mut R,
-    buf: &'i mut [u8],
-) -> Result<Message<'i>, Box<dyn StdError + 'i>>
-where
-    R: io::Read,
-{
-    let mut written_cur = 0;
-    let mut expects_cur = 0;
-    loop {
-        // Read bytes into buffer
-        written_cur += read.read(&mut buf[written_cur..])?;
-        // Only decode the buffer if we have enough bytes to try again
-        if expects_cur > written_cur {
-            println!(
-                "not enough to decode, waiting for {} bytes",
-                expects_cur - written_cur
-            );
-            continue;
-        }
-        let input = dangerous::input(&buf[..written_cur]);
-        match decode_message::<Expected>(input) {
-            Err(err) => match err.to_retry_requirement() {
-                Some(req) => expects_cur += req.continue_after(),
-                None => return Err(err.into()),
-            },
-            Ok(message) => {
-                return Ok(message);
+pub struct Decoder {
+    buf: [u8; 256],
+}
+
+impl Decoder {
+    fn new() -> Self {
+        Self { buf: [0u8; 256] }
+    }
+
+    fn read_and_decode_message<'i, R>(
+        &'i mut self,
+        mut read: R,
+    ) -> Result<Message<'i>, Box<dyn StdError + 'i>>
+    where
+        R: io::Read,
+    {
+        let mut written_cur = 0;
+        let mut expects_cur = 0;
+        loop {
+            // Read bytes into buffer
+            written_cur += read.read(&mut self.buf[written_cur..])?;
+            // Only decode the buffer if we have enough bytes to try again
+            if expects_cur > written_cur {
+                println!(
+                    "not enough to decode, waiting for {} bytes",
+                    expects_cur - written_cur
+                );
+                continue;
+            }
+            // Try and decode the input, working out if we need more, or the
+            // input is invalid.
+            // TODO: This would realistically return the decoded message or
+            // any error, but we can't mut borrow and return immutable yet
+            // within a loop.
+            // See: https://github.com/rust-lang/rust/issues/51132
+            let input = dangerous::input(&self.buf[..written_cur]);
+            match decode_message::<Invalid>(input) {
+                Err(err) => match err.to_retry_requirement() {
+                    Some(req) => {
+                        expects_cur += req.continue_after();
+                        continue;
+                    }
+                    None => break,
+                },
+                Ok(_) => break,
             }
         }
+        // Decode the input returning the message or any error, see above why
+        // this is required.
+        let input = dangerous::input(&self.buf[..written_cur]);
+        decode_message::<Expected<'i>>(input).map_err(Into::into)
     }
 }
 

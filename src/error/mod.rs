@@ -20,10 +20,10 @@
 //! it's not, consider opening an issue.
 
 mod context;
-mod traits;
 mod expected;
 mod invalid;
 mod retry;
+mod traits;
 
 #[cfg(feature = "full-context")]
 pub use self::context::FullContextStack;
@@ -31,10 +31,10 @@ pub use self::context::{
     Context, ContextStack, ContextStackBuilder, ContextStackWalker, ExpectedContext,
     RootContextStack,
 };
-pub use self::traits::{Error, ErrorDetails, FromContext, FromExpected};
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::invalid::Invalid;
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
+pub use self::traits::{Error, ErrorDetails, FromContext, FromExpected};
 
 pub(crate) use self::context::OperationContext;
 pub(crate) use self::expected::Value;

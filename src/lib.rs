@@ -25,6 +25,7 @@
 )]
 #![forbid(
     clippy::pedantic,
+    rust_2018_idioms,
     anonymous_parameters,
     missing_docs,
     trivial_casts,

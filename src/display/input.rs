@@ -49,7 +49,7 @@ impl<'i> InputDisplay<'i> {
     ///
     /// - Precision (eg. `{:.2}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
-    pub fn from_formatter(input: &'i Input, f: &fmt::Formatter) -> Self {
+    pub fn from_formatter(input: &'i Input, f: &fmt::Formatter<'_>) -> Self {
         let format = Self::new(input).str_hint(f.alternate());
         match f.precision() {
             Some(max) => format.head_tail(max),

@@ -159,13 +159,13 @@ where
 }
 
 impl<'i> fmt::Display for Expected<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).fmt(f)
     }
 }
 
 impl<'i> fmt::Debug for Expected<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
     }
 }
@@ -257,7 +257,7 @@ impl<'i> ExpectedValue<'i> {
 }
 
 impl<'i> fmt::Display for ExpectedValue<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("found a different value to the exact expected")
     }
 }
@@ -345,7 +345,7 @@ impl<'i> ExpectedLength<'i> {
 }
 
 impl<'i> fmt::Display for ExpectedLength<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "found {} when ", ByteCount(self.span().len()))?;
         match (self.min(), self.max()) {
             (0, Some(max)) => write!(f, "at most {}", ByteCount(max)),
@@ -409,7 +409,7 @@ impl<'i> ExpectedValid<'i> {
 }
 
 impl<'i> fmt::Display for ExpectedValid<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "expected {}", self.context.expected)
     }
 }
