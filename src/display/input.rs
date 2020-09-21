@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 use core::result::Result;
+use core::str;
 
-use crate::error::Invalid;
 use crate::input::Input;
 
 const DEFAULT_SECTION: Section = Section::HeadTail { max: 1024 };
@@ -134,7 +134,7 @@ impl<'i> InputDisplay<'i> {
         W: Write,
     {
         if self.str_hint {
-            if let Ok(s) = self.input.to_dangerous_str::<Invalid>() {
+            if let Ok(s) = str::from_utf8(self.input.as_dangerous()) {
                 write_str(w, s, self.section)
             } else {
                 write_bytes(w, self.input, true, self.section)
