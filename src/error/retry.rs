@@ -1,7 +1,7 @@
 use core::fmt;
 use core::num::NonZeroUsize;
 
-use crate::utils::ByteCount;
+use crate::display::ByteCount;
 
 /// An indicator of how many bytes are required to continue processing input.
 ///

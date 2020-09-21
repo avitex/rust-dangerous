@@ -54,14 +54,14 @@ Ever tried working backwards from something like this?
 Wouldn't it be better if this was the alternative?
 
 ```
-[ERRO]: ahhh!: expected utf-8 code point
-> [.. "aaaa" ff "aaaa" ..]
-             ^^
+[ERRO]: ahhh!: error attempting to convert input to str: expected utf-8 code point
+> ['h' 'e' ff 'l' 'o']
+           ^^
 context bracktrace:
   1. `read all`
   2. `read` (expected message)
   3. `read` (expected body)
-  4. `input to str` (expected valid utf-8 code point)
+  4. `convert input to str` (expected utf-8 code point)
 ```
 
 ## Safety

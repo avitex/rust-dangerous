@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 
+use crate::display::WithFormatter;
 use crate::error::{Context, ErrorDetails};
-use crate::utils::WithFormatter;
 
 const INPUT_PREFIX: &str = "> ";
 const DEFAULT_MAX_WIDTH: usize = 80;

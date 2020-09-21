@@ -1,4 +1,5 @@
 mod internal;
+mod string;
 
 use core::{fmt, str};
 
@@ -107,7 +108,7 @@ impl Input {
                 span: self,
                 input: self,
                 context: ExpectedContext {
-                    operation: "input to non-empty slice",
+                    operation: "convert input to non-empty slice",
                     expected: "non-empty input",
                 },
             }))
@@ -136,26 +137,14 @@ impl Input {
             Err(utf8_err) => match utf8_err.error_len() {
                 None => {
                     let invalid = &self.as_dangerous()[utf8_err.valid_up_to()..];
-                    // As the first byte in a UTF-8 code point encodes its
-                    // length as shown below, and as we never reach this branch
-                    // if the code point only spans one byte, we just count the
-                    // leading ones of the first byte to work out the expected
-                    // length.
-                    //
-                    // | format   | len | description         |
-                    // | -------- | --- | ------------------- |
-                    // | 0ZZZZZZZ | 1   | unreachable         |
-                    // | 110YYYYY | 2   | valid               |
-                    // | 1110XXXX | 3   | valid               |
-                    // | 11110VVV | 4   | valid               |
-                    // | 11110XXX | N/A | invalid/unreachable |
                     Err(E::from(ExpectedLength {
-                        min: invalid[0].leading_ones() as usize,
+                        min: string::utf8_char_width(invalid[0]),
                         max: None,
                         span: input(invalid),
                         input: self,
+                        // origin_str: true,
                         context: ExpectedContext {
-                            operation: "input to str",
+                            operation: "convert input to str",
                             expected: "complete utf-8 code point",
                         },
                     }))
@@ -168,7 +157,7 @@ impl Input {
                         span: input(&bytes[error_start..error_end]),
                         input: self,
                         context: ExpectedContext {
-                            operation: "input to str",
+                            operation: "convert input to str",
                             expected: "utf-8 code point",
                         },
                         retry_requirement: None,
@@ -200,7 +189,7 @@ impl Input {
                 span: self,
                 input: self,
                 context: ExpectedContext {
-                    operation: "input to non-empty str",
+                    operation: "convert input to non-empty str",
                     expected: "non empty input",
                 },
             }))

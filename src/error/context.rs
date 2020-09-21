@@ -1,6 +1,9 @@
 use core::any::Any;
 use core::fmt::{self, Debug};
 
+use crate::error::FromContext;
+use crate::input::Input;
+
 #[cfg(feature = "full-context")]
 use alloc::{boxed::Box, vec::Vec};
 
@@ -206,4 +209,16 @@ impl ContextStack for FullContextStack {
         }
         f(i, &self.root)
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+#[inline(always)]
+pub(crate) fn with_context<'i, F, C, T, E>(input: &'i Input, context: C, f: F) -> Result<T, E>
+where
+    F: FnOnce() -> Result<T, E>,
+    E: FromContext<'i>,
+    C: Context,
+{
+    f().map_err(|err| err.from_context(input, context))
 }

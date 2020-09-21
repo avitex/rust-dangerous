@@ -49,11 +49,11 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 
-pub mod display;
-pub mod error;
 mod input;
 mod reader;
-mod utils;
+
+pub mod display;
+pub mod error;
 
 pub use self::error::{Error, Expected, FromContext, FromExpected, Invalid, ToRetryRequirement};
 pub use self::input::{input, Input};

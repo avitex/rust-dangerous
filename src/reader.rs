@@ -2,11 +2,10 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    Context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
-    ToRetryRequirement, Value,
+    with_context, Context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue,
+    FromContext, OperationContext, ToRetryRequirement, Value,
 };
 use crate::input::Input;
-use crate::utils::{with_context, with_operation_context};
 
 /// A `Reader` is created from and consumes a [`Input`].
 ///
@@ -207,7 +206,7 @@ impl<'i, E> Reader<'i, E> {
         O: 'static,
     {
         let (head, _) = self.input.split_at(len, "try peek")?;
-        with_operation_context(self.input, "try peek", || f(head))
+        with_context(self.input, OperationContext("try peek"), || f(head))
     }
 
     /// Returns the next byte in the input without mutating the reader.

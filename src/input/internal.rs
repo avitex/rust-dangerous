@@ -1,10 +1,12 @@
 use core::ops::Range;
 use core::slice;
 
-use crate::error::{ExpectedContext, ExpectedLength, ExpectedValue, FromContext, Value};
+use crate::error::{
+    with_context, ExpectedContext, ExpectedLength, ExpectedValue, FromContext, OperationContext,
+    Value,
+};
 use crate::input::{input, Input};
 use crate::reader::Reader;
-use crate::utils::with_operation_context;
 
 // All functions defined in internal are used within other functions that expose
 // public functionality.
@@ -103,7 +105,7 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         let (head, tail) = self.split_at(1, operation)?;
-        Ok((head.first(operation)?, tail))
+        Ok((head.as_dangerous()[0], tail))
     }
 
     /// Splits the input into two at `mid`.
@@ -161,7 +163,7 @@ impl Input {
         F: FnMut(&mut Reader<'i, E>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self);
-        with_operation_context(self, operation, || f(&mut reader))?;
+        with_context(self, OperationContext(operation), || f(&mut reader))?;
         let tail = reader.take_remaining();
         let head = &self.as_dangerous()[..self.len() - tail.len()];
         Ok((input(head), tail))
@@ -219,7 +221,7 @@ impl Input {
         let bytes = self.as_dangerous();
         for (i, byte) in bytes.iter().enumerate() {
             let (head, tail) = bytes.split_at(i);
-            let should_continue = with_operation_context(self, operation, || f(*byte))?;
+            let should_continue = with_context(self, OperationContext(operation), || f(*byte))?;
             if !should_continue {
                 return Ok((input(head), input(tail)));
             }

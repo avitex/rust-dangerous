@@ -36,5 +36,5 @@ pub use self::invalid::Invalid;
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
 pub use self::traits::{Error, ErrorDetails, FromContext, FromExpected};
 
-pub(crate) use self::context::OperationContext;
+pub(crate) use self::context::{with_context, OperationContext};
 pub(crate) use self::expected::Value;
