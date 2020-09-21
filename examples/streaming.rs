@@ -75,10 +75,10 @@ impl Decoder {
             }
             // Try and decode the input, working out if we need more, or the
             // input is invalid.
-            // TODO: This would realistically return the decoded message or
-            // any error, but we can't mut borrow and return immutable yet
-            // within a loop.
-            // See: https://github.com/rust-lang/rust/issues/51132
+            //
+            // TODO: This would realistically return the decoded message or any
+            // error, but we can't mut borrow and return immutable within a loop
+            // yet. See: https://github.com/rust-lang/rust/issues/51132
             let input = dangerous::input(&self.buf[..written_cur]);
             match decode_message::<Invalid>(input) {
                 Err(err) => match err.to_retry_requirement() {
