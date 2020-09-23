@@ -96,14 +96,7 @@ where
         }
     }
 
-    fn found_value(&self) -> Option<&Input> {
-        match &self.inner.kind {
-            ExpectedKind::Value(err) => Some(err.found()),
-            ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,
-        }
-    }
-
-    fn expected_value(&self) -> Option<&Input> {
+    fn expected(&self) -> Option<&Input> {
         match &self.inner.kind {
             ExpectedKind::Value(err) => Some(err.expected()),
             ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,

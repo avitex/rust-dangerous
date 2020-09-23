@@ -49,11 +49,8 @@ pub trait ErrorDetails<'i> {
     /// The specific section of input that caused an error.
     fn span(&self) -> &'i Input;
 
-    /// The unexpected value, if applicable, that was found.
-    fn found_value(&self) -> Option<&Input>;
-
     /// The expected value, if applicable.
-    fn expected_value(&self) -> Option<&Input>;
+    fn expected(&self) -> Option<&Input>;
 
     /// The description of what went wrong while processing the input.
     ///
@@ -81,12 +78,8 @@ where
         (**self).span()
     }
 
-    fn found_value(&self) -> Option<&Input> {
-        (**self).found_value()
-    }
-
-    fn expected_value(&self) -> Option<&Input> {
-        (**self).expected_value()
+    fn expected(&self) -> Option<&Input> {
+        (**self).expected()
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

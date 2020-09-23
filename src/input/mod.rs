@@ -7,6 +7,8 @@ use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
 
+pub(crate) use self::string::CharIter;
+
 /// Creates a new `Input` from a byte slice.
 ///
 /// It is recommended to use this directly from the crate as `dangerous::input()`,

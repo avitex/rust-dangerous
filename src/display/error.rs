@@ -1,7 +1,8 @@
 use core::fmt::{self, Write};
 
-use crate::display::WithFormatter;
+use crate::display::{InputDisplay, WithFormatter};
 use crate::error::{Context, ErrorDetails};
+use crate::input::Input;
 
 const INPUT_PREFIX: &str = "> ";
 const DEFAULT_MAX_WIDTH: usize = 80;
@@ -63,38 +64,76 @@ where
     {
         if self.banner {
             w.write_str("\n-- INPUT ERROR ---------------------------------------------\n")?;
-            self.write_inner(w)?;
+            self.write_sections(w)?;
             w.write_str("\n------------------------------------------------------------\n")
         } else {
-            self.write_inner(w)
+            self.write_sections(w)
         }
     }
 
-    fn write_inner<W>(&self, w: &mut W) -> fmt::Result
+    fn write_sections<W>(&self, w: &mut W) -> fmt::Result
     where
         W: Write,
     {
-        let error = &self.error;
-        let context_stack = error.context_stack();
-        let input = error.input();
-        let input_display = input.display().str_hint(self.str_hint);
+        self.write_description(w)?;
+        self.write_inputs(w)?;
+        self.write_context_backtrace(w)
+    }
+
+    fn write_description<W>(&self, w: &mut W) -> fmt::Result
+    where
+        W: Write,
+    {
         writeln!(
             w,
             "error attempting to {}: {}",
-            context_stack.root().operation(),
+            self.error.context_stack().root().operation(),
             WithFormatter(|f| self.error.description(f)),
-        )?;
-        w.write_str(INPUT_PREFIX)?;
-        if error.span().is_empty() {
-            writeln!(w, "{}", input_display)?;
-        } else if let Some((_before, _after)) = input.split_sub(error.span()) {
-            // before.display().max(40)
-            write!(w, "{}", input_display)?;
-        } else {
-            write!(w, "{}", input_display)?;
+        )
+    }
+
+    fn write_inputs<W>(&self, w: &mut W) -> fmt::Result
+    where
+        W: Write,
+    {
+        let input = self.error.input();
+        let span = self.error.span();
+        let input_display = self.input_display(input);
+        let span_display = self.input_display(span);
+        if let Some(expected_value) = self.error.expected() {
+            let expected_display = self.input_display(expected_value);
+            writeln!(w, "expected:")?;
+            write_input(w, &expected_display)?;
         }
-        write!(w, "\ncontext bracktrace:")?;
-        let write_success = context_stack.walk(&mut |i, c| {
+        if !span.is_within(input) {
+            writeln!(
+                w,
+                concat!(
+                    "note: error span is not within the error input indicating the\n",
+                    "      concrete error being used has a bug. Consider raising an\n",
+                    "      issue with the maintainer!.",
+                )
+            )?;
+            writeln!(w, "span: ")?;
+            write_input(w, &span_display)?;
+            writeln!(w, "input: ")?;
+            write_input(w, &input_display)?;
+            return Ok(());
+        }
+        if span.is_empty() {
+            write_input(w, &input_display.tail(40))?;
+        } else {
+            write_input(w, &input_display.span(span, 40))?;
+        }
+        Ok(())
+    }
+
+    fn write_context_backtrace<W>(&self, w: &mut W) -> fmt::Result
+    where
+        W: Write,
+    {
+        write!(w, "context bracktrace:")?;
+        let write_success = self.error.context_stack().walk(&mut |i, c| {
             if write!(w, "\n  {}. `{}`", i, c.operation()).is_err() {
                 return false;
             }
@@ -110,6 +149,10 @@ where
         } else {
             Err(fmt::Error)
         }
+    }
+
+    fn input_display<'b>(&self, input: &'b Input) -> InputDisplay<'b> {
+        input.display().str_hint(self.str_hint)
     }
 }
 
@@ -129,4 +172,11 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)
     }
+}
+
+fn write_input<W>(w: &mut W, input: &InputDisplay<'_>) -> fmt::Result
+where
+    W: Write,
+{
+    writeln!(w, "{}{}", INPUT_PREFIX, input)
 }

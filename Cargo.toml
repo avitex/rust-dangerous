@@ -22,7 +22,7 @@ alloc = []
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
 # Enables error terminal printing support.
-terminal = ["std", "termcolor"]
+terminal = ["std", "termcolor", "unicode"]
 # Enables full context backtraces.
 full-context = ["alloc"]
 
