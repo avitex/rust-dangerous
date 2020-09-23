@@ -2,10 +2,10 @@ use core::ops::Range;
 use core::slice;
 
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
-    OperationContext, Value,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValue, FromContext, OperationContext,
+    Value,
 };
-use crate::input::{input, string, Input};
+use crate::input::{input, Input};
 use crate::reader::Reader;
 
 // All functions defined in internal are used within other functions that expose
@@ -46,6 +46,30 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         self.as_dangerous().first().copied().ok_or_else(|| {
+            E::from(ExpectedLength {
+                min: 1,
+                max: None,
+                span: self,
+                input: self,
+                context: ExpectedContext {
+                    operation,
+                    expected: "non-empty input",
+                },
+            })
+        })
+    }
+
+    /// Returns the last byte in the input.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is empty.
+    #[inline(always)]
+    pub(crate) fn last<'i, E>(&'i self, operation: &'static str) -> Result<u8, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.as_dangerous().last().copied().ok_or_else(|| {
             E::from(ExpectedLength {
                 min: 1,
                 max: None,
@@ -142,24 +166,6 @@ impl Input {
             let (head, tail) = self.as_dangerous().split_at(mid);
             Ok((input(head), input(tail)))
         }
-    }
-
-    // FIXME: improve perf?
-    #[inline(always)]
-    pub(crate) fn split_char<'i, E>(
-        &'i self,
-        operation: &'static str,
-    ) -> Result<(char, &'i Input), E>
-    where
-        E: From<ExpectedValid<'i>>,
-        E: From<ExpectedLength<'i>>,
-    {
-        let first_byte = self.first::<E>(operation)?;
-        let len = string::utf8_char_width(first_byte);
-        let (chr_bytes, remaining) = self.split_at::<E>(len, operation)?;
-        let chr_str = chr_bytes.to_dangerous_str::<E>()?;
-        let chr = chr_str.chars().next().unwrap();
-        Ok((chr, remaining))
     }
 
     #[inline(always)]

@@ -19,14 +19,15 @@ fn init_column_width_for_input(column_width: Option<usize>) -> usize {
     column_width.saturating_sub(2)
 }
 
-pub(crate) struct DisplayComputed<'i> {
+#[derive(Clone)]
+pub(crate) struct ComputedSection<'i> {
     input: &'i Input,
     section: &'i Input,
     section_is_str: bool,
     span: Option<&'i Input>,
 }
 
-impl<'i> DisplayComputed<'i> {
+impl<'i> ComputedSection<'i> {
     pub(crate) fn from_head(input: &'i Input, column_width: Option<usize>, str_hint: bool) -> Self {
         let column_width = init_column_width_for_input(column_width);
         if str_hint {
@@ -38,10 +39,10 @@ impl<'i> DisplayComputed<'i> {
                 span: None,
             }
         } else {
-            let (head, _) = input.split_max(column_width);
-            Self::from_bytes(input, column_width)
+            unimplemented!()
+            // let (head, _) = input.split_max(column_width);
+            // Self::from_bytes(input, column_width)
         }
-        unimplemented!()
     }
 
     pub(crate) fn from_tail(input: &'i Input, column_width: Option<usize>, str_hint: bool) -> Self {
@@ -97,23 +98,25 @@ impl<'i> DisplayComputed<'i> {
     }
 }
 
-enum InputWriter<W: Write> {
-    Raw(W),
-    Span(W),
-    Highlight(W),
+enum InputWriterState {
+    Raw,
+    Span,
+    Highlight,
 }
+
+struct InputWriter<W: Write>(W, InputWriterState);
 
 impl<W> Write for InputWriter<W>
 where
     W: Write,
 {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        match self {
-            Self::Raw(w) => w.write_str(s),
-            Self::Span(w) => w.write_str(s),
-            Self::Highlight(w) => {
+        match self.1 {
+            InputWriterState::Raw => self.0.write_str(s),
+            InputWriterState::Span => self.0.write_str(s),
+            InputWriterState::Highlight => {
                 for _ in 0..s.len() {
-                    w.write_char('^')?;
+                    self.0.write_char('^')?;
                 }
                 Ok(())
             }
@@ -125,9 +128,9 @@ impl<W> InputWriter<W>
 where
     W: Write,
 {
-    // fn value(w: W) -> Self {
-
-    // }
+    fn raw(w: W) -> Self {
+        Self(w, InputWriterState::Raw)
+    }
 
     // fn highlight(w: W) -> Self {
     //     Self {
@@ -138,31 +141,29 @@ where
     // }
 
     fn enter_span(&mut self) {
-        *self = match *self {
-            Self::Raw(w) | Self::Span(w) => Self::Span(w),
-            Self::Highlight(w) => Self::Highlight(w),
+        self.1 = match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => InputWriterState::Span,
+            InputWriterState::Highlight => InputWriterState::Highlight,
         };
     }
 
     fn leave_span(&mut self) {
-        *self = match *self {
-            Self::Raw(w) | Self::Span(w) => Self::Raw(w),
-            Self::Highlight(w) => Self::Highlight(w),
+        self.1 = match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => InputWriterState::Raw,
+            InputWriterState::Highlight => InputWriterState::Highlight,
         };
     }
 
     fn write_delim(&mut self, delim: char, highlight: bool) -> fmt::Result {
-        match *self {
-            Self::Raw(w) | Self::Span(w) => w.write_char(delim),
-            Self::Highlight(w) if highlight => w.write_char('^'),
-            Self::Highlight(w) => w.write_char(' '),
+        match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => self.0.write_char(delim),
+            InputWriterState::Highlight if highlight => self.0.write_char('^'),
+            InputWriterState::Highlight => self.0.write_char(' '),
         }
     }
 
     fn write_space(&mut self) -> fmt::Result {
-        match *self {
-            Self::Raw(w) | Self::Span(w) | Self::Highlight(w) => w.write_char(' '),
-        }
+        self.0.write_char(' ')
     }
 }
 
@@ -193,6 +194,7 @@ pub struct InputDisplay<'i> {
     input: &'i Input,
     str_hint: bool,
     section: Option<Section<'i>>,
+    computed: Option<ComputedSection<'i>>,
 }
 
 impl<'i> InputDisplay<'i> {
@@ -202,6 +204,7 @@ impl<'i> InputDisplay<'i> {
             input,
             str_hint: false,
             section: Some(DEFAULT_SECTION),
+            computed: None,
         }
     }
 
@@ -219,6 +222,7 @@ impl<'i> InputDisplay<'i> {
 
     /// Hint to the formatter that the [`Input`] is a UTF-8 `str`.
     pub fn str_hint(mut self, value: bool) -> Self {
+        self.computed = None;
         self.str_hint = value;
         self
     }
@@ -235,6 +239,7 @@ impl<'i> InputDisplay<'i> {
     /// assert_eq!(formatted, "[aa bb .. ee ff]");
     /// ```
     pub fn head_tail(mut self, max: usize) -> Self {
+        self.computed = None;
         self.section = Some(Section::HeadTail { max });
         self
     }
@@ -250,6 +255,7 @@ impl<'i> InputDisplay<'i> {
     /// assert_eq!(formatted, "[aa bb cc dd ..]");
     /// ```
     pub fn head(mut self, max: usize) -> Self {
+        self.computed = None;
         self.section = Some(Section::Head { max });
         self
     }
@@ -265,6 +271,7 @@ impl<'i> InputDisplay<'i> {
     /// assert_eq!(formatted, "[.. cc dd ee ff]");
     /// ```
     pub fn tail(mut self, max: usize) -> Self {
+        self.computed = None;
         self.section = Some(Section::Tail { max });
         self
     }
@@ -280,6 +287,7 @@ impl<'i> InputDisplay<'i> {
     /// assert_eq!(formatted, "[aa bb cc dd ee ff]");
     /// ```
     pub fn full(mut self) -> Self {
+        self.computed = None;
         self.section = None;
         self
     }
@@ -296,8 +304,36 @@ impl<'i> InputDisplay<'i> {
     /// assert_eq!(formatted, "[aa bb cc dd ee ff]");
     /// ```
     pub fn span(mut self, span: &'i Input, max: usize) -> Self {
+        self.computed = None;
         self.section = Some(Section::Span { span, max });
         self
+    }
+
+    pub fn prepare(&mut self) {
+        self.computed = match self.section {
+            None => None,
+            Some(Section::Head { max }) => Some(ComputedSection::from_head(
+                self.input,
+                Some(max),
+                self.str_hint,
+            )),
+            Some(Section::Tail { max }) => Some(ComputedSection::from_tail(
+                self.input,
+                Some(max),
+                self.str_hint,
+            )),
+            Some(Section::HeadTail { max }) => Some(ComputedSection::from_head_tail(
+                self.input,
+                Some(max),
+                self.str_hint,
+            )),
+            Some(Section::Span { span, max }) => Some(ComputedSection::from_span(
+                self.input,
+                span,
+                Some(max),
+                self.str_hint,
+            )),
+        }
     }
 
     /// Writes the [`Input`] to a writer with the choosen format.
@@ -309,11 +345,11 @@ impl<'i> InputDisplay<'i> {
     where
         W: Write,
     {
-        let writer = InputWriter::Raw(w);
+        let mut writer = InputWriter::raw(w);
         if self.str_hint {
             if let Ok(s) = str::from_utf8(self.input.as_dangerous()) {
                 // let writer = InputWriter::
-                write_str(w, s, self.section)
+                write_str(&mut writer, s, self.section)
             } else {
                 write_bytes(&mut writer, self.input, true, self.section)
             }
@@ -373,10 +409,10 @@ where
             };
             // Check that we have enough room for the this element,
             // and if so subtract it.
-            if let Some(value) = budget.checked_sub(required) {
+            if budget >= required {
+                // We did, update the budget and commit the accumulator.
+                budget -= element_cost;
                 acc = next_acc;
-                // We did, update the budget.
-                budget = value;
             } else {
                 break;
             }
@@ -390,43 +426,50 @@ where
 fn take_byte_str_head_column_width(complete: &Input, column_width: usize) -> &Input {
     let bytes = complete.as_dangerous();
     let mut byte_iter = bytes.iter();
-    let offset = elements_to_fit_column_width(0, column_width, true, |acc| {
+    let offset = elements_to_fit_column_width(0, column_width, true, |offset| {
         byte_iter.next().map(|byte| {
             let cost = if byte.is_ascii_graphic() {
                 b"'x'".len()
             } else {
                 b"ff".len()
             };
-            (acc + 1, cost, byte_iter.as_slice().len() > 0)
+            let offset = offset + 1;
+            let has_more = byte_iter.as_slice().len() > 0;
+            (offset, cost, has_more)
         })
     });
     input(&bytes[offset..])
 }
 
-fn take_str_head_column_width(
-    complete: &Input,
-    mut column_width: usize,
-    cjk: bool,
-) -> (&Input, bool) {
+fn take_str_head_column_width(complete: &Input, column_width: usize, cjk: bool) -> (&Input, bool) {
     let bytes = complete.as_dangerous();
-    let mut is_str = true;
     let mut char_iter = CharIter::<Invalid>::new(complete);
-    let offset = elements_to_fit_column_width(0, column_width, true, |acc| {
-        char_iter.next().map(|result| {
-            if let Ok(chr) = result {
-                let display_width = if cjk {
-                    chr.width_cjk().unwrap_or(1)
+    let mut is_str = true;
+    let offset = elements_to_fit_column_width(0, column_width, true, |offset| {
+        char_iter.next().and_then(|result| {
+            if let Ok(c) = result {
+                let cost = if cjk {
+                    c.width_cjk().unwrap_or(1)
                 } else {
-                    chr.width().unwrap_or(1)
+                    c.width().unwrap_or(1)
                 };
-                Some((display_width, ))
+                let offset = offset + c.len_utf8();
+                let has_more = char_iter.tail().len() > 0;
+                Some((offset, cost, has_more))
             } else {
                 is_str = false;
                 None
             }
         })
     });
-    (input(&bytes[offset..]), is_str)
+    if is_str {
+        (input(&bytes[offset..]), false)
+    } else {
+        (
+            take_byte_str_head_column_width(complete, column_width),
+            false,
+        )
+    }
 }
 
 #[derive(Copy, Clone)]
