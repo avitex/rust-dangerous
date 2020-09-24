@@ -25,7 +25,7 @@ impl Input {
     }
 
     #[inline(always)]
-    pub(crate) fn eq_ptr(&self, other: &Input) -> bool {
+    pub(crate) fn ptr_eq(&self, other: &Input) -> bool {
         self.as_dangerous().as_ptr() == other.as_dangerous().as_ptr()
     }
 
@@ -33,6 +33,12 @@ impl Input {
     #[inline(always)]
     pub(crate) fn end(&self) -> &Input {
         input(&self.as_dangerous()[self.len()..])
+    }
+
+    /// Returns an empty `Input` pointing the start of `self`.
+    #[inline(always)]
+    pub(crate) fn start(&self) -> &Input {
+        input(&self.as_dangerous()[..0])
     }
 
     /// Returns the first byte in the input.
@@ -275,7 +281,7 @@ impl Input {
 
     // FIXME: use https://github.com/rust-lang/rust/issues/65807 when stable
     #[inline(always)]
-    fn as_dangerous_ptr_range(&self) -> Range<*const u8> {
+    pub(crate) fn as_dangerous_ptr_range(&self) -> Range<*const u8> {
         let bytes = self.as_dangerous();
         let start = bytes.as_ptr();
         // Note: will never wrap, but we are just escaping the use of unsafe

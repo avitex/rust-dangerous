@@ -51,6 +51,7 @@ mod macros;
 
 mod input;
 mod reader;
+mod string;
 
 pub mod display;
 pub mod error;

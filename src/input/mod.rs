@@ -1,13 +1,11 @@
 mod internal;
-mod string;
 
 use core::{fmt, str};
 
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
-
-pub(crate) use self::string::CharIter;
+use crate::string::utf8_char_len;
 
 /// Creates a new `Input` from a byte slice.
 ///
@@ -140,7 +138,7 @@ impl Input {
                 None => {
                     let invalid = &self.as_dangerous()[utf8_err.valid_up_to()..];
                     Err(E::from(ExpectedLength {
-                        min: string::utf8_char_width(invalid[0]),
+                        min: utf8_char_len(invalid[0]),
                         max: None,
                         span: input(invalid),
                         input: self,

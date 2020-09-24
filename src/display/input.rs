@@ -1,170 +1,28 @@
 use core::fmt::{self, Write};
-use core::result::Result;
 use core::str;
 
-use unicode_width::UnicodeWidthChar;
+use crate::display::{Section, SectionOption, SectionPart};
+use crate::input::Input;
 
-use crate::error::Invalid;
-use crate::input::{input, CharIter, Input};
-
-const DEFAULT_SECTION: Section<'static> = Section::HeadTail { max: 1024 };
 const DEFAULT_COLUMN_WIDTH: usize = 140;
+const DEFAULT_SECTION_OPTION: SectionOption<'static> = SectionOption::HeadTail { width: 1024 };
+
+const CHAR_DELIM: char = '\'';
+const UNDERLINE: char = '^';
+const HAS_MORE: &str = "..";
+const HAS_MORE_IGNORED: &str = "  ";
+const HAS_MORE_UNDERLINE: &str = "^^";
+const STR_DELIM: char = '"';
+const BYTES_DELIM_OPEN: char = '[';
+const BYTES_DELIM_CLOSE: char = ']';
 
 // (ie ' ..' or '.. ')
 const HAS_MORE_LEN: usize = 3;
+// (ie '[]' or '""')
+const DELIM_LEN: usize = 2;
 
-fn init_column_width_for_input(column_width: Option<usize>) -> usize {
-    let column_width = column_width.unwrap_or(DEFAULT_COLUMN_WIDTH);
-    // for [] or ""
-    column_width.saturating_sub(2)
-}
-
-#[derive(Clone)]
-pub(crate) struct ComputedSection<'i> {
-    input: &'i Input,
-    section: &'i Input,
-    section_is_str: bool,
-    span: Option<&'i Input>,
-}
-
-impl<'i> ComputedSection<'i> {
-    pub(crate) fn from_head(input: &'i Input, column_width: Option<usize>, str_hint: bool) -> Self {
-        let column_width = init_column_width_for_input(column_width);
-        if str_hint {
-            let (section, section_is_str) = take_str_head_column_width(input, column_width, false);
-            Self {
-                input,
-                section,
-                section_is_str,
-                span: None,
-            }
-        } else {
-            unimplemented!()
-            // let (head, _) = input.split_max(column_width);
-            // Self::from_bytes(input, column_width)
-        }
-    }
-
-    pub(crate) fn from_tail(input: &'i Input, column_width: Option<usize>, str_hint: bool) -> Self {
-        unimplemented!()
-    }
-
-    pub(crate) fn from_head_tail(
-        input: &'i Input,
-        column_width: Option<usize>,
-        str_hint: bool,
-    ) -> Self {
-        unimplemented!()
-    }
-
-    pub(crate) fn from_span(
-        input: &'i Input,
-        span: &'i Input,
-        column_width: Option<usize>,
-        str_hint: bool,
-    ) -> Self {
-        unimplemented!()
-    }
-
-    fn from_maybe_str(input: &'i Input, maybe_str: &[u8], column_width: usize) -> Self {
-        // if let Ok(s) = str::from_utf8(maybe_str) {
-        // } else {
-        // }
-        unimplemented!()
-    }
-
-    fn has_more_before(&self) -> bool {
-        unimplemented!()
-    }
-
-    fn has_more_after(&self) -> bool {
-        unimplemented!()
-    }
-
-    fn highlight_before(&self) -> bool {
-        unimplemented!()
-    }
-
-    fn highlight_after(&self) -> bool {
-        unimplemented!()
-    }
-
-    fn highlight_open(&self) -> bool {
-        unimplemented!()
-    }
-
-    fn highlight_close(&self) -> bool {
-        unimplemented!()
-    }
-}
-
-enum InputWriterState {
-    Raw,
-    Span,
-    Highlight,
-}
-
-struct InputWriter<W: Write>(W, InputWriterState);
-
-impl<W> Write for InputWriter<W>
-where
-    W: Write,
-{
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        match self.1 {
-            InputWriterState::Raw => self.0.write_str(s),
-            InputWriterState::Span => self.0.write_str(s),
-            InputWriterState::Highlight => {
-                for _ in 0..s.len() {
-                    self.0.write_char('^')?;
-                }
-                Ok(())
-            }
-        }
-    }
-}
-
-impl<W> InputWriter<W>
-where
-    W: Write,
-{
-    fn raw(w: W) -> Self {
-        Self(w, InputWriterState::Raw)
-    }
-
-    // fn highlight(w: W) -> Self {
-    //     Self {
-    //         w,
-    //         in_span: false,
-    //         highlight: true,
-    //     }
-    // }
-
-    fn enter_span(&mut self) {
-        self.1 = match self.1 {
-            InputWriterState::Raw | InputWriterState::Span => InputWriterState::Span,
-            InputWriterState::Highlight => InputWriterState::Highlight,
-        };
-    }
-
-    fn leave_span(&mut self) {
-        self.1 = match self.1 {
-            InputWriterState::Raw | InputWriterState::Span => InputWriterState::Raw,
-            InputWriterState::Highlight => InputWriterState::Highlight,
-        };
-    }
-
-    fn write_delim(&mut self, delim: char, highlight: bool) -> fmt::Result {
-        match self.1 {
-            InputWriterState::Raw | InputWriterState::Span => self.0.write_char(delim),
-            InputWriterState::Highlight if highlight => self.0.write_char('^'),
-            InputWriterState::Highlight => self.0.write_char(' '),
-        }
-    }
-
-    fn write_space(&mut self) -> fmt::Result {
-        self.0.write_char(' ')
-    }
+fn prepare_width(width: usize) -> usize {
+    width.saturating_sub(DELIM_LEN)
 }
 
 /// Provides configurable [`Input`] formatting.
@@ -194,7 +52,7 @@ pub struct InputDisplay<'i> {
     input: &'i Input,
     str_hint: bool,
     section: Option<Section<'i>>,
-    computed: Option<ComputedSection<'i>>,
+    section_opt: Option<SectionOption<'i>>,
 }
 
 impl<'i> InputDisplay<'i> {
@@ -203,8 +61,8 @@ impl<'i> InputDisplay<'i> {
         Self {
             input,
             str_hint: false,
-            section: Some(DEFAULT_SECTION),
-            computed: None,
+            section: None,
+            section_opt: Some(DEFAULT_SECTION_OPTION),
         }
     }
 
@@ -214,15 +72,15 @@ impl<'i> InputDisplay<'i> {
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
     pub fn from_formatter(input: &'i Input, f: &fmt::Formatter<'_>) -> Self {
         let format = Self::new(input).str_hint(f.alternate());
-        match f.precision() {
-            Some(max) => format.head_tail(max),
+        match f.width() {
+            Some(width) => format.head_tail(width),
             None => format,
         }
     }
 
     /// Hint to the formatter that the [`Input`] is a UTF-8 `str`.
     pub fn str_hint(mut self, value: bool) -> Self {
-        self.computed = None;
+        self.section = None;
         self.str_hint = value;
         self
     }
@@ -238,9 +96,11 @@ impl<'i> InputDisplay<'i> {
     ///
     /// assert_eq!(formatted, "[aa bb .. ee ff]");
     /// ```
-    pub fn head_tail(mut self, max: usize) -> Self {
-        self.computed = None;
-        self.section = Some(Section::HeadTail { max });
+    pub fn head_tail(mut self, width: usize) -> Self {
+        self.section = None;
+        self.section_opt = Some(SectionOption::HeadTail {
+            width: prepare_width(width),
+        });
         self
     }
 
@@ -254,9 +114,11 @@ impl<'i> InputDisplay<'i> {
     ///
     /// assert_eq!(formatted, "[aa bb cc dd ..]");
     /// ```
-    pub fn head(mut self, max: usize) -> Self {
-        self.computed = None;
-        self.section = Some(Section::Head { max });
+    pub fn head(mut self, width: usize) -> Self {
+        self.section = None;
+        self.section_opt = Some(SectionOption::Head {
+            width: prepare_width(width),
+        });
         self
     }
 
@@ -270,9 +132,21 @@ impl<'i> InputDisplay<'i> {
     ///
     /// assert_eq!(formatted, "[.. cc dd ee ff]");
     /// ```
-    pub fn tail(mut self, max: usize) -> Self {
-        self.computed = None;
-        self.section = Some(Section::Tail { max });
+    pub fn tail(mut self, width: usize) -> Self {
+        self.section = None;
+        self.section_opt = Some(SectionOption::Tail {
+            width: prepare_width(width),
+        });
+        self
+    }
+
+    /// TODO
+    pub fn span(mut self, span: &'i Input, width: usize) -> Self {
+        self.section = None;
+        self.section_opt = Some(SectionOption::Span {
+            span,
+            width: prepare_width(width),
+        });
         self
     }
 
@@ -287,53 +161,16 @@ impl<'i> InputDisplay<'i> {
     /// assert_eq!(formatted, "[aa bb cc dd ee ff]");
     /// ```
     pub fn full(mut self) -> Self {
-        self.computed = None;
         self.section = None;
+        self.section_opt = None;
         self
     }
 
-    // TODO
-    /// Shows the all of the elements in the [`Input`].
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-    /// let formatted = input.display().full().to_string();
-    ///
-    /// assert_eq!(formatted, "[aa bb cc dd ee ff]");
-    /// ```
-    pub fn span(mut self, span: &'i Input, max: usize) -> Self {
-        self.computed = None;
-        self.section = Some(Section::Span { span, max });
-        self
-    }
-
+    /// TODO
     pub fn prepare(&mut self) {
-        self.computed = match self.section {
-            None => None,
-            Some(Section::Head { max }) => Some(ComputedSection::from_head(
-                self.input,
-                Some(max),
-                self.str_hint,
-            )),
-            Some(Section::Tail { max }) => Some(ComputedSection::from_tail(
-                self.input,
-                Some(max),
-                self.str_hint,
-            )),
-            Some(Section::HeadTail { max }) => Some(ComputedSection::from_head_tail(
-                self.input,
-                Some(max),
-                self.str_hint,
-            )),
-            Some(Section::Span { span, max }) => Some(ComputedSection::from_span(
-                self.input,
-                span,
-                Some(max),
-                self.str_hint,
-            )),
-        }
+        self.section = self
+            .section_opt
+            .map(|opt| Section::compute(opt, self.input, self.str_hint))
     }
 
     /// Writes the [`Input`] to a writer with the choosen format.
@@ -341,20 +178,40 @@ impl<'i> InputDisplay<'i> {
     /// # Errors
     ///
     /// Returns [`core::fmt::Error`] if failed to write.
-    pub fn write<W>(&self, w: &mut W) -> fmt::Result
+    pub fn write<W>(&self, mut w: W) -> fmt::Result
     where
         W: Write,
     {
-        let mut writer = InputWriter::raw(w);
-        if self.str_hint {
-            if let Ok(s) = str::from_utf8(self.input.as_dangerous()) {
-                // let writer = InputWriter::
-                write_str(&mut writer, s, self.section)
+        // If no section option is specified, just print everything fast.
+        // Else if a section exists and it has been computed, print it.
+        // Else compute the section it and print it.
+        if self.section_opt.is_none() {
+            let mut writer = InputWriter::new(w);
+            if self.str_hint {
+                if let Ok(input_str) = str::from_utf8(self.input.as_dangerous()) {
+                    writer.write_delim(STR_DELIM, false)?;
+                    writer.write_str(input_str)?;
+                    writer.write_delim(STR_DELIM, false)
+                } else {
+                    writer.write_delim(BYTES_DELIM_OPEN, false)?;
+                    write_bytes_contents(&mut writer, self.input.as_dangerous(), true)?;
+                    writer.write_delim(BYTES_DELIM_CLOSE, false)
+                }
             } else {
-                write_bytes(&mut writer, self.input, true, self.section)
+                writer.write_delim(BYTES_DELIM_OPEN, false)?;
+                write_bytes_contents(&mut writer, self.input.as_dangerous(), false)?;
+                writer.write_delim(BYTES_DELIM_CLOSE, false)
             }
+        } else if let Some(ref section) = self.section {
+            let mut writer = InputWriter::new(&mut w);
+            write_section(&mut writer, section, self.str_hint)?;
+            w.write_char('\n')?;
+            let mut writer = InputWriter::underline(&mut w);
+            write_section(&mut writer, section, self.str_hint)
         } else {
-            write_bytes(&mut writer, self.input, false, self.section)
+            let mut this = self.clone();
+            this.prepare();
+            this.write(w)
         }
     }
 }
@@ -373,224 +230,142 @@ impl<'i> fmt::Display for InputDisplay<'i> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-fn elements_to_fit_column_width<'i, T, F>(
-    mut acc: T,
-    column_width: usize,
-    space_separated: bool,
-    mut next_element: F,
-) -> T
+enum InputWriterState {
+    Raw,
+    Span,
+    Underline,
+}
+
+struct InputWriter<W: Write>(W, InputWriterState);
+
+impl<W> Write for InputWriter<W>
 where
-    F: FnMut(&T) -> Option<(T, usize, bool)>,
+    W: Write,
 {
-    debug_assert!(
-        column_width >= HAS_MORE_LEN,
-        "should have enough space for at least one has more"
-    );
-    let mut is_first = true;
-    let mut budget = column_width;
-    loop {
-        if let Some((next_acc, display_width, has_next)) = next_element(&acc) {
-            // Make sure we have room for the seperator if any
-            let element_cost = if space_separated {
-                if is_first {
-                    is_first = false;
-                    display_width
-                } else {
-                    display_width + 1
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => self.0.write_str(s),
+            InputWriterState::Underline => {
+                for _ in 0..s.len() {
+                    self.0.write_char(UNDERLINE)?;
                 }
-            } else {
-                display_width
-            };
-            // Make sure we have room for the has more
-            let required = if has_next {
-                element_cost + HAS_MORE_LEN
-            } else {
-                element_cost
-            };
-            // Check that we have enough room for the this element,
-            // and if so subtract it.
-            if budget >= required {
-                // We did, update the budget and commit the accumulator.
-                budget -= element_cost;
-                acc = next_acc;
-            } else {
-                break;
+                Ok(())
             }
-        } else {
-            break;
         }
     }
-    acc
 }
 
-fn take_byte_str_head_column_width(complete: &Input, column_width: usize) -> &Input {
-    let bytes = complete.as_dangerous();
-    let mut byte_iter = bytes.iter();
-    let offset = elements_to_fit_column_width(0, column_width, true, |offset| {
-        byte_iter.next().map(|byte| {
-            let cost = if byte.is_ascii_graphic() {
-                b"'x'".len()
-            } else {
-                b"ff".len()
-            };
-            let offset = offset + 1;
-            let has_more = byte_iter.as_slice().len() > 0;
-            (offset, cost, has_more)
-        })
-    });
-    input(&bytes[offset..])
+impl<W> InputWriter<W>
+where
+    W: Write,
+{
+    fn new(w: W) -> Self {
+        Self(w, InputWriterState::Raw)
+    }
+
+    fn underline(w: W) -> Self {
+        Self(w, InputWriterState::Underline)
+    }
+
+    fn enter_span(&mut self) {
+        self.1 = match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => InputWriterState::Span,
+            InputWriterState::Underline => InputWriterState::Underline,
+        };
+    }
+
+    fn leave_span(&mut self) {
+        self.1 = match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => InputWriterState::Raw,
+            InputWriterState::Underline => InputWriterState::Underline,
+        };
+    }
+
+    fn write_delim(&mut self, delim: char, highlight: bool) -> fmt::Result {
+        match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => self.0.write_char(delim),
+            InputWriterState::Underline if highlight => self.0.write_char(UNDERLINE),
+            InputWriterState::Underline => self.write_space(),
+        }
+    }
+
+    fn write_space(&mut self) -> fmt::Result {
+        self.0.write_char(' ')
+    }
+
+    fn write_more(&mut self, highlight: bool) -> fmt::Result {
+        match self.1 {
+            InputWriterState::Raw | InputWriterState::Span => self.0.write_str(HAS_MORE),
+            InputWriterState::Underline if highlight => self.0.write_str(HAS_MORE_UNDERLINE),
+            InputWriterState::Underline => self.0.write_str(HAS_MORE_IGNORED),
+        }
+    }
 }
 
-fn take_str_head_column_width(complete: &Input, column_width: usize, cjk: bool) -> (&Input, bool) {
-    let bytes = complete.as_dangerous();
-    let mut char_iter = CharIter::<Invalid>::new(complete);
-    let mut is_str = true;
-    let offset = elements_to_fit_column_width(0, column_width, true, |offset| {
-        char_iter.next().and_then(|result| {
-            if let Ok(c) = result {
-                let cost = if cjk {
-                    c.width_cjk().unwrap_or(1)
-                } else {
-                    c.width().unwrap_or(1)
-                };
-                let offset = offset + c.len_utf8();
-                let has_more = char_iter.tail().len() > 0;
-                Some((offset, cost, has_more))
-            } else {
-                is_str = false;
-                None
+fn write_section<W>(w: &mut InputWriter<W>, section: &Section<'_>, show_ascii: bool) -> fmt::Result
+where
+    W: Write,
+{
+    if section.is_str() {
+        if section.has_more_before() {
+            w.write_more(section.highlight_before())?;
+            w.write_space()?;
+        }
+        w.write_delim(STR_DELIM, section.highlight_open())?;
+        for part in section.parts() {
+            match part {
+                SectionPart::Input(bytes) => {
+                    w.write_str(str::from_utf8(bytes).unwrap())?;
+                }
+                SectionPart::Span(bytes) => {
+                    w.enter_span();
+                    w.write_str(str::from_utf8(bytes).unwrap())?;
+                    w.leave_span();
+                }
             }
-        })
-    });
-    if is_str {
-        (input(&bytes[offset..]), false)
+        }
+        w.write_delim(STR_DELIM, section.highlight_close())?;
+        if section.has_more_after() {
+            w.write_space()?;
+            w.write_more(section.highlight_after())?;
+        }
+        Ok(())
     } else {
-        (
-            take_byte_str_head_column_width(complete, column_width),
-            false,
-        )
+        w.write_delim(BYTES_DELIM_OPEN, section.highlight_open())?;
+        if section.has_more_before() {
+            w.write_more(section.highlight_before())?;
+            w.write_space()?;
+        }
+        for part in section.parts() {
+            match part {
+                SectionPart::Input(bytes) => {
+                    write_bytes_contents(w, bytes, show_ascii)?;
+                }
+                SectionPart::Span(bytes) => {
+                    w.enter_span();
+                    write_bytes_contents(w, bytes, show_ascii)?;
+                    w.leave_span();
+                }
+            }
+        }
+        if section.has_more_after() {
+            w.write_space()?;
+            w.write_more(section.highlight_after())?;
+        }
+        w.write_delim(BYTES_DELIM_CLOSE, section.highlight_close())
     }
 }
 
-#[derive(Copy, Clone)]
-enum Section<'i> {
-    Tail { max: usize },
-    Head { max: usize },
-    HeadTail { max: usize },
-    Span { span: &'i Input, max: usize },
-}
-
-fn write_str<W>(w: &mut W, input: &str, section: Option<Section<'_>>) -> fmt::Result
+fn write_bytes_contents<W>(w: &mut InputWriter<W>, bytes: &[u8], show_ascii: bool) -> fmt::Result
 where
     W: Write,
 {
-    match section {
-        None => {
-            w.write_char('"')?;
-            w.write_str(input)?;
-            w.write_char('"')
-        }
-        Some(Section::Head { max }) => {
-            w.write_char('"')?;
-            if write_str_contents_head(w, input, max)? {
-                w.write_str("\"..")
-            } else {
-                w.write_char('"')
-            }
-        }
-        Some(Section::Tail { max }) => {
-            let count = input.chars().count();
-            if count > max {
-                w.write_str("..\"")?;
-                write_str_contents_tail(w, input, count - max)?;
-            } else {
-                w.write_char('"')?;
-                w.write_str(input)?;
-            }
-            w.write_char('"')
-        }
-        Some(Section::HeadTail { max }) => {
-            w.write_char('"')?;
-            let count = input.chars().count();
-            if count > max {
-                let (head_max, tail_max) = head_tail_max(max);
-                if write_str_contents_head(w, input, head_max)? {
-                    if tail_max == 0 {
-                        w.write_str("\"..")
-                    } else {
-                        w.write_str("\"..\"")?;
-                        write_str_contents_tail(w, input, count - tail_max)?;
-                        w.write_char('"')
-                    }
-                } else {
-                    w.write_char('"')
-                }
-            } else {
-                w.write_str(input)?;
-                w.write_char('"')
-            }
-        }
-        Some(Section::Span { .. }) => unimplemented!(),
-    }
-}
-
-fn write_bytes<W>(
-    w: &mut InputWriter<W>,
-    input: &Input,
-    show_ascii: bool,
-    section: Option<Section<'_>>,
-) -> fmt::Result
-where
-    W: Write,
-{
-    w.write_char('[')?;
-    match section {
-        None => {
-            write_bytes_contents(w, input, show_ascii)?;
-        }
-        Some(Section::Head { max }) => {
-            write_bytes_contents(w, input.split_max(max).0, show_ascii)?;
-            if input.len() > max {
-                w.write_str(" ..")?;
-            }
-        }
-        Some(Section::Tail { max }) => {
-            if input.len() > max {
-                w.write_str(".. ")?;
-            }
-            write_bytes_contents(w, input.split_max(input.len() - max).1, show_ascii)?;
-        }
-        Some(Section::HeadTail { max }) => {
-            if input.len() > max {
-                let (head_max, tail_max) = head_tail_max(max);
-                let head = input.split_max(head_max).0;
-                let tail = input.split_max(input.len() - tail_max).1;
-                write_bytes_contents(w, head, show_ascii)?;
-                if tail_max == 0 {
-                    w.write_str(" ..")?;
-                } else {
-                    w.write_str(" .. ")?;
-                    write_bytes_contents(w, tail, show_ascii)?;
-                }
-            } else {
-                write_bytes_contents(w, input, show_ascii)?;
-            }
-        }
-        Some(Section::Span { .. }) => unimplemented!(),
-    };
-    w.write_char(']')
-}
-
-fn write_bytes_contents<W>(w: &mut W, input: &Input, show_ascii: bool) -> fmt::Result
-where
-    W: Write,
-{
-    let mut byte_iter = input.as_dangerous().iter();
-    let write_byte = |w: &mut W, b: u8| {
+    let mut byte_iter = bytes.iter();
+    let write_byte = |w: &mut InputWriter<W>, b: u8| {
         if show_ascii && b.is_ascii_graphic() {
-            w.write_char('\'')?;
+            w.write_char(CHAR_DELIM)?;
             w.write_char(b as char)?;
-            w.write_char('\'')
+            w.write_char(CHAR_DELIM)
         } else {
             write!(w, "{:0>2x}", b)
         }
@@ -599,39 +374,8 @@ where
         write_byte(w, *byte)?;
     }
     for byte in byte_iter {
-        w.write_char(' ')?;
+        w.write_space()?;
         write_byte(w, *byte)?;
     }
     Ok(())
-}
-
-fn write_str_contents_head<W>(w: &mut W, input: &str, max: usize) -> Result<bool, fmt::Error>
-where
-    W: Write,
-{
-    let mut i = 0;
-    let mut iter = input.chars();
-    while let Some(c) = iter.next() {
-        i += 1;
-        w.write_char(c)?;
-        if i == max {
-            return Ok(iter.next().is_some());
-        }
-    }
-    Ok(false)
-}
-
-fn write_str_contents_tail<W>(w: &mut W, input: &str, skip: usize) -> fmt::Result
-where
-    W: Write,
-{
-    for c in input.chars().skip(skip) {
-        w.write_char(c)?;
-    }
-    Ok(())
-}
-
-fn head_tail_max(max: usize) -> (usize, usize) {
-    let half = max / 2;
-    (half + max % 2, half)
 }
