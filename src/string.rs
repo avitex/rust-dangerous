@@ -120,6 +120,7 @@ impl<'i> DoubleEndedIterator for CharIter<'i> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct InvalidChar(());
 
 #[inline(always)]
@@ -135,20 +136,60 @@ fn first_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
 
 #[inline(always)]
 fn last_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
-    let mut i = bytes.len();
-    while i > bytes.len().saturating_sub(4) {
-        let byte = bytes[i];
-        if !utf8_is_cont_byte(byte) && utf8_char_len(byte) == bytes.len() - i {
-            return parse_char(&bytes[i..]);
+    if bytes.is_empty() {
+        return Err(InvalidChar(()));
+    }
+    for (i, byte) in (1..=4).zip(bytes.iter().rev().copied()) {
+        if !utf8_is_cont_byte(byte) && utf8_char_len(byte) == i {
+            let last_index = bytes.len() - i;
+            return parse_char(&bytes[last_index..]);
         }
     }
     Err(InvalidChar(()))
 }
 
+#[inline(always)]
 fn parse_char(bytes: &[u8]) -> Result<char, InvalidChar> {
     if let Ok(s) = str::from_utf8(bytes) {
-        Ok(s.chars().next().unwrap())
-    } else {
-        Err(InvalidChar(()))
+        if let Some(c) = s.chars().next() {
+            return Ok(c);
+        }
+    }
+    Err(InvalidChar(()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_last_codepoint() {
+        assert!(last_codepoint(b"").is_err());
+        assert!(last_codepoint(b"\xFF").is_err());
+        assert!(last_codepoint(b"a\xFF").is_err());
+        assert_eq!(last_codepoint(b"a").unwrap(), 'a');
+        assert_eq!(last_codepoint(b"ab").unwrap(), 'b');
+        assert_eq!(
+            last_codepoint("a\u{10348}".as_bytes()).unwrap(),
+            '\u{10348}'
+        );
+        assert_eq!(last_codepoint("\u{10348}".as_bytes()).unwrap(), '\u{10348}');
+    }
+
+    #[test]
+    fn test_first_codepoint() {
+        assert!(first_codepoint(b"").is_err());
+        assert!(first_codepoint(b"\xFF").is_err());
+        assert!(first_codepoint(b"\xFFa").is_err());
+        assert_eq!(first_codepoint(b"a").unwrap(), 'a');
+        assert_eq!(first_codepoint(b"ab").unwrap(), 'a');
+        assert_eq!(
+            first_codepoint("\u{10348}a".as_bytes()).unwrap(),
+            '\u{10348}'
+        );
+        assert_eq!(
+            first_codepoint("\u{10348}".as_bytes()).unwrap(),
+            '\u{10348}'
+        );
     }
 }
