@@ -1,6 +1,7 @@
 mod internal;
 
 use core::{fmt, str};
+use core::convert::Infallible;
 
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
@@ -240,6 +241,17 @@ impl Input {
         let mut r = Reader::new(self);
         let ok = r.context(OperationContext("read partial"), f)?;
         Ok((ok, r.take_remaining()))
+    }
+
+    /// Create a reader to read a part of the input and return the rest
+    /// without any errors.
+    pub fn read_infallible<'i, F, O>(&'i self, f: F) -> (O, &'i Input)
+    where
+        F: FnOnce(&mut Reader<'i, Infallible>) -> O,
+    {
+        let mut r = Reader::new(self);
+        let ok = f(&mut r);
+        (ok, r.take_remaining())
     }
 }
 
