@@ -4,12 +4,13 @@ use core::fmt;
 
 mod error;
 mod input;
+mod iters;
 mod section;
 
 pub use self::error::ErrorDisplay;
 pub use self::input::InputDisplay;
 
-pub(crate) use self::section::{Section, SectionOption, SectionPart};
+pub(crate) use self::section::{PreferredFormat, Section, SectionOpt};
 
 pub(crate) struct WithFormatter<T>(pub(crate) T)
 where

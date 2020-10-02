@@ -2,8 +2,6 @@ use core::str;
 
 use unicode_width::UnicodeWidthChar;
 
-use crate::input::{input, Input};
-
 // Source: <rust-source>/core/str/mod.rs
 // https://tools.ietf.org/html/rfc3629
 static UTF8_CHAR_LENGTH: [u8; 256] = [
@@ -45,13 +43,26 @@ pub(crate) fn utf8_char_len(b: u8) -> usize {
 
 #[inline]
 pub(crate) fn utf8_char_display_width(c: char, cjk: bool) -> usize {
-    if cjk {
-        c.width_cjk().unwrap_or(1)
-    } else {
-        c.width().unwrap_or(1)
+    if c == '\0' {
+        return "\\u{0}".len();
+    }
+    let width = if cjk { c.width_cjk() } else { c.width() };
+    match width {
+        Some(width) => width,
+        None => "\\u{}".len() + count_digits(c as u32),
     }
 }
 
+pub(crate) fn count_digits(mut num: u32) -> usize {
+    let mut count = 1;
+    while num > 9 {
+        count += 1;
+        num /= 10;
+    }
+    count
+}
+
+#[derive(Clone)]
 pub(crate) struct CharIter<'i> {
     forward: usize,
     backward: usize,
@@ -59,20 +70,24 @@ pub(crate) struct CharIter<'i> {
 }
 
 impl<'i> CharIter<'i> {
-    pub(crate) fn new(input: &'i Input) -> Self {
+    pub(crate) fn new(bytes: &'i [u8]) -> Self {
         Self {
-            bytes: input.as_dangerous(),
+            bytes,
             forward: 0,
-            backward: input.len(),
+            backward: bytes.len(),
         }
     }
 
-    pub(crate) fn head(&self) -> &'i Input {
-        input(&self.bytes[..self.forward])
+    pub(crate) fn as_slice(&self) -> &'i [u8] {
+        &self.bytes[self.forward..self.backward]
     }
 
-    pub(crate) fn tail(&self) -> &'i Input {
-        input(&self.bytes[self.forward..])
+    fn head(&self) -> &'i [u8] {
+        &self.bytes[self.forward..]
+    }
+
+    fn tail(&self) -> &'i [u8] {
+        &self.bytes[..self.backward]
     }
 }
 
@@ -84,7 +99,7 @@ impl<'i> Iterator for CharIter<'i> {
         if self.forward == self.backward {
             None
         } else {
-            let result = first_codepoint(self.tail().as_dangerous()).and_then(|c| {
+            let result = first_codepoint(self.head()).and_then(|c| {
                 let forward = self.forward.saturating_add(c.len_utf8());
                 if forward > self.backward {
                     self.forward = self.backward;
@@ -97,6 +112,12 @@ impl<'i> Iterator for CharIter<'i> {
             Some(result)
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.backward - self.forward;
+        (remaining, Some(remaining))
+    }
 }
 
 impl<'i> DoubleEndedIterator for CharIter<'i> {
@@ -105,7 +126,7 @@ impl<'i> DoubleEndedIterator for CharIter<'i> {
         if self.forward == self.backward {
             None
         } else {
-            let result = last_codepoint(self.head().as_dangerous()).and_then(|c| {
+            let result = last_codepoint(self.tail()).and_then(|c| {
                 let backward = self.backward.saturating_sub(c.len_utf8());
                 if backward < self.forward {
                     self.backward = self.forward;
@@ -161,6 +182,14 @@ fn parse_char(bytes: &[u8]) -> Result<char, InvalidChar> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_char_iter() {
+        let mut char_iter = CharIter::new("\u{10348}a\u{10347}".as_bytes());
+        assert_eq!(char_iter.next().unwrap().unwrap(), '\u{10348}');
+        assert_eq!(char_iter.next_back().unwrap().unwrap(), '\u{10347}');
+        assert_eq!(char_iter.next().unwrap().unwrap(), 'a');
+    }
 
     #[test]
     fn test_last_codepoint() {

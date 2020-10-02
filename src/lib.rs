@@ -17,7 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     // Exception: Byte slice to `Input` cast
-    unsafe_code,
+    // TODO: unsafe_code,
     // Exception: Derived implementations
     unused_qualifications,
     // Exception: `error::Value`
