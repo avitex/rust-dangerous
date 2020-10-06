@@ -1,4 +1,3 @@
-use core::ops::Range;
 use core::slice;
 
 use crate::error::{
@@ -6,7 +5,6 @@ use crate::error::{
     Value,
 };
 use crate::reader::Reader;
-use crate::util::slice_ptr_range;
 
 use super::{input, Input};
 
@@ -219,26 +217,6 @@ impl Input {
             }
         }
         Ok((self, self.end()))
-    }
-
-    #[inline(always)]
-    pub(crate) fn inclusive_range(&self, sub: &Input) -> Option<Range<usize>> {
-        let self_bounds = self.as_dangerous_ptr_range();
-        let sub_bounds = sub.as_dangerous_ptr_range();
-        if (self_bounds.start == sub_bounds.start || self_bounds.contains(&sub_bounds.start))
-            && (self_bounds.end == sub_bounds.end || self_bounds.contains(&sub_bounds.end))
-        {
-            let start = sub_bounds.start as usize - self_bounds.start as usize;
-            let end = start + sub.len();
-            Some(start..end)
-        } else {
-            None
-        }
-    }
-
-    #[inline(always)]
-    pub(crate) fn as_dangerous_ptr_range(&self) -> Range<*const u8> {
-        slice_ptr_range(self.as_dangerous())
     }
 
     ///////////////////////////////////////////////////////////////////////////

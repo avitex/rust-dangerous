@@ -6,6 +6,7 @@ use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
 use crate::string::utf8_char_len;
+use crate::util::is_sub_slice;
 
 /// Creates a new `Input` from a byte slice.
 ///
@@ -69,7 +70,7 @@ impl Input {
     /// Returns `true` if the underlying byte slice for `parent` contains that
     /// of `self` in the same section of memory with no bounds out of range.
     pub fn is_within(&self, parent: &Input) -> bool {
-        parent.inclusive_range(self).is_some()
+        is_sub_slice(parent.as_dangerous(), self.as_dangerous())
     }
 
     /// Returns an [`InputDisplay`] for formatting.
