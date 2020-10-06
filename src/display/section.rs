@@ -5,7 +5,10 @@
 // | head-tail | `"a" .. "a"` | `[97 .. 97]` | `['a' .. 'a']` |
 // | span      | `.. "a" ..`  | `[.. 97 ..]` | `[.. 'a' ..]`  |
 
-use core::{cmp, fmt, str};
+use core::{fmt, str};
+
+use crate::util::{is_sub_slice, slice_ptr_range};
+use crate::string::utf8_char_len;
 
 use super::input::PreferredFormat;
 use super::iters::{
@@ -135,20 +138,52 @@ impl<'a> Section<'a> {
         width: usize,
         format: PreferredFormat,
     ) -> Self {
+        if !is_sub_slice(full, span) {
+            return Self::from_head_tail(full, width, format);
+        }
         let width = init_width(width);
-        let full_start_ptr = full.as_ptr();
-        let span_start_ptr = span.as_ptr();
+        let full_bounds = slice_ptr_range(full);
+        let span_bounds = slice_ptr_range(span);
         if span.is_empty() {
-            if full_start_ptr == span_start_ptr {
-                Self::from_span_head(full, span, full, width, format)
+            if full_bounds.start == span_bounds.start {
+                let visible = match format {
+                    PreferredFormat::Bytes => take_bytes_head(full, width, false),
+                    PreferredFormat::BytesAscii => take_bytes_head(full, width, true),
+                    PreferredFormat::Str => take_str_head(full, width, false),
+                    PreferredFormat::StrCjk => take_str_head(full, width, true),
+                };
+                Self {
+                    full,
+                    visible,
+                    span: Some(span),
+                }
             } else {
-                Self::from_span_tail(full, span, width, format)
+                let visible = match format {
+                    PreferredFormat::Bytes => take_bytes_tail(full, width, false),
+                    PreferredFormat::BytesAscii => take_bytes_tail(full, width, true),
+                    PreferredFormat::Str => take_str_tail(full, width, false),
+                    PreferredFormat::StrCjk => take_str_tail(full, width, true),
+                };
+                Self {
+                    full,
+                    visible,
+                    span: Some(span),
+                }
             }
         } else {
-            let span_offset = cmp::min(
-                full.len(),
-                (span_start_ptr as usize).saturating_sub(full_start_ptr as usize),
-            );
+            let span_offset = span_bounds.start as usize - full_bounds.start as usize;
+            // If the span starts at an invalid UTF-8 boundary, show the section
+            // as bytes-ascii
+            let format = match format {
+                PreferredFormat::Str | PreferredFormat::StrCjk => {
+                    if utf8_char_len(full[span_offset]) > 0 {
+                        format
+                    } else {
+                        PreferredFormat::BytesAscii
+                    }
+                },
+                _ => format,
+            };
             let visible = match format {
                 PreferredFormat::Bytes => take_bytes_span(full, span_offset, width, false),
                 PreferredFormat::BytesAscii => take_bytes_span(full, span_offset, width, true),
@@ -160,45 +195,6 @@ impl<'a> Section<'a> {
                 visible,
                 span: Some(span),
             }
-        }
-    }
-
-    fn from_span_head(
-        full: &'a [u8],
-        span: &'a [u8],
-        visible: &'a [u8],
-        width: usize,
-        format: PreferredFormat,
-    ) -> Self {
-        let visible = match format {
-            PreferredFormat::Bytes => take_bytes_head(visible, width, false),
-            PreferredFormat::BytesAscii => take_bytes_head(visible, width, true),
-            PreferredFormat::Str => take_str_head(visible, width, false),
-            PreferredFormat::StrCjk => take_str_head(visible, width, true),
-        };
-        Self {
-            full,
-            visible,
-            span: Some(span),
-        }
-    }
-
-    fn from_span_tail(
-        full: &'a [u8],
-        span: &'a [u8],
-        width: usize,
-        format: PreferredFormat,
-    ) -> Self {
-        let visible = match format {
-            PreferredFormat::Bytes => take_bytes_tail(full, width, false),
-            PreferredFormat::BytesAscii => take_bytes_tail(full, width, true),
-            PreferredFormat::Str => take_str_tail(full, width, false),
-            PreferredFormat::StrCjk => take_str_tail(full, width, true),
-        };
-        Self {
-            full,
-            visible,
-            span: Some(span),
         }
     }
 
