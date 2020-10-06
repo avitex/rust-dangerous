@@ -6,6 +6,7 @@ use crate::error::{
     Value,
 };
 use crate::reader::Reader;
+use crate::util::slice_ptr_range;
 
 use super::{input, Input};
 
@@ -237,7 +238,7 @@ impl Input {
 
     #[inline(always)]
     pub(crate) fn as_dangerous_ptr_range(&self) -> Range<*const u8> {
-        crate::util::slice_ptr_range(self.as_dangerous())
+        slice_ptr_range(self.as_dangerous())
     }
 
     ///////////////////////////////////////////////////////////////////////////

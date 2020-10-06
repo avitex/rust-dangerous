@@ -32,11 +32,11 @@ fuzz_target!(|data: &[u8]| {
         write!(DummyWrite, "{}", err).unwrap();
     }
 
-    write!(DummyWrite, "{}", input_full.display().full());
-    write!(DummyWrite, "{}", input_full.display().head(rng.gen()));
-    write!(DummyWrite, "{}", input_full.display().tail(rng.gen()));
-    write!(DummyWrite, "{}", input_full.display().head_tail(rng.gen()));
-    write!(DummyWrite, "{}", input_full.display().span(input_a, rng.gen()));
+    write!(DummyWrite, "{}", input_full.display().full()).unwrap();
+    write!(DummyWrite, "{}", input_full.display().head(rng.gen())).unwrap();
+    write!(DummyWrite, "{}", input_full.display().tail(rng.gen())).unwrap();
+    write!(DummyWrite, "{}", input_full.display().head_tail(rng.gen())).unwrap();
+    write!(DummyWrite, "{}", input_full.display().span(input_a, rng.gen())).unwrap();
 
     read_partial!(input_full, |r| r.read_u8());
     read_partial!(input_full, |r| r.peek_u8());

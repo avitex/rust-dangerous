@@ -1,5 +1,6 @@
 use core::fmt;
-use core::ops::Range;
+
+use crate::util::slice_ptr_range;
 
 pub(super) struct InputWriter<'a, W>
 where
@@ -275,12 +276,4 @@ fn is_span_pointing_to_end(bytes: &[u8], span: Option<&[u8]>) -> bool {
         let span_bounds = slice_ptr_range(span);
         span.is_empty() && section_bounds.end == span_bounds.end
     })
-}
-
-fn slice_ptr_range<T>(slice: &[T]) -> Range<*const T> {
-    let start = slice.as_ptr();
-    // note: will never wrap, we are just escaping the use of unsafe.
-    let end = slice.as_ptr().wrapping_add(slice.len());
-    debug_assert!(start <= end);
-    start..end
 }

@@ -1,9 +1,10 @@
-/// | format    | str          | bytes        | bytes-ascii    |
-/// | --------- | ------------ | ------------ | -------------- |
-/// | head      | `"a" ..`     | `[97 ..]`    | `['a' ..]`     |
-/// | tail      | `.. "a"`     | `[.. 97]`    | `[.. 'a']`     |
-/// | head-tail | `"a" .. "a"` | `[97 .. 97]` | `['a' .. 'a']` |
-/// | span      | `.. "a" ..`  | `[.. 97 ..]` | `[.. 'a' ..]`  |
+// | format    | str          | bytes        | bytes-ascii    |
+// | --------- | ------------ | ------------ | -------------- |
+// | head      | `"a" ..`     | `[97 ..]`    | `['a' ..]`     |
+// | tail      | `.. "a"`     | `[.. 97]`    | `[.. 'a']`     |
+// | head-tail | `"a" .. "a"` | `[97 .. 97]` | `['a' .. 'a']` |
+// | span      | `.. "a" ..`  | `[.. 97 ..]` | `[.. 'a' ..]`  |
+
 use core::{cmp, fmt, str};
 
 use super::input::PreferredFormat;
@@ -416,16 +417,20 @@ where
     let init_backward_width = width / 3 + SIDE_HAS_MORE_COST;
     let backward_offset = iter.as_slice().len() - span_offset;
     let init_backward_iter = iter.clone().skip_tail_bytes(backward_offset);
-    let (init_head_len, head_remaining) =
+    let (init_head_len, head_remaining_width) =
         take_tail(init_backward_iter, init_backward_width, space_separated)?;
     // Attempt to get 2/3 plus what couldn't be taken from before.
-    let forward_width = width + head_remaining - init_backward_width;
+    let forward_width = width
+        .saturating_sub(init_backward_width)
+        .saturating_add(head_remaining_width);
     let forward_iter = iter.clone().skip_head_bytes(span_offset);
-    let (tail_len, tail_remaining) = take_head(forward_iter, forward_width, space_separated)?;
+    let (tail_len, tail_remaining_width) = take_head(forward_iter, forward_width, space_separated)?;
     // If we had some remaining width from the span onwards, see if we can use it before.
-    let head_len = if tail_remaining > 0 {
+    let head_len = if tail_remaining_width > 0 {
         let backward_iter = iter.skip_tail_bytes(backward_offset);
-        let backward_width = init_backward_width + tail_remaining;
+        let backward_width = width
+            .saturating_sub(forward_width)
+            .saturating_add(tail_remaining_width);
         let (head_len, _) = take_tail(backward_iter, backward_width, space_separated)?;
         head_len
     } else {
@@ -465,7 +470,7 @@ where
                 is_first = false;
                 display_cost
             } else {
-                display_cost + SPACE_COST
+                SPACE_COST + display_cost
             }
         } else {
             display_cost
@@ -889,7 +894,7 @@ mod tests {
             input: &[0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff],
             //                                     ^
             span: 5..,
-            format: PreferredFormat::Str,
+            format: PreferredFormat::BytesAscii,
             visible: Visible::BytesAscii(&[0xcc, 0xdd, 0xee, 0xff]),
             //                                               ^
             display: r#"[.. cc dd ee ff]"#,
