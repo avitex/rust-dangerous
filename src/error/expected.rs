@@ -4,11 +4,12 @@ use core::fmt;
 use alloc::boxed::Box;
 
 use crate::display::{ByteCount, ErrorDisplay};
-use crate::error::{
+use crate::input::{input, Input};
+
+use super::{
     Context, ContextStack, ContextStackBuilder, ErrorDetails, ExpectedContext, FromContext,
     RetryRequirement, ToRetryRequirement,
 };
-use crate::input::{input, Input};
 
 #[cfg(feature = "full-context")]
 type ExpectedContextStack = crate::error::FullContextStack;

@@ -1,10 +1,11 @@
 use core::fmt;
 
-use crate::error::{
+use crate::input::Input;
+
+use super::{
     Context, ContextStack, Expected, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
     RetryRequirement, ToRetryRequirement,
 };
-use crate::input::Input;
 
 /// `Invalid` contains no details around what went wrong other than a
 /// [`RetryRequirement`] if the error is not fatal.

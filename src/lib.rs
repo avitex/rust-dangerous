@@ -16,8 +16,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![deny(
-    // Exception: Byte slice to `Input` cast
-    // TODO: unsafe_code,
+    // Exceptions: Byte slice to `Input` cast, str cast for section
+    unsafe_code,
     // Exception: Derived implementations
     unused_qualifications,
     // Exception: `error::Value`

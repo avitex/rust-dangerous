@@ -66,8 +66,9 @@ context bracktrace:
 
 ## Safety
 
-This library has one instance of `unsafe` required for wrapping a byte slice
-into the `Input` DST.
+This library has a instance of `unsafe` required for wrapping a byte slice into
+the `Input` DST and multiple instances required for `str::from_utf8_unchecked`
+used in display section.
 
 ## Inspiration
 

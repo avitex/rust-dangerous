@@ -1,8 +1,9 @@
 use core::any::Any;
 use core::fmt::{self, Debug};
 
-use crate::error::FromContext;
 use crate::input::Input;
+
+use super::FromContext;
 
 #[cfg(feature = "full-context")]
 use alloc::{boxed::Box, vec::Vec};

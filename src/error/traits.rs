@@ -1,7 +1,8 @@
 use core::fmt;
 
-use crate::error::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue};
 use crate::input::Input;
+
+use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue};
 
 /// Convenience trait requiring both [`FromContext`] and [`FromExpected`].
 pub trait Error<'i>: FromContext<'i> + FromExpected<'i> {}

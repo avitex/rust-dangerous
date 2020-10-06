@@ -5,8 +5,9 @@ use crate::error::{
     with_context, ExpectedContext, ExpectedLength, ExpectedValue, FromContext, OperationContext,
     Value,
 };
-use crate::input::{input, Input};
 use crate::reader::Reader;
+
+use super::{input, Input};
 
 // All functions defined in internal are used within other functions that expose
 // public functionality.

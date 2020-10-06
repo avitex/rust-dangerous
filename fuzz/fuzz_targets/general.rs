@@ -19,7 +19,7 @@ fuzz_target!(|data: &[u8]| {
 
     let input_full = dangerous::input(data);
 
-    let (input_a, input_b) = if data.is_empty() {
+    let (input_a, input_b) = if input_full.is_empty() {
         (input_full, input_full)
     } else {
         let (a, b) = data.split_at(rng.gen_range(0, data.len()));
@@ -31,6 +31,12 @@ fuzz_target!(|data: &[u8]| {
     if let Err(err) = input_full.to_dangerous_str::<Expected>() {
         write!(DummyWrite, "{}", err).unwrap();
     }
+
+    write!(DummyWrite, "{}", input_full.display().full());
+    write!(DummyWrite, "{}", input_full.display().head(rng.gen()));
+    write!(DummyWrite, "{}", input_full.display().tail(rng.gen()));
+    write!(DummyWrite, "{}", input_full.display().head_tail(rng.gen()));
+    write!(DummyWrite, "{}", input_full.display().span(input_a, rng.gen()));
 
     read_partial!(input_full, |r| r.read_u8());
     read_partial!(input_full, |r| r.peek_u8());

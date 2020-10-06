@@ -1,8 +1,9 @@
 use core::fmt::{self, Write};
 
-use crate::display::{InputDisplay, PreferredFormat, WithFormatter};
 use crate::error::{Context, ErrorDetails};
 use crate::input::Input;
+
+use super::{InputDisplay, PreferredFormat, WithFormatter};
 
 const DEFAULT_MAX_WIDTH: usize = 80;
 
