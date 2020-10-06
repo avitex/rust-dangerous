@@ -23,23 +23,24 @@ pub enum PreferredFormat {
 
 /// Provides configurable [`Input`] formatting.
 ///
-/// Defaults to formatting an [`Input`] to max `1024` bytes or UTF-8 code points.
+/// - Defaults to formatting an [`Input`] to a max displayable width of `1024`.
+/// - The minimum settable display width is `16`.
 ///
 /// # Format string options
-///  
-/// | Option     | `"heya ♥"`                  | `&[0xFF, 0xFF, b'a']` |
-/// | ---------- | --------------------------- | --------------------- |
-/// | `"{}"`     | `[68 65 79 61 20 e2 99 a5]` | `[ff ff 61]`          |
-/// | `"{:#}"`   | `"heya ♥"`                  | `[ff ff 'a']`         |
-/// | `"{:.2}"`  | `[68 .. a5]`                | `[ff .. 61]`          |
-/// | `"{:#.2}"` | `"h".."♥"`                  | `[ff .. 'a']`         |
+///
+/// | Option      | `"heya ♥"`                  | `&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF b'a']` |
+/// | ----------- | --------------------------- | -------------------------------------- |
+/// | `"{}"`      | `[68 65 79 61 20 e2 99 a5]` | `[ff ff ff ff ff 61]`                  |
+/// | `"{:#}"`    | `"heya ♥"`                  | `[ff ff ff ff ff 'a']`                 |
+/// | `"{:.16}"`  | `[68 65 .. 99 a5]`          | `[ff ff .. ff 61]`                     |
+/// | `"{:#.16}"` | `"heya ♥"`                  | `[ff ff .. 'a']`                       |
 ///
 /// # Example
 ///
 /// ```
 /// let formatted = dangerous::input("heya ♥".as_bytes())
 ///     .display()
-///     .head_tail(3)
+///     .head_tail(16)
 ///     .to_string();
 /// assert_eq!(formatted, "[68 65 .. 99 a5]");
 /// ```
@@ -66,7 +67,7 @@ impl<'i> InputDisplay<'i> {
 
     /// Derive an `InputDisplay` from a [`fmt::Formatter`] with defaults.
     ///
-    /// - Precision (eg. `{:.2}`) formatting sets the element limit.
+    /// - Precision (eg. `{:.16}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
     pub fn from_formatter(input: &'i Input, f: &fmt::Formatter<'_>) -> Self {
         let format = Self::new(input).str_hint(f.alternate());
@@ -98,8 +99,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the [`Input`] to show `max` elements at the head of the input and
-    /// at the tail.
+    /// Show a `width` of [`Input`] at the head of the input and at the tail.
     ///
     /// # Example
     ///
@@ -115,7 +115,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the [`Input`] to show `max` elements at the head of the input.
+    /// Show a `width` of [`Input`] at the head of the input.
     ///
     /// # Example
     ///
@@ -131,7 +131,7 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// Limit the [`Input`] to show `max` elements at the tail of the input.
+    /// Show a `width` of [`Input`] at the tail of the input.
     ///
     /// # Example
     ///

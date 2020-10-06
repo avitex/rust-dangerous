@@ -15,9 +15,9 @@ use super::writer::InputWriter;
 const MIN_WIDTH: usize = 16;
 const SPACE_COST: usize = 1;
 const DELIM_PAIR_COST: usize = 2;
-const SIDE_HAS_MORE: usize = ".. ".len();
-const HEAD_TAIL_HAS_MORE: usize = SIDE_HAS_MORE;
-const STR_HEAD_TAIL_HAS_MORE: usize = SIDE_HAS_MORE + DELIM_PAIR_COST + SPACE_COST;
+const SIDE_HAS_MORE_COST: usize = ".. ".len();
+const HEAD_TAIL_HAS_MORE_COST: usize = SIDE_HAS_MORE_COST;
+const STR_HEAD_TAIL_HAS_MORE_COST: usize = SIDE_HAS_MORE_COST + DELIM_PAIR_COST + SPACE_COST;
 
 #[derive(Copy, Clone)]
 pub(super) enum SectionOpt<'a> {
@@ -295,7 +295,7 @@ fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
 
 fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharElementIter::new(bytes, cjk);
-    if let Ok((start, end)) = take_head_tail(iter, width, false, STR_HEAD_TAIL_HAS_MORE) {
+    if let Ok((start, end)) = take_head_tail(iter, width, false, STR_HEAD_TAIL_HAS_MORE_COST) {
         // Safety: all chars are checked from the char iterator
         unsafe {
             if start == end {
@@ -312,7 +312,7 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 
 fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
     let iter = ByteElementIter::new(bytes, show_ascii);
-    let (start, end) = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE).unwrap();
+    let (start, end) = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST).unwrap();
     if start == end {
         if show_ascii {
             Visible::BytesAscii(&bytes[..])
@@ -358,7 +358,7 @@ where
         0,
         width,
         space_separated,
-        SIDE_HAS_MORE,
+        SIDE_HAS_MORE_COST,
         |len, element_result| match element_result {
             Ok(element) => Ok((len + element.byte_len, element.display_cost)),
             Err(()) => Err(()),
@@ -409,7 +409,7 @@ where
     I: ElementIter,
 {
     // Attempt to get 1/3 of the total width before the span.
-    let init_backward_width = width / 3 + SIDE_HAS_MORE;
+    let init_backward_width = width / 3 + SIDE_HAS_MORE_COST;
     let backward_offset = iter.as_slice().len() - span_offset;
     let init_backward_iter = iter.clone().skip_tail_bytes(backward_offset);
     let (init_head_len, head_remaining) =
@@ -556,7 +556,7 @@ mod tests {
                 .format($format)
                 .$input_section($display.len());
             assert_eq!(section.visible, $visible);
-            assert_eq!($display, format!("{}", input));
+            assert_eq!($display, input.to_string());
         }};
     }
 
@@ -575,7 +575,7 @@ mod tests {
                 .format($format)
                 .span(input(span), $display.len());
             assert_eq!(section.visible, $visible);
-            assert_eq!($display, format!("{}", input));
+            assert_eq!($display, input.to_string());
         }};
     }
 

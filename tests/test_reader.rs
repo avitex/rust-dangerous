@@ -8,7 +8,7 @@ use std::any::Any;
 
 #[test]
 
-fn read_nums() {
+fn test_read_nums() {
     assert_eq!(read_all!(&[0x1], |r| r.read_u8()).unwrap(), 1);
 
     validate_read_num!(i8, le: read_i8_le, be: read_i8_be);
@@ -23,7 +23,7 @@ fn read_nums() {
 }
 
 #[test]
-fn at_end() {
+fn test_at_end() {
     assert_eq!(
         read_all!(b"hello", |r| {
             r.consume(b"hello")?;
@@ -35,7 +35,7 @@ fn at_end() {
 }
 
 #[test]
-fn context() {
+fn test_context() {
     let err = read_all!(b"hello", |r| { r.context("bob", |r| r.consume(b"world")) }).unwrap_err();
     assert_eq!(err.context_stack().count(), 3);
     err.context_stack().walk(&mut |i, c| {
@@ -54,12 +54,12 @@ fn context() {
 }
 
 #[test]
-fn skip() {
+fn test_skip() {
     assert_eq!(read_all!(b"hello", |r| { r.skip(5) }).unwrap(), ());
 }
 
 #[test]
-fn skip_while() {
+fn test_skip_while() {
     assert_eq!(
         read_all!(b"hello!", |r| {
             let v = r.skip_while(|c| c.is_ascii_alphabetic());
@@ -72,7 +72,7 @@ fn skip_while() {
 }
 
 #[test]
-fn try_skip_while() {
+fn test_try_skip_while() {
     assert_eq!(
         read_all!(b"hello!", |r| {
             let v = r.try_skip_while(|c| Ok(c.is_ascii_alphabetic()))?;
@@ -85,7 +85,7 @@ fn try_skip_while() {
 }
 
 #[test]
-fn take() {
+fn test_take() {
     assert_eq!(
         read_all!(b"hello", |r| { r.take(5) }).unwrap(),
         &b"hello"[..]
@@ -93,7 +93,7 @@ fn take() {
 }
 
 #[test]
-fn take_remaining() {
+fn test_take_remaining() {
     assert_eq!(
         read_all!(b"hello", |r| { Ok(r.take_remaining()) }).unwrap(),
         &b"hello"[..]
@@ -101,7 +101,7 @@ fn take_remaining() {
 }
 
 #[test]
-fn take_while() {
+fn test_take_while() {
     assert_eq!(
         read_all!(b"hello!", |r| {
             let v = r.take_while(|c| c.is_ascii_alphabetic());
@@ -114,7 +114,7 @@ fn take_while() {
 }
 
 #[test]
-fn try_take_while() {
+fn test_try_take_while() {
     assert_eq!(
         read_all!(b"hello!", |r| {
             let v = r.try_take_while(|c| Ok(c.is_ascii_alphabetic()))?;
@@ -127,7 +127,7 @@ fn try_take_while() {
 }
 
 #[test]
-fn take_consumed() {
+fn test_take_consumed() {
     assert_eq!(
         read_all!(b"hello", |r| {
             Ok(r.take_consumed(|r| {
@@ -140,7 +140,7 @@ fn take_consumed() {
 }
 
 #[test]
-fn try_take_consumed() {
+fn test_try_take_consumed() {
     assert_eq!(
         read_all!(b"hello", |r| {
             r.try_take_consumed(|r| r.consume(b"hello"))
@@ -151,7 +151,7 @@ fn try_take_consumed() {
 }
 
 #[test]
-fn peek() {
+fn test_peek() {
     assert_eq!(
         read_all!(b"hello", |r| {
             let v = r.peek(4, |i| i == b"hell"[..])?;
@@ -164,7 +164,7 @@ fn peek() {
 }
 
 #[test]
-fn peek_eq() {
+fn test_peek_eq() {
     read_partial!(b"helloworld", |r| {
         assert!(r.peek_eq(b"helloworld"));
         assert!(r.peek_eq(b"hello"));
@@ -176,7 +176,7 @@ fn peek_eq() {
 }
 
 #[test]
-fn try_peek() {
+fn test_try_peek() {
     // Valid
     assert_eq!(
         read_all!(b"hello", |r| {
@@ -196,7 +196,7 @@ fn try_peek() {
 }
 
 #[test]
-fn consume() {
+fn test_consume() {
     // Valid
     assert_eq!(
         read_all!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
@@ -224,7 +224,7 @@ fn consume() {
 }
 
 #[test]
-fn error() {
+fn test_error() {
     use dangerous::{Expected, Invalid, Reader};
 
     read_all!("hello", |parent: &mut Reader<'_, Expected<'_>>| {

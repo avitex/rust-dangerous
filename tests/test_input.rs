@@ -6,13 +6,13 @@ mod common;
 use dangerous::error::{Expected, RetryRequirement, ToRetryRequirement};
 
 #[test]
-fn as_dangerous() {
+fn test_as_dangerous() {
     assert_eq!(input!(b"").as_dangerous(), b"");
     assert_eq!(input!(b"hello").as_dangerous(), b"hello");
 }
 
 #[test]
-fn to_dangerous_non_empty() {
+fn test_to_dangerous_non_empty() {
     // Valid
     assert_eq!(
         input!(b"hello")
@@ -27,7 +27,7 @@ fn to_dangerous_non_empty() {
 }
 
 #[test]
-fn as_dangerous_str() {
+fn test_as_dangerous_str() {
     // Valid
     assert_eq!(input!(b"").to_dangerous_str::<Expected>().unwrap(), "");
     assert_eq!(
@@ -39,7 +39,7 @@ fn as_dangerous_str() {
 }
 
 #[test]
-fn to_dangerous_non_empty_str() {
+fn test_to_dangerous_non_empty_str() {
     // Valid
     assert_eq!(
         input!(b"hello")
@@ -57,7 +57,7 @@ fn to_dangerous_non_empty_str() {
 }
 
 #[test]
-fn is_within() {
+fn test_is_within() {
     let bytes = [0u8; 64];
 
     // Within
@@ -83,7 +83,7 @@ fn is_within() {
 }
 
 #[test]
-fn to_dangerous_str_expected_length() {
+fn test_to_dangerous_str_expected_length() {
     // Length 1
     input!(&[0b0111_1111])
         .to_dangerous_str::<Expected>()
@@ -106,7 +106,7 @@ fn to_dangerous_str_expected_length() {
 }
 
 #[test]
-fn read_all() {
+fn test_read_all() {
     // Valid
     assert_eq!(
         read_all!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
@@ -138,7 +138,7 @@ fn read_all() {
 }
 
 #[test]
-fn read_partial() {
+fn test_read_partial() {
     // Valid
     assert_eq!(
         read_partial!(b"hello", |r| { r.consume(b"hello") }).unwrap(),

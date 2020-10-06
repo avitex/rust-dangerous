@@ -1,5 +1,5 @@
 #[test]
-fn usage_with_fn() {
+fn test_usage_with_fn() {
     use dangerous::error::{Invalid, RetryRequirement, ToRetryRequirement};
 
     let input = dangerous::input(b"a");

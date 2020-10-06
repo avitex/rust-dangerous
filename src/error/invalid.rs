@@ -22,7 +22,7 @@ use crate::input::Input;
 /// }).unwrap_err();
 ///
 /// assert_eq!(
-///     format!("{}", error),
+///     error.to_string(),
 ///     "invalid input: needs 1 byte more to continue processing",
 /// );
 /// ```

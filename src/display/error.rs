@@ -42,7 +42,7 @@ where
         self
     }
 
-    /// If enabled (default `true`), writes an underline for an input span.
+    /// If enabled (enabled by default), writes an underline for an input span.
     pub fn underline(mut self, value: bool) -> Self {
         self.underline = value;
         self
@@ -74,16 +74,16 @@ where
     /// # Errors
     ///
     /// Returns [`core::fmt::Error`] if failed to write.
-    pub fn write<W>(&self, w: &mut W) -> fmt::Result
+    pub fn write<W>(&self, mut w: W) -> fmt::Result
     where
         W: Write,
     {
         if self.banner {
             w.write_str("\n-- INPUT ERROR ---------------------------------------------\n")?;
-            self.write_sections(w)?;
+            self.write_sections(&mut w)?;
             w.write_str("\n------------------------------------------------------------\n")
         } else {
-            self.write_sections(w)
+            self.write_sections(&mut w)
         }
     }
 
