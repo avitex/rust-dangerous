@@ -1,10 +1,9 @@
 use core::fmt::{self, Write};
 
-use crate::display::{InputDisplay, WithFormatter};
+use crate::display::{InputDisplay, PreferredFormat, WithFormatter};
 use crate::error::{Context, ErrorDetails};
 use crate::input::Input;
 
-const INPUT_PREFIX: &str = "> ";
 const DEFAULT_MAX_WIDTH: usize = 80;
 
 /// Provides configurable [`ErrorDetails`] formatting.
@@ -12,7 +11,8 @@ const DEFAULT_MAX_WIDTH: usize = 80;
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
     banner: bool,
-    str_hint: bool,
+    underline: bool,
+    format: PreferredFormat,
     max_width: Option<usize>,
 }
 
@@ -25,7 +25,8 @@ where
         Self {
             error,
             banner: false,
-            str_hint: false,
+            underline: true,
+            format: PreferredFormat::Bytes,
             max_width: Some(DEFAULT_MAX_WIDTH),
         }
     }
@@ -41,6 +42,12 @@ where
         self
     }
 
+    /// If enabled (default `true`), writes an underline for an input span.
+    pub fn underline(mut self, value: bool) -> Self {
+        self.underline = value;
+        self
+    }
+
     /// Set the `max-width` for wrapping error output.
     pub fn max_width(mut self, value: Option<usize>) -> Self {
         self.max_width = value;
@@ -48,8 +55,17 @@ where
     }
 
     /// Hint to the formatter that the [`crate::Input`] is a UTF-8 `str`.
-    pub fn str_hint(mut self, value: bool) -> Self {
-        self.str_hint = value;
+    pub fn str_hint(self, value: bool) -> Self {
+        if value {
+            self.format(PreferredFormat::Str)
+        } else {
+            self.format(PreferredFormat::Bytes)
+        }
+    }
+
+    /// Set the preferred way to format the [`Input`].
+    pub fn format(mut self, format: PreferredFormat) -> Self {
+        self.format = format;
         self
     }
 
@@ -103,29 +119,24 @@ where
         if let Some(expected_value) = self.error.expected() {
             let expected_display = self.input_display(expected_value);
             writeln!(w, "expected:")?;
-            write_input(w, &expected_display)?;
+            write_input(w, expected_display, false)?;
         }
-        if !span.is_within(input) {
+        if span.is_within(input) {
+            write_input(w, input_display.span(span, 40), true)
+        } else {
             writeln!(
                 w,
                 concat!(
                     "note: error span is not within the error input indicating the\n",
                     "      concrete error being used has a bug. Consider raising an\n",
-                    "      issue with the maintainer!.",
+                    "      issue with the maintainer!",
                 )
             )?;
             writeln!(w, "span: ")?;
-            write_input(w, &span_display)?;
+            write_input(w, span_display, false)?;
             writeln!(w, "input: ")?;
-            write_input(w, &input_display)?;
-            return Ok(());
+            write_input(w, input_display, false)
         }
-        if span.is_empty() {
-            write_input(w, &input_display.tail(40))?;
-        } else {
-            write_input(w, &input_display.span(span, 40))?;
-        }
-        Ok(())
     }
 
     fn write_context_backtrace<W>(&self, w: &mut W) -> fmt::Result
@@ -152,7 +163,7 @@ where
     }
 
     fn input_display<'b>(&self, input: &'b Input) -> InputDisplay<'b> {
-        input.display().str_hint(self.str_hint)
+        input.display().format(self.format)
     }
 }
 
@@ -174,9 +185,14 @@ where
     }
 }
 
-fn write_input<W>(w: &mut W, input: &InputDisplay<'_>) -> fmt::Result
+fn write_input<W>(w: &mut W, mut input: InputDisplay<'_>, underline: bool) -> fmt::Result
 where
     W: Write,
 {
-    writeln!(w, "{}{}", INPUT_PREFIX, input)
+    input.prepare();
+    writeln!(w, "> {}", input)?;
+    if underline {
+        writeln!(w, "  {}", input.underline(true))?;
+    }
+    Ok(())
 }

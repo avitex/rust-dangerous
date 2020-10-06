@@ -155,7 +155,10 @@ impl<'i> fmt::Display for Expected<'i> {
 
 impl<'i> fmt::Debug for Expected<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
+        ErrorDisplay::from_formatter(self, f)
+            .banner(true)
+            .underline(true)
+            .fmt(f)
     }
 }
 

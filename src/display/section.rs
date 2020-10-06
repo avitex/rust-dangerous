@@ -1,4 +1,4 @@
-/// | format    | str          | bytes        | str-bytes      |
+/// | format    | str          | bytes        | bytes-ascii    |
 /// | --------- | ------------ | ------------ | -------------- |
 /// | head      | `"a" ..`     | `[97 ..]`    | `['a' ..]`     |
 /// | tail      | `.. "a"`     | `[.. 97]`    | `[.. 'a']`     |
@@ -6,19 +6,21 @@
 /// | span      | `.. "a" ..`  | `[.. 97 ..]` | `[.. 'a' ..]`  |
 use core::{cmp, fmt, str};
 
-use crate::display::iters::{
+use super::input::PreferredFormat;
+use super::iters::{
     Alternate, AlternatingIter, ByteElementIter, CharElementIter, Element, ElementIter,
 };
+use super::writer::InputWriter;
 
 const MIN_WIDTH: usize = 16;
 const SPACE_COST: usize = 1;
 const DELIM_PAIR_COST: usize = 2;
 const SIDE_HAS_MORE: usize = ".. ".len();
-const HEAD_TAIL_HAS_MORE: usize = SIDE_HAS_MORE + DELIM_PAIR_COST;
+const HEAD_TAIL_HAS_MORE: usize = SIDE_HAS_MORE;
 const STR_HEAD_TAIL_HAS_MORE: usize = SIDE_HAS_MORE + DELIM_PAIR_COST + SPACE_COST;
 
 #[derive(Copy, Clone)]
-pub(crate) enum SectionOpt<'a> {
+pub(super) enum SectionOpt<'a> {
     Full,
     Head { width: usize },
     Tail { width: usize },
@@ -27,7 +29,7 @@ pub(crate) enum SectionOpt<'a> {
 }
 
 impl<'a> SectionOpt<'a> {
-    pub(crate) fn compute(self, input: &'a [u8], format: PreferredFormat) -> Section<'a> {
+    pub(super) fn compute(self, input: &'a [u8], format: PreferredFormat) -> Section<'a> {
         match self {
             Self::Full => Section::from_full(input, format),
             Self::Head { width } => Section::from_head(input, width, format),
@@ -38,47 +40,39 @@ impl<'a> SectionOpt<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
-pub(crate) enum PreferredFormat {
-    Str,
-    StrCjk,
-    Bytes,
-    ByteStr,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 enum Visible<'a> {
     // head-str, tail-str, span-str
     Str(&'a str),
     // head-bytes, tail-bytes, span-bytes
     Bytes(&'a [u8]),
-    // head-str-bytes, tail-str-bytes, span-str-bytes
-    StrBytes(&'a [u8]),
+    // head-bytes-ascii, tail-bytes-ascii, span-bytes-ascii
+    BytesAscii(&'a [u8]),
     // head-tail-str
     StrPair(&'a str, &'a str),
     // head-tail-bytes
     BytesPair(&'a [u8], &'a [u8]),
-    // head-tail-str-bytes
-    StrBytesPair(&'a [u8], &'a [u8]),
+    // head-tail-bytes-ascii
+    BytesAsciiPair(&'a [u8], &'a [u8]),
 }
 
 #[derive(Clone)]
-pub(crate) struct Section<'a> {
+pub(super) struct Section<'a> {
     full: &'a [u8],
     visible: Visible<'a>,
     span: Option<&'a [u8]>,
 }
 
 impl<'a> Section<'a> {
-    pub(crate) fn from_full(full: &'a [u8], format: PreferredFormat) -> Self {
+    pub(super) fn from_full(full: &'a [u8], format: PreferredFormat) -> Self {
         let visible = match format {
             PreferredFormat::Bytes => Visible::Bytes(full),
-            PreferredFormat::ByteStr => Visible::StrBytes(full),
+            PreferredFormat::BytesAscii => Visible::BytesAscii(full),
             PreferredFormat::Str | PreferredFormat::StrCjk => {
                 if let Ok(s) = str::from_utf8(full) {
                     Visible::Str(s)
                 } else {
-                    Visible::StrBytes(full)
+                    Visible::BytesAscii(full)
                 }
             }
         };
@@ -89,11 +83,11 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(crate) fn from_head(full: &'a [u8], width: usize, format: PreferredFormat) -> Self {
+    pub(super) fn from_head(full: &'a [u8], width: usize, format: PreferredFormat) -> Self {
         let width = init_width(width);
         let visible = match format {
             PreferredFormat::Bytes => take_bytes_head(full, width, false),
-            PreferredFormat::ByteStr => take_bytes_head(full, width, true),
+            PreferredFormat::BytesAscii => take_bytes_head(full, width, true),
             PreferredFormat::Str => take_str_head(full, width, false),
             PreferredFormat::StrCjk => take_str_head(full, width, true),
         };
@@ -104,11 +98,11 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(crate) fn from_tail(full: &'a [u8], width: usize, format: PreferredFormat) -> Self {
+    pub(super) fn from_tail(full: &'a [u8], width: usize, format: PreferredFormat) -> Self {
         let width = init_width(width);
         let visible = match format {
             PreferredFormat::Bytes => take_bytes_tail(full, width, false),
-            PreferredFormat::ByteStr => take_bytes_tail(full, width, true),
+            PreferredFormat::BytesAscii => take_bytes_tail(full, width, true),
             PreferredFormat::Str => take_str_tail(full, width, false),
             PreferredFormat::StrCjk => take_str_tail(full, width, true),
         };
@@ -119,11 +113,11 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(crate) fn from_head_tail(full: &'a [u8], width: usize, format: PreferredFormat) -> Self {
+    pub(super) fn from_head_tail(full: &'a [u8], width: usize, format: PreferredFormat) -> Self {
         let width = init_width(width);
         let visible = match format {
             PreferredFormat::Bytes => take_bytes_head_tail(full, width, false),
-            PreferredFormat::ByteStr => take_bytes_head_tail(full, width, true),
+            PreferredFormat::BytesAscii => take_bytes_head_tail(full, width, true),
             PreferredFormat::Str => take_str_head_tail(full, width, false),
             PreferredFormat::StrCjk => take_str_head_tail(full, width, true),
         };
@@ -134,7 +128,7 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(crate) fn from_span(
+    pub(super) fn from_span(
         full: &'a [u8],
         span: &'a [u8],
         width: usize,
@@ -156,7 +150,7 @@ impl<'a> Section<'a> {
             );
             let visible = match format {
                 PreferredFormat::Bytes => take_bytes_span(full, span_offset, width, false),
-                PreferredFormat::ByteStr => take_bytes_span(full, span_offset, width, true),
+                PreferredFormat::BytesAscii => take_bytes_span(full, span_offset, width, true),
                 PreferredFormat::Str => take_str_span(full, span_offset, width, false),
                 PreferredFormat::StrCjk => take_str_span(full, span_offset, width, true),
             };
@@ -177,7 +171,7 @@ impl<'a> Section<'a> {
     ) -> Self {
         let visible = match format {
             PreferredFormat::Bytes => take_bytes_head(visible, width, false),
-            PreferredFormat::ByteStr => take_bytes_head(visible, width, true),
+            PreferredFormat::BytesAscii => take_bytes_head(visible, width, true),
             PreferredFormat::Str => take_str_head(visible, width, false),
             PreferredFormat::StrCjk => take_str_head(visible, width, true),
         };
@@ -196,7 +190,7 @@ impl<'a> Section<'a> {
     ) -> Self {
         let visible = match format {
             PreferredFormat::Bytes => take_bytes_tail(full, width, false),
-            PreferredFormat::ByteStr => take_bytes_tail(full, width, true),
+            PreferredFormat::BytesAscii => take_bytes_tail(full, width, true),
             PreferredFormat::Str => take_str_tail(full, width, false),
             PreferredFormat::StrCjk => take_str_tail(full, width, true),
         };
@@ -207,17 +201,18 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(crate) fn write<W>(&self, _w: &mut W) -> fmt::Result
+    pub(super) fn write<W>(&self, w: W, underline: bool) -> fmt::Result
     where
         W: fmt::Write,
     {
+        let mut writer = InputWriter::new(w, self.full, self.span, underline);
         match self.visible {
-            Visible::Bytes(_) => unimplemented!(),
-            Visible::StrBytes(_) => unimplemented!(),
-            Visible::Str(_) => unimplemented!(),
-            Visible::BytesPair(_, _) => unimplemented!(),
-            Visible::StrBytesPair(_, _) => unimplemented!(),
-            Visible::StrPair(_, _) => unimplemented!(),
+            Visible::Bytes(bytes) => writer.write_bytes_side(bytes, false),
+            Visible::BytesAscii(bytes) => writer.write_bytes_side(bytes, true),
+            Visible::Str(s) => writer.write_str_side(s),
+            Visible::BytesPair(left, right) => writer.write_bytes_sides(left, right, false),
+            Visible::BytesAsciiPair(left, right) => writer.write_bytes_sides(left, right, true),
+            Visible::StrPair(left, right) => writer.write_str_sides(left, right),
         }
     }
 }
@@ -250,7 +245,7 @@ fn take_bytes_span(
     let iter = ByteElementIter::new(bytes, show_ascii);
     let (start, end) = take_span(iter, span_offset, width, true).unwrap();
     if show_ascii {
-        Visible::StrBytes(&bytes[start..end])
+        Visible::BytesAscii(&bytes[start..end])
     } else {
         Visible::Bytes(&bytes[start..end])
     }
@@ -270,7 +265,7 @@ fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
     let iter = ByteElementIter::new(bytes, show_ascii);
     let (len, _) = take_head(iter, width, true).unwrap();
     if show_ascii {
-        Visible::StrBytes(&bytes[..len])
+        Visible::BytesAscii(&bytes[..len])
     } else {
         Visible::Bytes(&bytes[..len])
     }
@@ -292,7 +287,7 @@ fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
     let (len, _) = take_tail(iter, width, true).unwrap();
     let offset = bytes.len() - len;
     if show_ascii {
-        Visible::StrBytes(&bytes[offset..])
+        Visible::BytesAscii(&bytes[offset..])
     } else {
         Visible::Bytes(&bytes[offset..])
     }
@@ -320,7 +315,7 @@ fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible
     let (start, end) = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE).unwrap();
     if start == end {
         if show_ascii {
-            Visible::StrBytes(&bytes[..])
+            Visible::BytesAscii(&bytes[..])
         } else {
             Visible::Bytes(&bytes[..])
         }
@@ -328,7 +323,7 @@ fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible
         let left = &bytes[..start];
         let right = &bytes[end..];
         if show_ascii {
-            Visible::StrBytesPair(left, right)
+            Visible::BytesAsciiPair(left, right)
         } else {
             Visible::BytesPair(left, right)
         }
@@ -415,7 +410,8 @@ where
 {
     // Attempt to get 1/3 of the total width before the span.
     let init_backward_width = width / 3 + SIDE_HAS_MORE;
-    let init_backward_iter = iter.clone().skip_tail_bytes(span_offset);
+    let backward_offset = iter.as_slice().len() - span_offset;
+    let init_backward_iter = iter.clone().skip_tail_bytes(backward_offset);
     let (init_head_len, head_remaining) =
         take_tail(init_backward_iter, init_backward_width, space_separated)?;
     // Attempt to get 2/3 plus what couldn't be taken from before.
@@ -424,7 +420,7 @@ where
     let (tail_len, tail_remaining) = take_head(forward_iter, forward_width, space_separated)?;
     // If we had some remaining width from the span onwards, see if we can use it before.
     let head_len = if tail_remaining > 0 {
-        let backward_iter = iter.skip_tail_bytes(span_offset);
+        let backward_iter = iter.skip_tail_bytes(backward_offset);
         let backward_width = init_backward_width + tail_remaining;
         let (head_len, _) = take_tail(backward_iter, backward_width, space_separated)?;
         head_len
@@ -503,20 +499,65 @@ unsafe fn utf8_from_unchecked(bytes: &[u8]) -> &str {
 mod tests {
     use super::*;
 
+    use crate::display::InputDisplay;
+    use crate::input::input;
+
     const BAD_UTF8: u8 = 0b1101_1111; // 223, 0xdf
 
     macro_rules! assert_computed_visible_eq {
-        ($from:ident, {
+        (from_head, {
             input: $input:expr,
             format: $format:expr,
             visible: $visible:expr,
             display: $display:expr,
         }) => {
-            assert_eq!(
-                Section::$from($input, $display.len(), $format).visible,
-                $visible
-            );
+            assert_computed_visible_eq!(from_head, head, {
+                input: $input,
+                format: $format,
+                visible: $visible,
+                display: $display,
+            });
         };
+        (from_tail, {
+            input: $input:expr,
+            format: $format:expr,
+            visible: $visible:expr,
+            display: $display:expr,
+        }) => {
+            assert_computed_visible_eq!(from_tail, tail, {
+                input: $input,
+                format: $format,
+                visible: $visible,
+                display: $display,
+            });
+        };
+        (from_head_tail, {
+            input: $input:expr,
+            format: $format:expr,
+            visible: $visible:expr,
+            display: $display:expr,
+        }) => {
+            assert_computed_visible_eq!(from_head_tail, head_tail, {
+                input: $input,
+                format: $format,
+                visible: $visible,
+                display: $display,
+            });
+        };
+        ($from:ident, $input_section:ident, {
+            input: $input:expr,
+            format: $format:expr,
+            visible: $visible:expr,
+            display: $display:expr,
+        }) => {{
+            let full = $input;
+            let section = Section::$from($input, $display.len(), $format);
+            let input = InputDisplay::new(input(full))
+                .format($format)
+                .$input_section($display.len());
+            assert_eq!(section.visible, $visible);
+            assert_eq!($display, format!("{}", input));
+        }};
     }
 
     macro_rules! assert_computed_span_visible_eq {
@@ -528,10 +569,13 @@ mod tests {
             display: $display:expr,
         }) => {{
             let full = $input;
-            assert_eq!(
-                Section::from_span(full, &full[$range], $display.len(), $format).visible,
-                $visible
-            );
+            let span = &full[$range];
+            let section = Section::from_span(full, span, $display.len(), $format);
+            let input = InputDisplay::new(input(full))
+                .format($format)
+                .span(input(span), $display.len());
+            assert_eq!(section.visible, $visible);
+            assert_eq!($display, format!("{}", input));
         }};
     }
 
@@ -544,7 +588,7 @@ mod tests {
             input: b"a",
             format: PreferredFormat::Str,
             visible: Visible::Str("a"),
-            display: r#"a"#,
+            display: r#""a""#,
         });
     }
 
@@ -554,7 +598,7 @@ mod tests {
             input: &[b'a', b'b', 3, 3],
             format: PreferredFormat::Str,
             visible: Visible::Str("ab\u{3}\u{3}"),
-            display: r#""ab\u{3}\u{3}"#,
+            display: "\"ab\u{3}\u{3}\"",
         });
     }
 
@@ -563,7 +607,7 @@ mod tests {
         assert_computed_visible_eq!(from_head, {
             input: &[b'a', b'b', 3, BAD_UTF8],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytes(&[b'a', b'b', 3, BAD_UTF8]),
+            visible: Visible::BytesAscii(&[b'a', b'b', 3, BAD_UTF8]),
             display: r#"['a' 'b' 03 df]"#,
         });
     }
@@ -583,18 +627,18 @@ mod tests {
         assert_computed_visible_eq!(from_head, {
             input: &[b'a', b'b', b'c', b'd', b'e', BAD_UTF8],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytes(b"abc"),
+            visible: Visible::BytesAscii(b"abc"),
             display: r#"['a' 'b' 'c' ..]"#,
         });
     }
 
     #[test]
     fn test_computed_head_str_min_width_bad_utf8() {
-        // TODO: make this better (aka output str instead)?
+        // FIXME: make this better (aka output str instead)?
         assert_computed_visible_eq!(from_head, {
             input: &[b'a', b'b', b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j', b'k', BAD_UTF8],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytes(b"abc"),
+            visible: Visible::BytesAscii(b"abc"),
             display: r#"['a' 'b' 'c' ..]"#,
         });
     }
@@ -628,7 +672,7 @@ mod tests {
             input: &[b'a', 3, 3, b'b'],
             format: PreferredFormat::Str,
             visible: Visible::Str("a\u{3}\u{3}b"),
-            display: r#""ab\u{3}\u{3}""#,
+            display: "\"a\u{3}\u{3}b\"",
         });
     }
 
@@ -637,7 +681,7 @@ mod tests {
         assert_computed_visible_eq!(from_tail, {
             input: &[b'a', b'b', 3, BAD_UTF8],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytes(&[b'a', b'b', 3, BAD_UTF8]),
+            visible: Visible::BytesAscii(&[b'a', b'b', 3, BAD_UTF8]),
             display: r#"['a' 'b' 03 df]"#,
         });
     }
@@ -654,11 +698,11 @@ mod tests {
 
     #[test]
     fn test_computed_tail_str_min_width_bad_utf8() {
-        // TODO: make this better (aka output str instead)?
+        // FIXME: make this better (aka output str instead)?
         assert_computed_visible_eq!(from_tail, {
             input: &[BAD_UTF8, b'p', b'q', b'r', b's', b't', b'u', b'v', b'w', b'x', b'y', b'z'],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytes(b"xyz"),
+            visible: Visible::BytesAscii(b"xyz"),
             display: r#"[.. 'x' 'y' 'z']"#,
         });
     }
@@ -692,7 +736,7 @@ mod tests {
             input: &[b'a', 3, 3, b'b'],
             format: PreferredFormat::Str,
             visible: Visible::Str("a\u{3}\u{3}b"),
-            display: r#""a\u{3}\u{3}b""#,
+            display: "\"a\u{3}\u{3}b\"",
         });
     }
 
@@ -701,7 +745,7 @@ mod tests {
         assert_computed_visible_eq!(from_head_tail, {
             input: &[b'a', b'b', 3, BAD_UTF8],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytes(&[b'a', b'b', 3, BAD_UTF8]),
+            visible: Visible::BytesAscii(&[b'a', b'b', 3, BAD_UTF8]),
             display: r#"['a' 'b' 03 df]"#,
         });
     }
@@ -721,7 +765,7 @@ mod tests {
         assert_computed_visible_eq!(from_head_tail, {
             input: &[b'a', b'b', BAD_UTF8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, BAD_UTF8, b'c'],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytesPair(b"ab", b"c"),
+            visible: Visible::BytesAsciiPair(b"ab", b"c"),
             display: r#"['a' 'b' .. 'c']"#,
         });
     }
@@ -731,7 +775,7 @@ mod tests {
         assert_computed_visible_eq!(from_head_tail, {
             input: &[b'a', b'b', b'c', BAD_UTF8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, BAD_UTF8, b'y', b'z'],
             format: PreferredFormat::Str,
-            visible: Visible::StrBytesPair(b"ab", b"z"),
+            visible: Visible::BytesAsciiPair(b"ab", b"z"),
             display: r#"['a' 'b' .. 'z']"#,
         });
     }
@@ -774,7 +818,7 @@ mod tests {
             format: PreferredFormat::Str,
             visible: Visible::Str("opqrstuv"),
             //                        ^^^^^
-            display: r#".. "opqrstuv""#,
+            display: r#".. "opqrstuv" .."#,
         });
         assert_computed_span_visible_eq!({
             input: b"abcdefghijklmnopqrstuvwxyz",
@@ -805,6 +849,45 @@ mod tests {
             visible: Visible::Str("fghijklmnopqrstuv"),
             //                            ^^
             display: r#".. "fghijklmnopqrstuv" .."#,
+        });
+    }
+
+    #[test]
+    fn test_computed_span_str_last() {
+        assert_computed_span_visible_eq!({
+            input: b"abcdefghijklmnopqrstuvwxyz",
+            //                                ^
+            span: 25..26,
+            format: PreferredFormat::Str,
+            visible: Visible::Str("jklmnopqrstuvwxyz"),
+            //                                     ^
+            display: r#".. "jklmnopqrstuvwxyz""#,
+        });
+    }
+
+    #[test]
+    fn test_computed_span_str_last_bad_utf8() {
+        assert_computed_span_visible_eq!({
+            input: &[b'p', b'q', b'r', b's', b't', b'u', b'v', b'w', b'x', b'y', b'z', BAD_UTF8],
+            //                                                                         ^
+            span: 11..12,
+            format: PreferredFormat::Str,
+            visible: Visible::BytesAscii(&[b'x', b'y', b'z', BAD_UTF8]),
+            //                                               ^
+            display: r#"[.. 'x' 'y' 'z' df]"#,
+        });
+    }
+
+    #[test]
+    fn test_computed_span_bytes_last() {
+        assert_computed_span_visible_eq!({
+            input: &[0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff],
+            //                                     ^
+            span: 5..,
+            format: PreferredFormat::Str,
+            visible: Visible::BytesAscii(&[0xcc, 0xdd, 0xee, 0xff]),
+            //                                               ^
+            display: r#"[.. cc dd ee ff]"#,
         });
     }
 }

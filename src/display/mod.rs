@@ -6,24 +6,10 @@ mod error;
 mod input;
 mod iters;
 mod section;
+mod writer;
 
 pub use self::error::ErrorDisplay;
-pub use self::input::InputDisplay;
-
-pub(crate) use self::section::{PreferredFormat, Section, SectionOpt};
-
-pub(crate) struct WithFormatter<T>(pub(crate) T)
-where
-    T: Fn(&mut fmt::Formatter<'_>) -> fmt::Result;
-
-impl<T> fmt::Display for WithFormatter<T>
-where
-    T: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.0)(f)
-    }
-}
+pub use self::input::{InputDisplay, PreferredFormat};
 
 pub(crate) struct ByteCount(pub(crate) usize);
 
@@ -34,5 +20,18 @@ impl fmt::Display for ByteCount {
             1 => f.write_str("1 byte"),
             n => write!(f, "{} bytes", n),
         }
+    }
+}
+
+struct WithFormatter<T>(T)
+where
+    T: Fn(&mut fmt::Formatter<'_>) -> fmt::Result;
+
+impl<T> fmt::Display for WithFormatter<T>
+where
+    T: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (self.0)(f)
     }
 }

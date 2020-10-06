@@ -14,7 +14,7 @@
 //! ```
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![deny(
     // Exception: Byte slice to `Input` cast
     // TODO: unsafe_code,
@@ -34,7 +34,7 @@
     unused_extern_crates,
     unused_import_braces,
     unused_results,
-    // TODO: warnings
+    warnings
 )]
 #![allow(
     clippy::inline_always,
@@ -59,3 +59,16 @@ pub mod error;
 pub use self::error::{Error, Expected, FromContext, FromExpected, Invalid, ToRetryRequirement};
 pub use self::input::{input, Input};
 pub use self::reader::Reader;
+
+mod util {
+    use core::ops::Range;
+
+    // FIXME: use https://github.com/rust-lang/rust/issues/65807 when stable in 1.48
+    pub(super) fn slice_ptr_range<T>(slice: &[T]) -> Range<*const T> {
+        let start = slice.as_ptr();
+        // note: will never wrap, we are just escaping the use of unsafe.
+        let end = slice.as_ptr().wrapping_add(slice.len());
+        debug_assert!(start <= end);
+        start..end
+    }
+}

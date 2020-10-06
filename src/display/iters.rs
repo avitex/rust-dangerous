@@ -3,9 +3,9 @@ use core::slice;
 use crate::string::{utf8_char_display_width, CharIter};
 
 #[derive(Clone, Copy)]
-pub(crate) struct Element {
-    pub(crate) byte_len: usize,
-    pub(crate) display_cost: usize,
+pub(super) struct Element {
+    pub(super) byte_len: usize,
+    pub(super) display_cost: usize,
 }
 
 impl Element {
@@ -29,7 +29,7 @@ impl Element {
     }
 }
 
-pub(crate) trait ElementIter:
+pub(super) trait ElementIter:
     Clone + DoubleEndedIterator<Item = Result<Element, ()>>
 {
     fn as_slice(&self) -> &[u8];
@@ -42,13 +42,13 @@ pub(crate) trait ElementIter:
 ///////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub(crate) struct ByteElementIter<'a> {
+pub(super) struct ByteElementIter<'a> {
     iter: slice::Iter<'a, u8>,
     show_ascii: bool,
 }
 
 impl<'a> ByteElementIter<'a> {
-    pub(crate) fn new(bytes: &'a [u8], show_ascii: bool) -> Self {
+    pub(super) fn new(bytes: &'a [u8], show_ascii: bool) -> Self {
         Self {
             iter: bytes.iter(),
             show_ascii,
@@ -101,13 +101,13 @@ impl<'a> ElementIter for ByteElementIter<'a> {
 ///////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub(crate) struct CharElementIter<'a> {
+pub(super) struct CharElementIter<'a> {
     iter: CharIter<'a>,
     cjk: bool,
 }
 
 impl<'a> CharElementIter<'a> {
-    pub(crate) fn new(bytes: &'a [u8], cjk: bool) -> Self {
+    pub(super) fn new(bytes: &'a [u8], cjk: bool) -> Self {
         Self {
             iter: CharIter::new(bytes),
             cjk,
@@ -152,7 +152,7 @@ impl<'a> ElementIter for CharElementIter<'a> {
     fn skip_tail_bytes(mut self, len: usize) -> Self {
         let bytes = self.iter.as_slice();
         let bytes = if bytes.len() > len {
-            &bytes[..len]
+            &bytes[..bytes.len() - len]
         } else {
             &[]
         };
@@ -167,18 +167,18 @@ impl<'a> ElementIter for CharElementIter<'a> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub(crate) enum Alternate<T> {
+pub(super) enum Alternate<T> {
     Back(T),
     Front(T),
 }
 
-pub(crate) struct AlternatingIter<I> {
+pub(super) struct AlternatingIter<I> {
     inner: I,
     front: bool,
 }
 
 impl<I> AlternatingIter<I> {
-    pub(crate) fn front(iter: I) -> Self {
+    pub(super) fn front(iter: I) -> Self {
         Self {
             inner: iter,
             front: true,

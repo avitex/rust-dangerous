@@ -24,21 +24,10 @@ impl Input {
         input(slice::from_ref(byte))
     }
 
-    #[inline(always)]
-    pub(crate) fn ptr_eq(&self, other: &Input) -> bool {
-        self.as_dangerous().as_ptr() == other.as_dangerous().as_ptr()
-    }
-
     /// Returns an empty `Input` pointing the end of `self`.
     #[inline(always)]
     pub(crate) fn end(&self) -> &Input {
         input(&self.as_dangerous()[self.len()..])
-    }
-
-    /// Returns an empty `Input` pointing the start of `self`.
-    #[inline(always)]
-    pub(crate) fn start(&self) -> &Input {
-        input(&self.as_dangerous()[..0])
     }
 
     /// Returns the first byte in the input.
@@ -52,30 +41,6 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         self.as_dangerous().first().copied().ok_or_else(|| {
-            E::from(ExpectedLength {
-                min: 1,
-                max: None,
-                span: self,
-                input: self,
-                context: ExpectedContext {
-                    operation,
-                    expected: "non-empty input",
-                },
-            })
-        })
-    }
-
-    /// Returns the last byte in the input.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the input is empty.
-    #[inline(always)]
-    pub(crate) fn last<'i, E>(&'i self, operation: &'static str) -> Result<u8, E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.as_dangerous().last().copied().ok_or_else(|| {
             E::from(ExpectedLength {
                 min: 1,
                 max: None,
@@ -215,16 +180,6 @@ impl Input {
         }
     }
 
-    #[inline(always)]
-    pub(crate) fn split_sub(&self, sub: &Input) -> Option<(&Input, &Input)> {
-        self.inclusive_range(sub).map(|range| {
-            let bytes = self.as_dangerous();
-            let head = &bytes[..range.start];
-            let tail = &bytes[range.end..];
-            (input(head), input(tail))
-        })
-    }
-
     /// Splits the input when the provided function returns `false`.
     #[inline(always)]
     pub(crate) fn split_while<F>(&self, mut f: F) -> (&Input, &Input)
@@ -279,14 +234,9 @@ impl Input {
         }
     }
 
-    // FIXME: use https://github.com/rust-lang/rust/issues/65807 when stable
     #[inline(always)]
     pub(crate) fn as_dangerous_ptr_range(&self) -> Range<*const u8> {
-        let bytes = self.as_dangerous();
-        let start = bytes.as_ptr();
-        // Note: will never wrap, but we are just escaping the use of unsafe
-        let end = bytes.as_ptr().wrapping_add(bytes.len());
-        start..end
+        crate::util::slice_ptr_range(self.as_dangerous())
     }
 
     ///////////////////////////////////////////////////////////////////////////

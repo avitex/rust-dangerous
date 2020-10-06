@@ -1,10 +1,25 @@
 use core::fmt::{self, Write};
 
-use crate::display::{PreferredFormat, Section, SectionOpt};
 use crate::input::Input;
+
+use super::section::{Section, SectionOpt};
 
 // TODO: const DEFAULT_COLUMN_WIDTH: usize = 140;
 const DEFAULT_SECTION_OPTION: SectionOpt<'static> = SectionOpt::HeadTail { width: 1024 };
+
+/// Preferred [`Input`] formats.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum PreferredFormat {
+    /// Prefer displaying as a UTF-8 str.
+    Str,
+    /// Prefer displaying as a UTF-8 str with Chinese, Japanese or Korean
+    /// characters.
+    StrCjk,
+    /// Prefer displaying as plain bytes.
+    Bytes,
+    /// Prefer displaying as bytes with valid ASCII graphic characters.
+    BytesAscii,
+}
 
 /// Provides configurable [`Input`] formatting.
 ///
@@ -22,16 +37,17 @@ const DEFAULT_SECTION_OPTION: SectionOpt<'static> = SectionOpt::HeadTail { width
 /// # Example
 ///
 /// ```
-/// let formatted = dangerous::input(b"hello")
+/// let formatted = dangerous::input("heya ♥".as_bytes())
 ///     .display()
 ///     .head_tail(3)
 ///     .to_string();
-/// assert_eq!(formatted, "[68 65 .. 6f]");
+/// assert_eq!(formatted, "[68 65 .. 99 a5]");
 /// ```
 #[derive(Clone)]
 pub struct InputDisplay<'i> {
     input: &'i Input,
-    str_hint: bool,
+    underline: bool,
+    format: PreferredFormat,
     section: Option<Section<'i>>,
     section_opt: SectionOpt<'i>,
 }
@@ -41,7 +57,8 @@ impl<'i> InputDisplay<'i> {
     pub const fn new(input: &'i Input) -> Self {
         Self {
             input,
-            str_hint: false,
+            format: PreferredFormat::Bytes,
+            underline: false,
             section: None,
             section_opt: DEFAULT_SECTION_OPTION,
         }
@@ -53,16 +70,31 @@ impl<'i> InputDisplay<'i> {
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
     pub fn from_formatter(input: &'i Input, f: &fmt::Formatter<'_>) -> Self {
         let format = Self::new(input).str_hint(f.alternate());
-        match f.width() {
+        match f.precision() {
             Some(width) => format.head_tail(width),
             None => format,
         }
     }
 
+    /// Print the input underline for any provided span.
+    pub fn underline(mut self, value: bool) -> Self {
+        self.underline = value;
+        self
+    }
+
     /// Hint to the formatter that the [`Input`] is a UTF-8 `str`.
-    pub fn str_hint(mut self, value: bool) -> Self {
+    pub fn str_hint(self, value: bool) -> Self {
+        if value {
+            self.format(PreferredFormat::Str)
+        } else {
+            self.format(PreferredFormat::Bytes)
+        }
+    }
+
+    /// Set the preferred way to format the [`Input`].
+    pub fn format(mut self, format: PreferredFormat) -> Self {
         self.section = None;
-        self.str_hint = value;
+        self.format = format;
         self
     }
 
@@ -73,7 +105,7 @@ impl<'i> InputDisplay<'i> {
     ///
     /// ```
     /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-    /// let formatted = input.display().head_tail(4).to_string();
+    /// let formatted = input.display().head_tail(16).to_string();
     ///
     /// assert_eq!(formatted, "[aa bb .. ee ff]");
     /// ```
@@ -89,7 +121,7 @@ impl<'i> InputDisplay<'i> {
     ///
     /// ```
     /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-    /// let formatted = input.display().head(4).to_string();
+    /// let formatted = input.display().head(16).to_string();
     ///
     /// assert_eq!(formatted, "[aa bb cc dd ..]");
     /// ```
@@ -105,7 +137,7 @@ impl<'i> InputDisplay<'i> {
     ///
     /// ```
     /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-    /// let formatted = input.display().tail(4).to_string();
+    /// let formatted = input.display().tail(16).to_string();
     ///
     /// assert_eq!(formatted, "[.. cc dd ee ff]");
     /// ```
@@ -115,7 +147,18 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// TODO: doc
+    /// Show a `width` of input [`Input`] targeting a span.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let full = &[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+    /// let input = dangerous::input(full);
+    /// let span = dangerous::input(&full[5..]);
+    /// let formatted = input.display().span(span, 16).to_string();
+    ///
+    /// assert_eq!(formatted, "[.. cc dd ee ff]");
+    /// ```
     pub fn span(mut self, span: &'i Input, width: usize) -> Self {
         self.section = None;
         self.section_opt = SectionOpt::Span {
@@ -141,11 +184,11 @@ impl<'i> InputDisplay<'i> {
         self
     }
 
-    /// TODO
+    /// Compute the sections of input to display.
     pub fn prepare(&mut self) {
-        // TODO: format
-        let format = PreferredFormat::Str;
-        let computed = self.section_opt.compute(self.input.as_dangerous(), format);
+        let computed = self
+            .section_opt
+            .compute(self.input.as_dangerous(), self.format);
         self.section = Some(computed);
     }
 
@@ -154,7 +197,7 @@ impl<'i> InputDisplay<'i> {
     /// # Errors
     ///
     /// Returns [`core::fmt::Error`] if failed to write.
-    pub fn write<W>(&self, w: &mut W) -> fmt::Result
+    pub fn write<W>(&self, w: W) -> fmt::Result
     where
         W: Write,
     {
@@ -164,7 +207,7 @@ impl<'i> InputDisplay<'i> {
                 this.prepare();
                 this.write(w)
             }
-            Some(section) => section.write(w),
+            Some(section) => section.write(w, self.underline),
         }
     }
 }
