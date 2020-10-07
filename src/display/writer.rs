@@ -1,7 +1,8 @@
 use core::fmt;
 
-use crate::string::utf8_char_display_width;
 use crate::util::slice_ptr_range;
+
+use super::element::Element;
 
 pub(super) struct InputWriter<'a, W>
 where
@@ -156,22 +157,30 @@ where
             if is_span_start_within_section(bytes, self.span) {
                 let mut offset = 0;
                 for c in s.chars() {
+                    let element = Element::unicode(c, cjk);
                     if is_section_start_within_span(&bytes[offset..], self.span) {
-                        self.write_underline(utf8_char_display_width(c, cjk))?;
+                        self.write_underline(element.display_cost)?;
                     } else {
-                        self.write_space(utf8_char_display_width(c, cjk))?;
+                        self.write_space(element.display_cost)?;
                     }
-                    offset += c.len_utf8();
+                    offset += element.len_utf8;
                 }
             } else {
                 for c in s.chars() {
-                    self.write_space(utf8_char_display_width(c, cjk))?;
+                    let element = Element::unicode(c, cjk);
+                    self.write_space(element.display_cost)?;
                 }
             }
-            Ok(())
         } else {
-            self.w.write_str(s)
+            for c in s.chars() {
+                if c == '"' {
+                    self.w.write_str(r#"\""#)?;
+                } else {
+                    self.w.write_char(c)?;
+                }
+            }
         }
+        Ok(())
     }
 
     ///////////////////////////////////////////////////////////////////////////

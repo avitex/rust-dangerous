@@ -5,7 +5,7 @@ use core::{fmt, str};
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
-use crate::string::utf8_char_len;
+use crate::utf8;
 use crate::util::is_sub_slice;
 
 /// Creates a new `Input` from a byte slice.
@@ -139,7 +139,7 @@ impl Input {
                 None => {
                     let invalid = &self.as_dangerous()[utf8_err.valid_up_to()..];
                     Err(E::from(ExpectedLength {
-                        min: utf8_char_len(invalid[0]),
+                        min: utf8::char_len(invalid[0]),
                         max: None,
                         span: input(invalid),
                         input: self,

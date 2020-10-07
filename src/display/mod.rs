@@ -2,6 +2,7 @@
 
 use core::fmt;
 
+mod element;
 mod error;
 mod input;
 mod iters;

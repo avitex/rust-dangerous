@@ -1,33 +1,8 @@
 use core::slice;
 
-use crate::string::{utf8_char_display_width, CharIter};
+use crate::utf8::CharIter;
 
-#[derive(Clone, Copy)]
-pub(super) struct Element {
-    pub(super) byte_len: usize,
-    pub(super) display_cost: usize,
-}
-
-impl Element {
-    fn byte(byte: u8, show_ascii: bool) -> Self {
-        let display_cost = if show_ascii && byte.is_ascii_graphic() {
-            b"'x'".len()
-        } else {
-            b"ff".len()
-        };
-        Self {
-            display_cost,
-            byte_len: 1,
-        }
-    }
-
-    fn utf8(c: char, cjk: bool) -> Self {
-        Self {
-            display_cost: utf8_char_display_width(c, cjk),
-            byte_len: c.len_utf8(),
-        }
-    }
-}
+use super::element::Element;
 
 pub(super) trait ElementIter:
     Clone + DoubleEndedIterator<Item = Result<Element, ()>>
@@ -121,7 +96,7 @@ impl<'a> Iterator for CharElementIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|r| r.map(|c| Element::utf8(c, self.cjk)).map_err(drop))
+            .map(|r| r.map(|c| Element::unicode(c, self.cjk)).map_err(drop))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -133,7 +108,7 @@ impl<'a> DoubleEndedIterator for CharElementIter<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter
             .next_back()
-            .map(|r| r.map(|c| Element::utf8(c, self.cjk)).map_err(drop))
+            .map(|r| r.map(|c| Element::unicode(c, self.cjk)).map_err(drop))
     }
 }
 

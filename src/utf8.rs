@@ -1,7 +1,5 @@
 use core::str;
 
-use unicode_width::UnicodeWidthChar;
-
 // Source: <rust-source>/core/str/mod.rs
 // https://tools.ietf.org/html/rfc3629
 static UTF8_CHAR_LENGTH: [u8; 256] = [
@@ -31,35 +29,20 @@ const TAG_CONT_U8: u8 = 0b1000_0000;
 /// Checks whether the byte is a UTF-8 continuation byte (i.e., starts with the
 /// bits `10`).
 #[inline]
-fn utf8_is_cont_byte(byte: u8) -> bool {
+fn is_cont_byte(byte: u8) -> bool {
     (byte & !CONT_MASK) == TAG_CONT_U8
+}
+
+#[allow(unsafe_code)]
+pub(crate) unsafe fn from_unchecked(bytes: &[u8]) -> &str {
+    debug_assert!(str::from_utf8(bytes).is_ok());
+    str::from_utf8_unchecked(bytes)
 }
 
 /// Given a first byte, determines how many bytes are in this UTF-8 character.
 #[inline]
-pub(crate) fn utf8_char_len(b: u8) -> usize {
+pub(crate) fn char_len(b: u8) -> usize {
     UTF8_CHAR_LENGTH[b as usize] as usize
-}
-
-#[inline]
-pub(crate) fn utf8_char_display_width(c: char, cjk: bool) -> usize {
-    if c == '\0' {
-        return "\\u{0}".len();
-    }
-    let width = if cjk { c.width_cjk() } else { c.width() };
-    match width {
-        Some(width) => width,
-        None => "\\u{}".len() + count_digits(c as u32),
-    }
-}
-
-pub(crate) fn count_digits(mut num: u32) -> usize {
-    let mut count = 1;
-    while num > 9 {
-        count += 1;
-        num /= 10;
-    }
-    count
 }
 
 #[derive(Clone)]
@@ -147,7 +130,7 @@ pub(crate) struct InvalidChar(());
 #[inline(always)]
 fn first_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
     if let Some(first_byte) = bytes.first() {
-        let len = utf8_char_len(*first_byte);
+        let len = char_len(*first_byte);
         if bytes.len() >= len {
             return parse_char(&bytes[..len]);
         }
@@ -161,7 +144,7 @@ fn last_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
         return Err(InvalidChar(()));
     }
     for (i, byte) in (1..=4).zip(bytes.iter().rev().copied()) {
-        if !utf8_is_cont_byte(byte) && utf8_char_len(byte) == i {
+        if !is_cont_byte(byte) && char_len(byte) == i {
             let last_index = bytes.len() - i;
             return parse_char(&bytes[last_index..]);
         }

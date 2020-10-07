@@ -7,13 +7,12 @@
 
 use core::{fmt, str};
 
-use crate::string::utf8_char_len;
+use crate::utf8;
 use crate::util::{is_sub_slice, slice_ptr_range};
 
+use super::element::Element;
 use super::input::PreferredFormat;
-use super::iters::{
-    Alternate, AlternatingIter, ByteElementIter, CharElementIter, Element, ElementIter,
-};
+use super::iters::{Alternate, AlternatingIter, ByteElementIter, CharElementIter, ElementIter};
 use super::writer::InputWriter;
 
 const MIN_WIDTH: usize = 16;
@@ -187,7 +186,7 @@ impl<'a> Section<'a> {
             // as bytes-ascii
             let format = match format {
                 PreferredFormat::Str | PreferredFormat::StrCjk => {
-                    if utf8_char_len(full[span_offset]) > 0 {
+                    if utf8::char_len(full[span_offset]) > 0 {
                         format
                     } else {
                         PreferredFormat::BytesAscii
@@ -241,7 +240,7 @@ fn take_str_span(bytes: &[u8], span_offset: usize, width: usize, cjk: bool) -> V
     let iter = CharElementIter::new(bytes, cjk);
     if let Ok((start, end)) = take_span(iter, span_offset, width, false) {
         // Safety: all chars are checked from the char iterator
-        let s = unsafe { utf8_from_unchecked(&bytes[start..end]) };
+        let s = unsafe { utf8::from_unchecked(&bytes[start..end]) };
         if cjk {
             Visible::StrCjk(s)
         } else {
@@ -272,7 +271,7 @@ fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharElementIter::new(bytes, cjk);
     if let Ok((len, _)) = take_head(iter, width, false) {
         // Safety: all chars are checked from the char iterator
-        let s = unsafe { utf8_from_unchecked(&bytes[..len]) };
+        let s = unsafe { utf8::from_unchecked(&bytes[..len]) };
         if cjk {
             Visible::StrCjk(s)
         } else {
@@ -299,7 +298,7 @@ fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     if let Ok((len, _)) = take_tail(iter, width, false) {
         let offset = bytes.len() - len;
         // Safety: all chars are checked from the char iterator
-        let s = unsafe { utf8_from_unchecked(&bytes[offset..]) };
+        let s = unsafe { utf8::from_unchecked(&bytes[offset..]) };
         if cjk {
             Visible::StrCjk(s)
         } else {
@@ -328,15 +327,15 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
         // Safety: all chars are checked from the char iterator
         unsafe {
             if start == end {
-                let s = utf8_from_unchecked(&bytes[..]);
+                let s = utf8::from_unchecked(&bytes[..]);
                 if cjk {
                     return Visible::StrCjk(s);
                 } else {
                     return Visible::Str(s);
                 }
             } else {
-                let left = utf8_from_unchecked(&bytes[..start]);
-                let right = utf8_from_unchecked(&bytes[end..]);
+                let left = utf8::from_unchecked(&bytes[..start]);
+                let right = utf8::from_unchecked(&bytes[end..]);
                 if cjk {
                     return Visible::StrCjkPair(left, right);
                 } else {
@@ -398,7 +397,7 @@ where
         space_separated,
         SIDE_HAS_MORE_COST,
         |len, element_result| match element_result {
-            Ok(element) => Ok((len + element.byte_len, element.display_cost)),
+            Ok(element) => Ok((len + element.len_utf8, element.display_cost)),
             Err(()) => Err(()),
         },
     )
@@ -423,11 +422,11 @@ where
         has_more_cost,
         |(front_len, back_offset), alt_element| match alt_element {
             Alternate::Front(Ok(element)) => Ok((
-                (front_len + element.byte_len, back_offset),
+                (front_len + element.len_utf8, back_offset),
                 element.display_cost,
             )),
             Alternate::Back(Ok(element)) => Ok((
-                (front_len, back_offset - element.byte_len),
+                (front_len, back_offset - element.len_utf8),
                 element.display_cost,
             )),
             _ => Err(()),
@@ -528,12 +527,6 @@ where
         }
     }
     Ok((acc, budget))
-}
-
-#[allow(unsafe_code)]
-unsafe fn utf8_from_unchecked(bytes: &[u8]) -> &str {
-    debug_assert!(str::from_utf8(bytes).is_ok());
-    str::from_utf8_unchecked(bytes)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
