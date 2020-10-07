@@ -10,13 +10,12 @@ pub(super) struct Element {
 impl Element {
     pub(super) fn byte(byte: u8, show_ascii: bool) -> Self {
         let display_cost = if show_ascii && byte.is_ascii_graphic() {
-            if byte == b'\'' {
-                r#"'\''"#.len()
-            } else {
-                r#"'x'"#.len()
+            match byte {
+                b'\'' | b'\n' | b'\r' => r#"'\x'"#.len(),
+                _ => r#"'x'"#.len(),
             }
         } else {
-            b"ff".len()
+            b"xx".len()
         };
         Self {
             display_cost,
@@ -28,6 +27,10 @@ impl Element {
         match c {
             '"' => Self {
                 display_cost: r#"\""#.len(),
+                len_utf8: 1,
+            },
+            '\n' | '\r' => Self {
+                display_cost: r#"\x""#.len(),
                 len_utf8: 1,
             },
             '\0' => Self {

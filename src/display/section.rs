@@ -144,7 +144,7 @@ impl<'a> Section<'a> {
 
     pub(super) fn from_span(
         full: &'a [u8],
-        span: &'a [u8],
+        mut span: &'a [u8],
         width: usize,
         format: PreferredFormat,
     ) -> Self {
@@ -154,6 +154,7 @@ impl<'a> Section<'a> {
         let width = init_width(width);
         let full_bounds = slice_ptr_range(full);
         let span_bounds = slice_ptr_range(span);
+        let span_offset = span_bounds.start as usize - full_bounds.start as usize;
         if span.is_empty() {
             if full_bounds.start == span_bounds.start {
                 let visible = match format {
@@ -162,49 +163,49 @@ impl<'a> Section<'a> {
                     PreferredFormat::Str => take_str_head(full, width, false),
                     PreferredFormat::StrCjk => take_str_head(full, width, true),
                 };
-                Self {
+                return Self {
                     full,
                     visible,
                     span: Some(span),
-                }
-            } else {
+                };
+            } else if full_bounds.end == span_bounds.end {
                 let visible = match format {
                     PreferredFormat::Bytes => take_bytes_tail(full, width, false),
                     PreferredFormat::BytesAscii => take_bytes_tail(full, width, true),
                     PreferredFormat::Str => take_str_tail(full, width, false),
                     PreferredFormat::StrCjk => take_str_tail(full, width, true),
                 };
-                Self {
+                return Self {
                     full,
                     visible,
                     span: Some(span),
+                };
+            } else {
+                span = &full[span_offset..=span_offset];
+            }
+        }
+        // If the span starts at an invalid UTF-8 boundary, show the section
+        // as bytes-ascii
+        let format = match format {
+            PreferredFormat::Str | PreferredFormat::StrCjk => {
+                if utf8::char_len(full[span_offset]) > 0 {
+                    format
+                } else {
+                    PreferredFormat::BytesAscii
                 }
             }
-        } else {
-            let span_offset = span_bounds.start as usize - full_bounds.start as usize;
-            // If the span starts at an invalid UTF-8 boundary, show the section
-            // as bytes-ascii
-            let format = match format {
-                PreferredFormat::Str | PreferredFormat::StrCjk => {
-                    if utf8::char_len(full[span_offset]) > 0 {
-                        format
-                    } else {
-                        PreferredFormat::BytesAscii
-                    }
-                }
-                _ => format,
-            };
-            let visible = match format {
-                PreferredFormat::Bytes => take_bytes_span(full, span_offset, width, false),
-                PreferredFormat::BytesAscii => take_bytes_span(full, span_offset, width, true),
-                PreferredFormat::Str => take_str_span(full, span_offset, width, false),
-                PreferredFormat::StrCjk => take_str_span(full, span_offset, width, true),
-            };
-            Self {
-                full,
-                visible,
-                span: Some(span),
-            }
+            _ => format,
+        };
+        let visible = match format {
+            PreferredFormat::Bytes => take_bytes_span(full, span_offset, width, false),
+            PreferredFormat::BytesAscii => take_bytes_span(full, span_offset, width, true),
+            PreferredFormat::Str => take_str_span(full, span_offset, width, false),
+            PreferredFormat::StrCjk => take_str_span(full, span_offset, width, true),
+        };
+        Self {
+            full,
+            visible,
+            span: Some(span),
         }
     }
 

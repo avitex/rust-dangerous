@@ -173,11 +173,12 @@ where
             }
         } else {
             for c in s.chars() {
-                if c == '"' {
-                    self.w.write_str(r#"\""#)?;
-                } else {
-                    self.w.write_char(c)?;
-                }
+                match c {
+                    '"' => self.w.write_str(r#"\""#),
+                    '\n' => self.w.write_str(r#"\n"#),
+                    '\r' => self.w.write_str(r#"\r"#),
+                    c => self.w.write_char(c),
+                }?;
             }
         }
         Ok(())
