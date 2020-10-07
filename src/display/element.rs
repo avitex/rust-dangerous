@@ -77,3 +77,14 @@ fn count_digits(mut num: u32) -> usize {
     }
     count
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unicode_escape_len() {
+        assert_eq!("\\u{1}".len(), unicode_escape_len('\u{1}'));
+        assert_eq!("\\u{11}".len(), unicode_escape_len('\u{11}'));
+    }
+}
