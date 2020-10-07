@@ -124,6 +124,7 @@ where
             writeln!(w, "in:")?;
         }
         if span.is_within(input) {
+            // TODO: width
             write_input(w, input_display.span(span, 40), true)
         } else {
             writeln!(

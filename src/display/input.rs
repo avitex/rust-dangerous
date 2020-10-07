@@ -4,7 +4,6 @@ use crate::input::Input;
 
 use super::section::{Section, SectionOpt};
 
-// TODO: const DEFAULT_COLUMN_WIDTH: usize = 140;
 const DEFAULT_SECTION_OPTION: SectionOpt<'static> = SectionOpt::HeadTail { width: 1024 };
 
 /// Preferred [`Input`] formats.

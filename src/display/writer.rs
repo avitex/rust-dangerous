@@ -76,7 +76,7 @@ where
         if let Some(byte) = iter.next() {
             self.write_byte(byte, bytes, show_ascii)?;
         }
-        for (i, byte) in iter.enumerate() {
+        for (i, byte) in (1..bytes.len()).zip(iter) {
             self.write_space(1)?;
             self.write_byte(byte, &bytes[i..], show_ascii)?;
         }
