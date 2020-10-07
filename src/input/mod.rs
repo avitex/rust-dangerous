@@ -219,7 +219,7 @@ impl Input {
             Err(E::from(ExpectedLength {
                 min: 0,
                 max: Some(0),
-                span: self,
+                span: r.take_remaining(),
                 input: self,
                 context: ExpectedContext {
                     operation: "read all",

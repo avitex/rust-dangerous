@@ -30,7 +30,7 @@ impl Element {
                 len_utf8: 1,
             },
             '\n' | '\r' => Self {
-                display_cost: r#"\x""#.len(),
+                display_cost: r#"\x"#.len(),
                 len_utf8: 1,
             },
             '\0' => Self {
