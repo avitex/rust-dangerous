@@ -242,7 +242,7 @@ fn is_span_start_within_section(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
         let section_bounds = slice_ptr_range(bytes);
         let span_bounds = slice_ptr_range(span);
-        section_bounds.start <= span_bounds.start && section_bounds.end >= span_bounds.start
+        section_bounds.start <= span_bounds.start && section_bounds.end > span_bounds.start
     })
 }
 
@@ -250,7 +250,7 @@ fn is_section_start_within_span(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
         let section_bounds = slice_ptr_range(bytes);
         let span_bounds = slice_ptr_range(span);
-        section_bounds.start >= span_bounds.start && section_bounds.start <= span_bounds.end
+        section_bounds.start >= span_bounds.start && section_bounds.start < span_bounds.end
     })
 }
 
