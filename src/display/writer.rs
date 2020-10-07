@@ -156,12 +156,12 @@ where
             if is_span_start_within_section(bytes, self.span) {
                 let mut offset = 0;
                 for c in s.chars() {
-                    offset += c.len_utf8();
                     if is_section_start_within_span(&bytes[offset..], self.span) {
                         self.write_underline(utf8_char_display_width(c, cjk))?;
                     } else {
                         self.write_space(utf8_char_display_width(c, cjk))?;
                     }
+                    offset += c.len_utf8();
                 }
             } else {
                 for c in s.chars() {

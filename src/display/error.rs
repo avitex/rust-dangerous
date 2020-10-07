@@ -121,6 +121,7 @@ where
             let expected_display = self.input_display(expected_value);
             writeln!(w, "expected:")?;
             write_input(w, expected_display, false)?;
+            writeln!(w, "in:")?;
         }
         if span.is_within(input) {
             write_input(w, input_display.span(span, 40), true)

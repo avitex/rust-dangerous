@@ -77,7 +77,6 @@ mod util {
     pub(super) fn is_sub_slice<T>(parent: &[T], sub: &[T]) -> bool {
         let parent_bounds = slice_ptr_range(parent);
         let sub_bounds = slice_ptr_range(sub);
-        (parent_bounds.start == sub_bounds.start || parent_bounds.contains(&sub_bounds.start))
-            && (parent_bounds.end == sub_bounds.end || parent_bounds.contains(&sub_bounds.end))
+        parent_bounds.start <= sub_bounds.start && parent_bounds.end >= sub_bounds.end
     }
 }
