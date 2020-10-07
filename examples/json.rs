@@ -1,7 +1,11 @@
-//! This example demonstrates a simple JSON parser.
+//! This example demonstrates a simple strict JSON parser.
+//!
+//! ```
+//! echo -n '{ "hello": "bob" }' | cargo run --example json
+//! ```
 
 use dangerous::{Error, Expected, Invalid, Reader};
-use std::env;
+use std::io::{self, Read};
 
 #[derive(Debug)]
 enum Value<'a> {
@@ -14,8 +18,11 @@ enum Value<'a> {
 }
 
 fn main() {
-    let input_str = env::args().nth(1).expect("expected json arg");
-    let input = dangerous::input(input_str.as_bytes());
+    let mut input_data = Vec::new();
+    io::stdin()
+        .read_to_end(&mut input_data)
+        .expect("read input");
+    let input = dangerous::input(input_data.as_ref());
     match input.read_all::<_, _, Expected>(read_value) {
         Ok(json) => println!("{:#?}", json),
         Err(e) => eprintln!("{:#}", e),
