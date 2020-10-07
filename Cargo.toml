@@ -15,7 +15,7 @@ include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "C
 keywords = ["parsing", "simd", "untrusted"]
 
 [features]
-default = ["std", "full-backtrace", "simd", "unicode"]
+default = ["std", "full-backtrace", "simd", "unicode", "terminal"]
 # Enables `std::error::Error` support.
 std = ["alloc"]
 # Enables allocations.
@@ -26,6 +26,8 @@ simd = ["std", "memchr/std", "bytecount/runtime-dispatch-simd"]
 unicode = ["unicode-width"]
 # Enables full context backtraces.
 full-backtrace = ["alloc"]
+# Enables error terminal printing support.
+terminal = ["std", "termcolor", "unicode"]
 
 [dependencies]
 zc = { version = "0.4", optional = true, default-features = false }
@@ -34,6 +36,7 @@ regex = { version = "1.4", optional = true }
 memchr = { version = "2.4", optional = true, default-features = false }
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
+termcolor = { version = "1", optional = true }
 
 [dev-dependencies]
 zc = "0.4"
