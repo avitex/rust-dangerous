@@ -2,8 +2,8 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    with_context, Context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue,
-    FromContext, OperationContext, ToRetryRequirement, Value,
+    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
+    OperationContext, ToRetryRequirement, Value,
 };
 use crate::input::Input;
 
@@ -275,18 +275,9 @@ impl<'i, E> Reader<'i, E> {
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        match f(self) {
-            Some(ok) => Ok(ok),
-            None => Err(E::from(ExpectedValid {
-                span: self.input,
-                input: self.input,
-                context: ExpectedContext {
-                    expected,
-                    operation: "expect",
-                },
-                retry_requirement: None,
-            })),
-        }
+        let (ok, tail) = self.input.split_expect(f, expected, "expect")?;
+        self.input = tail;
+        Ok(ok)
     }
 
     /// Expect a value to be read successfully and returned as `Some`.
@@ -300,19 +291,9 @@ impl<'i, E> Reader<'i, E> {
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Self) -> Result<Option<O>, E>,
     {
-        let context = ExpectedContext {
-            expected,
-            operation: "try expect",
-        };
-        match with_context(self.input, context, || f(self))? {
-            Some(ok) => Ok(ok),
-            None => Err(E::from(ExpectedValid {
-                span: self.input,
-                input: self.input,
-                context,
-                retry_requirement: None,
-            })),
-        }
+        let (ok, tail) = self.input.try_split_expect(f, expected, "try expect")?;
+        self.input = tail;
+        Ok(ok)
     }
 
     /// Expect a value with any error's details erased except for an optional
@@ -361,17 +342,11 @@ impl<'i, E> Reader<'i, E> {
         F: FnOnce(&mut Self) -> Result<O, R>,
         R: ToRetryRequirement,
     {
-        f(self).map_err(|err| {
-            E::from(ExpectedValid {
-                span: self.input,
-                input: self.input,
-                context: ExpectedContext {
-                    expected,
-                    operation: "try expect erased",
-                },
-                retry_requirement: err.to_retry_requirement(),
-            })
-        })
+        let (ok, tail) = self
+            .input
+            .try_split_expect_erased(f, expected, "try expect erased")?;
+        self.input = tail;
+        Ok(ok)
     }
 
     /// Read a byte, consuming the input.

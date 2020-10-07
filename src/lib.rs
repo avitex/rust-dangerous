@@ -38,6 +38,7 @@
 )]
 #![allow(
     clippy::inline_always,
+    clippy::single_match_else,
     clippy::must_use_candidate,
     clippy::module_name_repetitions,
     clippy::type_repetition_in_bounds

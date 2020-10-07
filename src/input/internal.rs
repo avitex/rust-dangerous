@@ -1,8 +1,8 @@
 use core::slice;
 
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValue, FromContext, OperationContext,
-    Value,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
+    OperationContext, ToRetryRequirement, Value,
 };
 use crate::reader::Reader;
 
@@ -150,6 +150,101 @@ impl Input {
         let tail = reader.take_remaining();
         let head = &self.as_dangerous()[..self.len() - tail.len()];
         (input(head), tail)
+    }
+
+    #[inline(always)]
+    pub(crate) fn split_expect<'i, F, O, E>(
+        &'i self,
+        f: F,
+        expected: &'static str,
+        operation: &'static str,
+    ) -> Result<(O, &'i Input), E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        F: FnOnce(&mut Reader<'i, E>) -> Option<O>,
+    {
+        let mut reader = Reader::new(self);
+        match f(&mut reader) {
+            Some(ok) => Ok((ok, reader.take_remaining())),
+            None => {
+                let tail = reader.take_remaining();
+                let span = &self.as_dangerous()[..self.len() - tail.len()];
+                Err(E::from(ExpectedValid {
+                    span: input(span),
+                    input: self,
+                    context: ExpectedContext {
+                        expected,
+                        operation,
+                    },
+                    retry_requirement: None,
+                }))
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) fn try_split_expect<'i, F, O, E>(
+        &'i self,
+        f: F,
+        expected: &'static str,
+        operation: &'static str,
+    ) -> Result<(O, &'i Input), E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        F: FnOnce(&mut Reader<'i, E>) -> Result<Option<O>, E>,
+    {
+        let context = ExpectedContext {
+            expected,
+            operation,
+        };
+        let mut reader = Reader::new(self);
+        match with_context(self, context, || f(&mut reader))? {
+            Some(ok) => Ok((ok, reader.take_remaining())),
+            None => {
+                let tail = reader.take_remaining();
+                let span = &self.as_dangerous()[..self.len() - tail.len()];
+                Err(E::from(ExpectedValid {
+                    span: input(span),
+                    input: self,
+                    context,
+                    retry_requirement: None,
+                }))
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) fn try_split_expect_erased<'i, F, O, R, E>(
+        &'i self,
+        f: F,
+        expected: &'static str,
+        operation: &'static str,
+    ) -> Result<(O, &'i Input), E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        F: FnOnce(&mut Reader<'i, E>) -> Result<O, R>,
+        R: ToRetryRequirement,
+    {
+        let mut reader = Reader::new(self);
+        match f(&mut reader) {
+            Ok(ok) => Ok((ok, reader.take_remaining())),
+            Err(err) => {
+                let tail = reader.take_remaining();
+                let span = &self.as_dangerous()[..self.len() - tail.len()];
+                Err(E::from(ExpectedValid {
+                    span: input(span),
+                    input: self,
+                    context: ExpectedContext {
+                        expected,
+                        operation,
+                    },
+                    retry_requirement: err.to_retry_requirement(),
+                }))
+            }
+        }
     }
 
     #[inline(always)]
