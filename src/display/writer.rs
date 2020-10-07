@@ -1,5 +1,6 @@
 use core::fmt;
 
+use crate::string::utf8_char_display_width;
 use crate::util::slice_ptr_range;
 
 pub(super) struct InputWriter<'a, W>
@@ -84,7 +85,7 @@ where
     fn write_byte(&mut self, byte: u8, remaining: &[u8], show_ascii: bool) -> fmt::Result {
         if show_ascii && byte.is_ascii_graphic() {
             if self.underline {
-                if left_in_span(remaining, self.span) > 0 {
+                if is_section_start_within_span(remaining, self.span) {
                     self.write_underline(3)?;
                 } else {
                     self.write_space(3)?;
@@ -95,7 +96,7 @@ where
                 self.w.write_char('\'')?;
             }
         } else if self.underline {
-            if left_in_span(remaining, self.span) > 0 {
+            if is_section_start_within_span(remaining, self.span) {
                 self.write_underline(2)?;
             } else {
                 self.write_space(2)?;
@@ -109,21 +110,21 @@ where
     ///////////////////////////////////////////////////////////////////////////
     // Str
 
-    pub(super) fn write_str_side(&mut self, side: &str) -> fmt::Result {
+    pub(super) fn write_str_side(&mut self, side: &str, cjk: bool) -> fmt::Result {
         self.write_str_open(side)?;
-        self.write_str(side)?;
+        self.write_str(side, cjk)?;
         self.write_str_close(side)
     }
 
-    pub(super) fn write_str_sides(&mut self, left: &str, right: &str) -> fmt::Result {
+    pub(super) fn write_str_sides(&mut self, left: &str, right: &str, cjk: bool) -> fmt::Result {
         self.write_str_open(left)?;
-        self.write_str(left)?;
+        self.write_str(left, cjk)?;
         self.write_delim('"', false)?;
         self.write_space(1)?;
         self.write_more(is_span_overlapping_end(left.as_bytes(), self.span))?;
         self.write_space(1)?;
         self.write_delim('"', false)?;
-        self.write_str(right)?;
+        self.write_str(right, cjk)?;
         self.write_str_close(right)
     }
 
@@ -149,10 +150,25 @@ where
         }
     }
 
-    fn write_str(&mut self, s: &str) -> fmt::Result {
+    fn write_str(&mut self, s: &str, cjk: bool) -> fmt::Result {
+        let bytes = s.as_bytes();
         if self.underline {
-            // TODO
-            unimplemented!()
+            if is_span_start_within_section(bytes, self.span) {
+                let mut offset = 0;
+                for c in s.chars() {
+                    offset += c.len_utf8();
+                    if is_section_start_within_span(&bytes[offset..], self.span) {
+                        self.write_underline(utf8_char_display_width(c, cjk))?;
+                    } else {
+                        self.write_space(utf8_char_display_width(c, cjk))?;
+                    }
+                }
+            } else {
+                for c in s.chars() {
+                    self.write_space(utf8_char_display_width(c, cjk))?;
+                }
+            }
+            Ok(())
         } else {
             self.w.write_str(s)
         }
@@ -172,27 +188,6 @@ where
             self.w.write_str("..")
         }
     }
-
-    // fn write_str(&mut self, utf8: &[u8], k: bool) -> fmt::Result {
-    //     self.write_delim(b'"', self.span_is_start())?;
-    //     if str_hint {
-    //         if self.underline {
-    //             let len_in_span = cmp::min(self.left_in_span(), utf8.len());
-    //             self.write_underline(len_in_span)?;
-    //             if len_in_span < utf8.len() {
-    //                 self.write_space(utf8.len() - len_in_span)?;
-    //             }
-    //         } else {
-    //             self.w.write_char('\'')?;
-    //             self.w.write_char(byte as char)?;
-    //             self.w.write_char('\'')?;
-    //         }
-    //     } else {
-    //         write!(self.w, "{:0>2x}", byte)?;
-    //     }
-    //     self.advance(1);
-    //     self.write_delim(b'"', self.span_is_end())
-    // }
 
     fn write_delim(&mut self, delim: char, highlighted: bool) -> fmt::Result {
         if self.underline {
@@ -222,18 +217,6 @@ where
     }
 }
 
-fn left_in_span(remaining: &[u8], span: Option<&[u8]>) -> usize {
-    span.map_or(0, |span| {
-        let remaining_bounds = slice_ptr_range(remaining);
-        let span_bounds = slice_ptr_range(span);
-        if remaining_bounds.start >= span_bounds.start {
-            (span_bounds.end as usize).saturating_sub(remaining_bounds.start as usize)
-        } else {
-            0
-        }
-    })
-}
-
 fn has_more_before(bytes: &[u8], full: &[u8]) -> bool {
     let section_bounds = slice_ptr_range(bytes);
     let full_bounds = slice_ptr_range(full);
@@ -244,6 +227,22 @@ fn has_more_after(bytes: &[u8], full: &[u8]) -> bool {
     let section_bounds = slice_ptr_range(bytes);
     let full_bounds = slice_ptr_range(full);
     section_bounds.end < full_bounds.end
+}
+
+fn is_span_start_within_section(bytes: &[u8], span: Option<&[u8]>) -> bool {
+    span.map_or(false, |span| {
+        let section_bounds = slice_ptr_range(bytes);
+        let span_bounds = slice_ptr_range(span);
+        section_bounds.start <= span_bounds.start && section_bounds.end >= span_bounds.start
+    })
+}
+
+fn is_section_start_within_span(bytes: &[u8], span: Option<&[u8]>) -> bool {
+    span.map_or(false, |span| {
+        let section_bounds = slice_ptr_range(bytes);
+        let span_bounds = slice_ptr_range(span);
+        section_bounds.start >= span_bounds.start && section_bounds.start <= span_bounds.end
+    })
 }
 
 fn is_span_overlapping_end(bytes: &[u8], span: Option<&[u8]>) -> bool {

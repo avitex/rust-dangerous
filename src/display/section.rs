@@ -7,8 +7,8 @@
 
 use core::{fmt, str};
 
-use crate::util::{is_sub_slice, slice_ptr_range};
 use crate::string::utf8_char_len;
+use crate::util::{is_sub_slice, slice_ptr_range};
 
 use super::input::PreferredFormat;
 use super::iters::{
@@ -48,12 +48,16 @@ impl<'a> SectionOpt<'a> {
 enum Visible<'a> {
     // head-str, tail-str, span-str
     Str(&'a str),
+    // head-str, tail-str, span-str
+    StrCjk(&'a str),
     // head-bytes, tail-bytes, span-bytes
     Bytes(&'a [u8]),
     // head-bytes-ascii, tail-bytes-ascii, span-bytes-ascii
     BytesAscii(&'a [u8]),
     // head-tail-str
     StrPair(&'a str, &'a str),
+    // head-tail-str
+    StrCjkPair(&'a str, &'a str),
     // head-tail-bytes
     BytesPair(&'a [u8], &'a [u8]),
     // head-tail-bytes-ascii
@@ -72,9 +76,16 @@ impl<'a> Section<'a> {
         let visible = match format {
             PreferredFormat::Bytes => Visible::Bytes(full),
             PreferredFormat::BytesAscii => Visible::BytesAscii(full),
-            PreferredFormat::Str | PreferredFormat::StrCjk => {
+            PreferredFormat::Str => {
                 if let Ok(s) = str::from_utf8(full) {
                     Visible::Str(s)
+                } else {
+                    Visible::BytesAscii(full)
+                }
+            }
+            PreferredFormat::StrCjk => {
+                if let Ok(s) = str::from_utf8(full) {
+                    Visible::StrCjk(s)
                 } else {
                     Visible::BytesAscii(full)
                 }
@@ -181,7 +192,7 @@ impl<'a> Section<'a> {
                     } else {
                         PreferredFormat::BytesAscii
                     }
-                },
+                }
                 _ => format,
             };
             let visible = match format {
@@ -206,10 +217,12 @@ impl<'a> Section<'a> {
         match self.visible {
             Visible::Bytes(bytes) => writer.write_bytes_side(bytes, false),
             Visible::BytesAscii(bytes) => writer.write_bytes_side(bytes, true),
-            Visible::Str(s) => writer.write_str_side(s),
+            Visible::Str(s) => writer.write_str_side(s, false),
+            Visible::StrCjk(s) => writer.write_str_side(s, true),
             Visible::BytesPair(left, right) => writer.write_bytes_sides(left, right, false),
             Visible::BytesAsciiPair(left, right) => writer.write_bytes_sides(left, right, true),
-            Visible::StrPair(left, right) => writer.write_str_sides(left, right),
+            Visible::StrPair(left, right) => writer.write_str_sides(left, right, false),
+            Visible::StrCjkPair(left, right) => writer.write_str_sides(left, right, true),
         }
     }
 }
@@ -228,7 +241,12 @@ fn take_str_span(bytes: &[u8], span_offset: usize, width: usize, cjk: bool) -> V
     let iter = CharElementIter::new(bytes, cjk);
     if let Ok((start, end)) = take_span(iter, span_offset, width, false) {
         // Safety: all chars are checked from the char iterator
-        unsafe { Visible::Str(utf8_from_unchecked(&bytes[start..end])) }
+        let s = unsafe { utf8_from_unchecked(&bytes[start..end]) };
+        if cjk {
+            Visible::StrCjk(s)
+        } else {
+            Visible::Str(s)
+        }
     } else {
         take_bytes_span(bytes, span_offset, width, true)
     }
@@ -254,7 +272,12 @@ fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharElementIter::new(bytes, cjk);
     if let Ok((len, _)) = take_head(iter, width, false) {
         // Safety: all chars are checked from the char iterator
-        unsafe { Visible::Str(utf8_from_unchecked(&bytes[..len])) }
+        let s = unsafe { utf8_from_unchecked(&bytes[..len]) };
+        if cjk {
+            Visible::StrCjk(s)
+        } else {
+            Visible::Str(s)
+        }
     } else {
         take_bytes_head(bytes, width, true)
     }
@@ -276,7 +299,12 @@ fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     if let Ok((len, _)) = take_tail(iter, width, false) {
         let offset = bytes.len() - len;
         // Safety: all chars are checked from the char iterator
-        unsafe { Visible::Str(utf8_from_unchecked(&bytes[offset..])) }
+        let s = unsafe { utf8_from_unchecked(&bytes[offset..]) };
+        if cjk {
+            Visible::StrCjk(s)
+        } else {
+            Visible::Str(s)
+        }
     } else {
         take_bytes_tail(bytes, width, true)
     }
@@ -300,11 +328,20 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
         // Safety: all chars are checked from the char iterator
         unsafe {
             if start == end {
-                return Visible::Str(utf8_from_unchecked(&bytes[..]));
+                let s = utf8_from_unchecked(&bytes[..]);
+                if cjk {
+                    return Visible::StrCjk(s);
+                } else {
+                    return Visible::Str(s);
+                }
             } else {
                 let left = utf8_from_unchecked(&bytes[..start]);
                 let right = utf8_from_unchecked(&bytes[end..]);
-                return Visible::StrPair(left, right);
+                if cjk {
+                    return Visible::StrCjkPair(left, right);
+                } else {
+                    return Visible::StrPair(left, right);
+                }
             }
         }
     }
