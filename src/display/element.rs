@@ -1,3 +1,4 @@
+#[cfg(feature = "unicode")]
 use unicode_width::UnicodeWidthChar;
 
 #[derive(Clone, Copy)]
@@ -34,8 +35,7 @@ impl Element {
                 len_utf8: 1,
             },
             c => {
-                let width = if cjk { c.width_cjk() } else { c.width() };
-                let display_cost = match width {
+                let display_cost = match unicode_width(c, cjk) {
                     Some(width) => width,
                     None => unicode_escape_len(c),
                 };
@@ -46,6 +46,22 @@ impl Element {
             }
         }
     }
+}
+
+#[cfg(feature = "unicode")]
+#[inline]
+fn unicode_width(c: char, cjk: bool) -> Option<usize> {
+    if cjk {
+        c.width_cjk()
+    } else {
+        c.width()
+    }
+}
+
+#[cfg(not(feature = "unicode"))]
+#[inline]
+fn unicode_width(_c: char, _cjk: bool) -> Option<usize> {
+    Some(1)
 }
 
 #[inline]
