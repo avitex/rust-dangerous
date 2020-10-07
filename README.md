@@ -12,13 +12,6 @@ Documentation hosted on [docs.rs](https://docs.rs/dangerous).
 dangerous = "0.1"
 ```
 
-## TODO
-
-- [ ] Unit test coverage
-- [ ] Error and Input display
-- [ ] Review `must_use` usage
-- [ ] Review `Reader` interface
-
 ## Goals
 
 - Fast.
