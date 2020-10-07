@@ -21,13 +21,10 @@ std = []
 alloc = []
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
-# Enables error terminal printing support.
-terminal = ["std", "termcolor", "unicode"]
 # Enables full context backtraces.
 full-context = ["alloc"]
 
 [dependencies]
-termcolor = { version = "~1", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
 [dev-dependencies]

@@ -14,7 +14,6 @@ dangerous = "0.1"
 
 ## TODO
 
-- [ ] Terminal support
 - [ ] Unit test coverage
 - [ ] Error and Input display
 - [ ] Review `must_use` usage
