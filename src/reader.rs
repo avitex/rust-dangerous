@@ -106,7 +106,7 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the required length cannot be fullfilled.
+    /// Returns an error if the required length cannot be fulfilled.
     pub fn take(&mut self, len: usize) -> Result<&'i Input, E>
     where
         E: From<ExpectedLength<'i>>,
@@ -181,7 +181,7 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the required length cannot be fullfilled.
+    /// Returns an error if the required length cannot be fulfilled.
     pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         E: From<ExpectedLength<'i>>,
@@ -195,7 +195,7 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the required length cannot be fullfilled,
+    /// Returns an error if the required length cannot be fulfilled,
     /// or if the provided function returns one.
     pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where

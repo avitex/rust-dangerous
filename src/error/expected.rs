@@ -137,13 +137,13 @@ where
     where
         C: Context,
     {
-        let curr_input = match &mut self.inner.kind {
+        let current_input = match &mut self.inner.kind {
             ExpectedKind::Value(err) => &mut err.input,
             ExpectedKind::Valid(err) => &mut err.input,
             ExpectedKind::Length(err) => &mut err.input,
         };
-        if curr_input.is_within(input) {
-            *curr_input = input
+        if current_input.is_within(input) {
+            *current_input = input
         }
         self.inner.stack.push(context);
         self
@@ -221,7 +221,7 @@ pub struct ExpectedValue<'i> {
 }
 
 impl<'i> ExpectedValue<'i> {
-    /// The [`Input`] provided in the context when the error occured.
+    /// The [`Input`] provided in the context when the error occurred.
     pub fn input(&self) -> &'i Input {
         self.input
     }
@@ -280,7 +280,7 @@ pub struct ExpectedLength<'i> {
 }
 
 impl<'i> ExpectedLength<'i> {
-    /// The [`Input`] provided in the context when the error occured.
+    /// The [`Input`] provided in the context when the error occurred.
     pub fn input(&self) -> &'i Input {
         self.input
     }
@@ -379,7 +379,7 @@ pub struct ExpectedValid<'i> {
 }
 
 impl<'i> ExpectedValid<'i> {
-    /// The [`Input`] provided in the context when the error occured.
+    /// The [`Input`] provided in the context when the error occurred.
     pub fn input(&self) -> &'i Input {
         self.input
     }

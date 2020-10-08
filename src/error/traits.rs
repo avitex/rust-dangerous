@@ -40,7 +40,7 @@ impl<'i, T> FromExpected<'i> for T where
 /// will be removed in compilation.
 pub trait ErrorDetails<'i> {
     /// The input in its entirety that was being processed when an error
-    /// occured.
+    /// occurred.
     ///
     /// The error itself will have the details and the specific section of input
     /// that caused the error. This value simply allows us to see the bigger
@@ -63,7 +63,7 @@ pub trait ErrorDetails<'i> {
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// The walkable [`ContextStack`] to the original context around the error
-    /// that occured.
+    /// that occurred.
     fn context_stack(&self) -> &dyn ContextStack;
 }
 

@@ -71,7 +71,7 @@ where
         self
     }
 
-    /// Writes the [`ErrorDetails`] to a writer with the choosen format.
+    /// Writes the [`ErrorDetails`] to a writer with the chosen format.
     ///
     /// # Errors
     ///

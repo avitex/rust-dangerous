@@ -191,7 +191,7 @@ impl<'i> InputDisplay<'i> {
         self.section = Some(computed);
     }
 
-    /// Writes the [`Input`] to a writer with the choosen format.
+    /// Writes the [`Input`] to a writer with the chosen format.
     ///
     /// # Errors
     ///

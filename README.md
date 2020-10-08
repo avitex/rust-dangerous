@@ -40,7 +40,7 @@ with a simple input error.
 Ever tried working backwards from something like this?
 
 ```
-[ERRO]: ahhh!: Utf8Error { valid_up_to: 42, error_len: Some(1) }
+[ERRO]: ahhh!: Utf8Error { valid_up_to: 2, error_len: Some(1) }
 ```
 
 Wouldn't it be better if this was the alternative?
@@ -49,7 +49,9 @@ Wouldn't it be better if this was the alternative?
 [ERRO]: ahhh!: error attempting to convert input to str: expected utf-8 code point
 > ['h' 'e' ff 'l' 'o']
            ^^
-context bracktrace:
+additional:
+  error offset: 2, input length: 5
+backtrace:
   1. `read all`
   2. `read` (expected message)
   3. `read` (expected body)

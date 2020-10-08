@@ -10,7 +10,7 @@ use alloc::{boxed::Box, vec::Vec};
 
 /// The base context surrounding an error.
 pub trait Context: Any + Debug {
-    /// The operation that was attempted when an error occured.
+    /// The operation that was attempted when an error occurred.
     ///
     /// It should described in a simple manner what is trying to be achieved and
     /// make sense in the following sentence if you were to substitute it:

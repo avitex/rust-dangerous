@@ -292,7 +292,7 @@ impl Input {
         (self, self.end())
     }
 
-    /// Trys to split the input while the provided function returns `false`.
+    /// Tries to split the input while the provided function returns `false`.
     #[inline(always)]
     pub(crate) fn try_split_while<'i, F, E>(
         &'i self,
