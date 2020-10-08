@@ -22,6 +22,8 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///   stacks.
 /// - It's recommended to have the `alloc` feature enabled (enabled by default)
 ///   for better performance with this error.
+///
+/// See [`crate::error`] for additional documentation around the error system.
 pub struct Expected<'i, S = ExpectedContextStack> {
     #[cfg(feature = "alloc")]
     inner: Box<ExpectedInner<'i, S>>,

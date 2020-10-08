@@ -13,6 +13,8 @@ use super::{
 /// This is the most performant and simplistic catch-all error, but it doesn't
 /// provide any context to debug problems well.
 ///
+/// See [`crate::error`] for additional documentation around the error system.
+///
 /// # Example
 ///
 /// ```

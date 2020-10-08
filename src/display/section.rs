@@ -7,12 +7,11 @@
 
 use core::{fmt, str};
 
-use crate::utf8;
-use crate::util::{is_sub_slice, slice_ptr_range};
+use crate::util::alt_iter::{Alternate, AlternatingIter};
+use crate::util::{is_sub_slice, slice_ptr_range, utf8};
 
-use super::element::Element;
 use super::input::PreferredFormat;
-use super::iters::{Alternate, AlternatingIter, ByteElementIter, CharElementIter, ElementIter};
+use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
 use super::writer::InputWriter;
 
 const MIN_WIDTH: usize = 16;
@@ -238,7 +237,7 @@ fn init_width(width: usize) -> usize {
 
 #[allow(unsafe_code)]
 fn take_str_span(bytes: &[u8], span_offset: usize, width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharElementIter::new(bytes, cjk);
+    let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_span(iter, span_offset, width, false) {
         // Safety: all chars are checked from the char iterator
         let s = unsafe { utf8::from_unchecked(&bytes[start..end]) };
@@ -258,7 +257,7 @@ fn take_bytes_span(
     width: usize,
     show_ascii: bool,
 ) -> Visible<'_> {
-    let iter = ByteElementIter::new(bytes, show_ascii);
+    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
     let (start, end) = take_span(iter, span_offset, width, true).unwrap();
     if show_ascii {
         Visible::BytesAscii(&bytes[start..end])
@@ -269,7 +268,7 @@ fn take_bytes_span(
 
 #[allow(unsafe_code)]
 fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharElementIter::new(bytes, cjk);
+    let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_head(iter, width, false) {
         // Safety: all chars are checked from the char iterator
         let s = unsafe { utf8::from_unchecked(&bytes[..len]) };
@@ -284,7 +283,7 @@ fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 }
 
 fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
-    let iter = ByteElementIter::new(bytes, show_ascii);
+    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
     let (len, _) = take_head(iter, width, true).unwrap();
     if show_ascii {
         Visible::BytesAscii(&bytes[..len])
@@ -295,7 +294,7 @@ fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
 
 #[allow(unsafe_code)]
 fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharElementIter::new(bytes, cjk);
+    let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_tail(iter, width, false) {
         let offset = bytes.len() - len;
         // Safety: all chars are checked from the char iterator
@@ -311,7 +310,7 @@ fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 }
 
 fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
-    let iter = ByteElementIter::new(bytes, show_ascii);
+    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
     let (len, _) = take_tail(iter, width, true).unwrap();
     let offset = bytes.len() - len;
     if show_ascii {
@@ -323,7 +322,7 @@ fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
 
 #[allow(unsafe_code)]
 fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharElementIter::new(bytes, cjk);
+    let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_head_tail(iter, width, false, STR_HEAD_TAIL_HAS_MORE_COST) {
         // Safety: all chars are checked from the char iterator
         unsafe {
@@ -349,7 +348,7 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 }
 
 fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
-    let iter = ByteElementIter::new(bytes, show_ascii);
+    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
     let (start, end) = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST).unwrap();
     if start == end {
         if show_ascii {
@@ -373,7 +372,7 @@ fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible
 /// Returns `Result<(length, remaining), ()>`
 fn take_head<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), ()>
 where
-    I: ElementIter,
+    I: SectionUnitIter,
 {
     take_side(iter, width, space_separated)
 }
@@ -381,7 +380,7 @@ where
 /// Returns `Result<(length, remaining), ()>`
 fn take_tail<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), ()>
 where
-    I: ElementIter,
+    I: SectionUnitIter,
 {
     take_side(iter.rev(), width, space_separated)
 }
@@ -389,7 +388,7 @@ where
 /// Returns `Result<(length, remaining), ()>`
 fn take_side<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), ()>
 where
-    I: Iterator<Item = Result<Element, ()>>,
+    I: Iterator<Item = Result<SectionUnit, ()>>,
 {
     elements_to_fit_width(
         iter,
@@ -412,7 +411,7 @@ fn take_head_tail<I>(
     has_more_cost: usize,
 ) -> Result<(usize, usize), ()>
 where
-    I: ElementIter,
+    I: SectionUnitIter,
 {
     let total_len = iter.as_slice().len();
     let ((front_len, back_offset), _) = elements_to_fit_width(
@@ -444,7 +443,7 @@ fn take_span<I>(
     space_separated: bool,
 ) -> Result<(usize, usize), ()>
 where
-    I: ElementIter,
+    I: SectionUnitIter,
 {
     // Attempt to get 1/3 of the total width before the span.
     let init_backward_width = width / 3 + SIDE_HAS_MORE_COST;
@@ -635,7 +634,7 @@ mod tests {
             input: &[b'a', b'b', 3, 3],
             format: PreferredFormat::Str,
             visible: Visible::Str("ab\u{3}\u{3}"),
-            display: "\"ab\u{3}\u{3}\"",
+            display: "\"ab\\u{3}\\u{3}\"",
         });
     }
 
@@ -709,7 +708,7 @@ mod tests {
             input: &[b'a', 3, 3, b'b'],
             format: PreferredFormat::Str,
             visible: Visible::Str("a\u{3}\u{3}b"),
-            display: "\"a\u{3}\u{3}b\"",
+            display: "\"a\\u{3}\\u{3}b\"",
         });
     }
 
@@ -773,7 +772,7 @@ mod tests {
             input: &[b'a', 3, 3, b'b'],
             format: PreferredFormat::Str,
             visible: Visible::Str("a\u{3}\u{3}b"),
-            display: "\"a\u{3}\u{3}b\"",
+            display: "\"a\\u{3}\\u{3}b\"",
         });
     }
 

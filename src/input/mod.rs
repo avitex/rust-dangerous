@@ -5,8 +5,7 @@ use core::{fmt, str};
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
-use crate::utf8;
-use crate::util::is_sub_slice;
+use crate::util::{is_sub_slice, utf8};
 
 /// Creates a new `Input` from a byte slice.
 ///

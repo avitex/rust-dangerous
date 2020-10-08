@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::util::slice_ptr_range;
 
-use super::element::Element;
+use super::unit::{ByteDisplay, CharDisplay};
 
 pub(super) struct InputWriter<'a, W>
 where
@@ -84,28 +84,16 @@ where
     }
 
     fn write_byte(&mut self, byte: u8, remaining: &[u8], show_ascii: bool) -> fmt::Result {
-        if show_ascii && byte.is_ascii_graphic() {
-            if self.underline {
-                if is_section_start_within_span(remaining, self.span) {
-                    self.write_underline(3)?;
-                } else {
-                    self.write_space(3)?;
-                }
-            } else {
-                self.w.write_char('\'')?;
-                self.w.write_char(byte as char)?;
-                self.w.write_char('\'')?;
-            }
-        } else if self.underline {
+        let display = ByteDisplay::new(byte, show_ascii);
+        if self.underline {
             if is_section_start_within_span(remaining, self.span) {
-                self.write_underline(2)?;
+                self.write_underline(display.width())
             } else {
-                self.write_space(2)?;
+                self.write_space(display.width())
             }
         } else {
-            write!(self.w, "{:0>2x}", byte)?;
+            display.write(&mut self.w)
         }
-        Ok(())
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -157,28 +145,23 @@ where
             if is_span_start_within_section(bytes, self.span) {
                 let mut offset = 0;
                 for c in s.chars() {
-                    let element = Element::unicode(c, cjk);
+                    let display = CharDisplay::new(c, cjk);
                     if is_section_start_within_span(&bytes[offset..], self.span) {
-                        self.write_underline(element.display_cost)?;
+                        self.write_underline(display.width())?;
                     } else {
-                        self.write_space(element.display_cost)?;
+                        self.write_space(display.width())?;
                     }
-                    offset += element.len_utf8;
+                    offset += c.len_utf8();
                 }
             } else {
                 for c in s.chars() {
-                    let element = Element::unicode(c, cjk);
-                    self.write_space(element.display_cost)?;
+                    let display = CharDisplay::new(c, cjk);
+                    self.write_space(display.width())?;
                 }
             }
         } else {
             for c in s.chars() {
-                match c {
-                    '"' => self.w.write_str(r#"\""#),
-                    '\n' => self.w.write_str(r#"\n"#),
-                    '\r' => self.w.write_str(r#"\r"#),
-                    c => self.w.write_char(c),
-                }?;
+                CharDisplay::new(c, cjk).write(&mut self.w)?;
             }
         }
         Ok(())
