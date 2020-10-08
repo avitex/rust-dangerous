@@ -78,6 +78,6 @@ fn unicode_width(c: char, cjk: bool) -> usize {
 
 #[cfg(not(feature = "unicode"))]
 #[inline]
-fn unicode_width(c: char, _cjk: bool) -> usize {
+fn unicode_width(_c: char, _cjk: bool) -> usize {
     1
 }
