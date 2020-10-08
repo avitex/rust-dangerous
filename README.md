@@ -3,7 +3,7 @@
 [![Crate](https://img.shields.io/crates/v/dangerous.svg)](https://crates.io/crates/dangerous)
 [![Docs](https://docs.rs/dangerous/badge.svg)](https://docs.rs/dangerous)
 
-# rust-dangerous (unpublished)
+# rust-dangerous
 
 **Rust library for safely and explicitly handling untrusted aka `dangerous` data**  
 Documentation hosted on [docs.rs](https://docs.rs/dangerous).
