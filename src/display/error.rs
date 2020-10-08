@@ -171,15 +171,32 @@ where
         W: Write,
     {
         let input = self.error.input();
-        let input_bounds = slice_ptr_range(input.as_dangerous());
-        let span_bounds = slice_ptr_range(self.error.span().as_dangerous());
-        let span_offset = span_bounds.start as usize - input_bounds.start as usize;
-        writeln!(
-            w,
-            "additional:\n  error offset: {}, input length: {}",
-            span_offset,
-            input.len(),
-        )
+        let span = self.error.span();
+        writeln!(w, "additional:")?;
+        if span.is_within(input) {
+            let input_bounds = slice_ptr_range(input.as_dangerous());
+            let span_bounds = slice_ptr_range(self.error.span().as_dangerous());
+            let span_offset = span_bounds.start as usize - input_bounds.start as usize;
+            writeln!(
+                w,
+                "  error offset: {}, input length: {}",
+                span_offset,
+                input.len()
+            )
+        } else {
+            writeln!(
+                w,
+                "  span ptr: {:?}, span length: {}",
+                span.as_dangerous().as_ptr(),
+                span.len(),
+            )?;
+            writeln!(
+                w,
+                "  input ptr: {:?}, input length: {}",
+                input.as_dangerous().as_ptr(),
+                input.len(),
+            )
+        }
     }
 
     fn input_display<'b>(&self, input: &'b Input) -> InputDisplay<'b> {
