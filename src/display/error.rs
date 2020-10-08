@@ -2,6 +2,7 @@ use core::fmt::{self, Write};
 
 use crate::error::{Context, ErrorDetails};
 use crate::input::Input;
+use crate::util::slice_ptr_range;
 
 use super::{InputDisplay, PreferredFormat, WithFormatter};
 
@@ -14,7 +15,7 @@ pub struct ErrorDisplay<'a, T> {
     banner: bool,
     underline: bool,
     format: PreferredFormat,
-    max_width: Option<usize>,
+    input_max_width: usize,
 }
 
 impl<'a, 'i, T> ErrorDisplay<'a, T>
@@ -28,7 +29,7 @@ where
             banner: false,
             underline: true,
             format: PreferredFormat::Bytes,
-            max_width: Some(DEFAULT_MAX_WIDTH),
+            input_max_width: DEFAULT_MAX_WIDTH,
         }
     }
 
@@ -50,8 +51,8 @@ where
     }
 
     /// Set the `max-width` for wrapping error output.
-    pub fn max_width(mut self, value: Option<usize>) -> Self {
-        self.max_width = value;
+    pub fn input_max_width(mut self, value: usize) -> Self {
+        self.input_max_width = value;
         self
     }
 
@@ -94,6 +95,7 @@ where
     {
         self.write_description(w)?;
         self.write_inputs(w)?;
+        self.write_additional(w)?;
         self.write_context_backtrace(w)
     }
 
@@ -124,8 +126,7 @@ where
             writeln!(w, "in:")?;
         }
         if span.is_within(input) {
-            // TODO: width
-            write_input(w, input_display.span(span, 40), true)
+            write_input(w, input_display.span(span, self.input_max_width), true)
         } else {
             writeln!(
                 w,
@@ -146,7 +147,7 @@ where
     where
         W: Write,
     {
-        write!(w, "context bracktrace:")?;
+        write!(w, "backtrace:")?;
         let write_success = self.error.context_stack().walk(&mut |i, c| {
             if write!(w, "\n  {}. `{}`", i, c.operation()).is_err() {
                 return false;
@@ -163,6 +164,22 @@ where
         } else {
             Err(fmt::Error)
         }
+    }
+
+    fn write_additional<W>(&self, w: &mut W) -> fmt::Result
+    where
+        W: Write,
+    {
+        let input = self.error.input();
+        let input_bounds = slice_ptr_range(input.as_dangerous());
+        let span_bounds = slice_ptr_range(self.error.span().as_dangerous());
+        let span_offset = span_bounds.start as usize - input_bounds.start as usize;
+        writeln!(
+            w,
+            "additional:\n  error offset: {}, input length: {}",
+            span_offset,
+            input.len(),
+        )
     }
 
     fn input_display<'b>(&self, input: &'b Input) -> InputDisplay<'b> {
