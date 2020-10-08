@@ -36,8 +36,10 @@ impl<'i, T> FromExpected<'i> for T where
 ///
 /// If you're not interested in errors of this nature and only wish to know
 /// whether or not the input was correctly processed, you'll wish to use the
-/// concrete type `Invalid` and all of the computations around verbose erroring
-/// will be removed in compilation.
+/// concrete type [`Invalid`] and all of the computations around verbose
+/// erroring will be removed in compilation.
+///
+/// [`Invalid`]: crate::error::Invalid
 pub trait ErrorDetails<'i> {
     /// The input in its entirety that was being processed when an error
     /// occurred.
