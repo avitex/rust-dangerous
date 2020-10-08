@@ -307,13 +307,12 @@ impl<'i, E> Reader<'i, E> {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{FromContext, Invalid, Expected, FromExpected};
+    /// use dangerous::{Invalid, Expected, Error};
     ///
     /// // Our custom reader function
     /// fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
     /// where
-    ///   E: FromContext<'i>,
-    ///   E: FromExpected<'i>,
+    ///   E: Error<'i>,
     /// {
     ///     input.read_all(|r| {
     ///         r.try_expect_erased("ipv4 addr", |i| {
@@ -326,7 +325,9 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// let input = dangerous::input(b"192.168.1.x");
     /// let error: Expected = read_ipv4_addr(input).unwrap_err();
-    /// println!("{}", error);
+    ///
+    /// // Prefer string input formatting
+    /// println!("{:#}", error);
     /// ```
     ///
     /// # Errors
