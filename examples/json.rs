@@ -34,7 +34,7 @@ where
     E: Error<'i>,
 {
     skip_whitespace(r);
-    r.try_expect("json value", |r| {
+    let value = r.try_expect("json value", |r| {
         let value = match r.peek_u8()? {
             b'"' => Value::Str(read_str(r)?),
             b'{' => Value::Object(read_map(r)?),
@@ -48,7 +48,9 @@ where
             _ => return Ok(None),
         };
         Ok(Some(value))
-    })
+    })?;
+    skip_whitespace(r);
+    Ok(value)
 }
 
 fn read_arr<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Value<'i>>, E>
