@@ -18,6 +18,7 @@ dangerous = "0.1"
 - Zero panics.
 - Zero-cost abstractions.
 - Zero heap-allocations on success \[1].
+- Retry/stream protocol support.
 - Minimal dependencies \[2].
 - Primitive type support.
 - Optional verbose errors.
