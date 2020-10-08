@@ -38,8 +38,8 @@ pub fn input(slice: &[u8]) -> &Input {
 
 /// `Input` is an immutable wrapper around bytes to be processed.
 ///
-/// It can only be created via [`dangerous::input()`] as so to
-/// clearly point out where user-generated / dangerous input is consumed.
+/// It can only be created via [`dangerous::input()`] as so to clearly point out
+/// where untrusted / dangerous input is consumed.
 ///
 /// It is used along with [`Reader`] to process the input.
 ///

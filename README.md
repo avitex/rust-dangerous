@@ -5,7 +5,7 @@
 
 # rust-dangerous (unpublished)
 
-**Rust library for safely and explicitly handling user-generated aka `dangerous` data**  
+**Rust library for safely and explicitly handling untrusted aka `dangerous` data**  
 Documentation hosted on [docs.rs](https://docs.rs/dangerous).
 
 ```toml
@@ -18,6 +18,7 @@ dangerous = "0.1"
 - Zero panics.
 - Zero-cost abstractions.
 - Zero heap-allocations on success \[1].
+- `no-std` / suitable for embedded.
 - Retry/stream protocol support.
 - Minimal dependencies \[2].
 - Primitive type support.
@@ -28,10 +29,10 @@ perf).
 **\[2]** Zero-dependencies if the `unicode` feature is disabled.
 
 This library's intentions are to provide a simple interface for explicitly
-handling user-generated data safely. It tries to achieve this by providing
-useful primitives for parsing data and an optional, but solid, debugging
-interface with sane input formatting and errors to weed out problems before, or
-after they arise in production.
+parsing untrusted data safely. It tries to achieve this by providing useful
+primitives for parsing data and an optional, but solid, debugging interface with
+sane input formatting and errors to weed out problems before, or after they
+arise in production.
 
 Passing down errors as simple as `core::str::Utf8Error` may be useful enough to
 debug while in development, however when just written into logs without the

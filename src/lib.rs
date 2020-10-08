@@ -1,4 +1,4 @@
-//! Safely and explicitly handle user-generated aka `dangerous` data.
+//! Safely and explicitly parse untrusted aka `dangerous` data.
 //!
 //! # Basic usage
 //!
