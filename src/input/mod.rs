@@ -142,7 +142,6 @@ impl Input {
                         max: None,
                         span: input(invalid),
                         input: self,
-                        // origin_str: true,
                         context: ExpectedContext {
                             operation: "convert input to str",
                             expected: "complete utf-8 code point",

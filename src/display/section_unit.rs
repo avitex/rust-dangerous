@@ -2,7 +2,7 @@ use core::slice;
 
 use crate::util::utf8::CharIter;
 
-use super::unit::{ByteDisplay, CharDisplay};
+use super::unit::{byte_display_width, char_display_width};
 
 #[derive(Clone, Copy)]
 pub(super) struct SectionUnit {
@@ -13,14 +13,14 @@ pub(super) struct SectionUnit {
 impl SectionUnit {
     pub(super) fn byte(b: u8, show_ascii: bool) -> Self {
         Self {
-            display_cost: ByteDisplay::new(b, show_ascii).width(),
+            display_cost: byte_display_width(b, show_ascii),
             len_utf8: 1,
         }
     }
 
     pub(super) fn unicode(c: char, cjk: bool) -> Self {
         Self {
-            display_cost: CharDisplay::new(c, cjk).width(),
+            display_cost: char_display_width(c, cjk),
             len_utf8: c.len_utf8(),
         }
     }

@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::util::slice_ptr_range;
 
-use super::unit::{ByteDisplay, CharDisplay};
+use super::unit::{byte_display_width, byte_display_write, char_display_width, char_display_write};
 
 pub(super) struct InputWriter<'a, W>
 where
@@ -84,15 +84,15 @@ where
     }
 
     fn write_byte(&mut self, byte: u8, remaining: &[u8], show_ascii: bool) -> fmt::Result {
-        let display = ByteDisplay::new(byte, show_ascii);
         if self.underline {
+            let byte_display_width = byte_display_width(byte, show_ascii);
             if is_section_start_within_span(remaining, self.span) {
-                self.write_underline(display.width())
+                self.write_underline(byte_display_width)
             } else {
-                self.write_space(display.width())
+                self.write_space(byte_display_width)
             }
         } else {
-            display.write(&mut self.w)
+            byte_display_write(byte, show_ascii, &mut self.w)
         }
     }
 
@@ -145,23 +145,22 @@ where
             if is_span_start_within_section(bytes, self.span) {
                 let mut offset = 0;
                 for c in s.chars() {
-                    let display = CharDisplay::new(c, cjk);
+                    let char_display_width = char_display_width(c, cjk);
                     if is_section_start_within_span(&bytes[offset..], self.span) {
-                        self.write_underline(display.width())?;
+                        self.write_underline(char_display_width)?;
                     } else {
-                        self.write_space(display.width())?;
+                        self.write_space(char_display_width)?;
                     }
                     offset += c.len_utf8();
                 }
             } else {
                 for c in s.chars() {
-                    let display = CharDisplay::new(c, cjk);
-                    self.write_space(display.width())?;
+                    self.write_space(char_display_width(c, cjk))?;
                 }
             }
         } else {
             for c in s.chars() {
-                CharDisplay::new(c, cjk).write(&mut self.w)?;
+                char_display_write(c, &mut self.w)?;
             }
         }
         Ok(())
