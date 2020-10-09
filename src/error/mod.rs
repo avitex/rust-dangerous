@@ -1,4 +1,4 @@
-//! Error support
+//! Error support.
 //!
 //! - If you want the fastest error which has no debugging information,
 //!   [`Invalid`] has you covered.

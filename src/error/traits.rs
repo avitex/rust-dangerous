@@ -19,8 +19,8 @@ pub trait FromContext<'i> {
         C: Context;
 }
 
-/// Convenience trait requiring [`ExpectedValue`], [`ExpectedLength`] and
-/// [`ExpectedValid`].
+/// Convenience trait requiring [`From`] for [`ExpectedValue`], [`ExpectedLength`]
+/// and [`ExpectedValid`].
 pub trait FromExpected<'i>:
     From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
 {

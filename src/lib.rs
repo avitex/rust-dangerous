@@ -16,6 +16,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![deny(
+    clippy::pedantic,
     // Exceptions: Byte slice to `Input` cast, str cast for section
     unsafe_code,
     // Exception: Derived implementations
@@ -24,7 +25,6 @@
     variant_size_differences,
 )]
 #![forbid(
-    clippy::pedantic,
     rust_2018_idioms,
     anonymous_parameters,
     missing_docs,
