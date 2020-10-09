@@ -241,7 +241,7 @@ impl<'i> ExpectedValue<'i> {
         self.expected.as_input()
     }
 
-    /// Returns `true` if the value could never match and `true` if the matching
+    /// Returns `true` if the value could never match and `false` if the matching
     /// was incomplete.
     pub fn is_fatal(&self) -> bool {
         !self.expected().has_prefix(self.found().as_dangerous())
