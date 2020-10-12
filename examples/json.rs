@@ -167,9 +167,8 @@ where
     skip_whitespace(r);
     r.context("json number", |r| {
         let num_str = r.try_take_consumed(|r| {
-            r.try_expect("first byte is digit", |r| {
-                r.read_u8()
-                    .map(|c| if c.is_ascii_digit() { Some(()) } else { None })
+            r.try_validate("first byte is digit", |r| {
+                r.read_u8().map(|c| c.is_ascii_digit())
             })?;
             r.take_while(|c| c.is_ascii_digit() || c == b'.');
             Ok(())

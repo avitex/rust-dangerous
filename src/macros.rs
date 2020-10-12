@@ -5,7 +5,7 @@ macro_rules! impl_read_num {
     ($ty:ident, $ty_str:expr, le: $read_le:ident, be: $read_be:ident) => {
         #[doc = "Read a little-endian encoded `"]
         #[doc = $ty_str]
-        #[doc = "` from the reader."]
+        #[doc = "`."]
         ///
         /// # Errors
         ///
@@ -19,7 +19,7 @@ macro_rules! impl_read_num {
 
         #[doc = "Read a big-endian encoded `"]
         #[doc = $ty_str]
-        #[doc = "` from the reader."]
+        #[doc = "`."]
         ///
         /// # Errors
         ///

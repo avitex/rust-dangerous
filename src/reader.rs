@@ -17,12 +17,12 @@ pub struct Reader<'i, E> {
 }
 
 impl<'i, E> Reader<'i, E> {
-    /// Mutably use the reader with a given context.
+    /// Mutably use the `Reader` with a given context.
     ///
     /// # Errors
     ///
-    /// Returns any error returned by the provided function, and attaches the
-    /// specified context to it.
+    /// Returns any error returned by the provided function with the specified
+    /// context attached.
     pub fn context<C, F, O>(&mut self, context: C, f: F) -> Result<O, E>
     where
         E: FromContext<'i>,
@@ -32,12 +32,12 @@ impl<'i, E> Reader<'i, E> {
         with_context(self.input, context, || f(self))
     }
 
-    /// Immutably use the reader with a given context.
+    /// Immutably use the `Reader` with a given context.
     ///
     /// # Errors
     ///
-    /// Returns any error returned by the provided function, and attaches the
-    /// specified context to it.
+    /// Returns any error returned by the provided function with the specified
+    /// context attached.
     pub fn peek_context<C, F, O>(&self, context: C, f: F) -> Result<O, E>
     where
         E: FromContext<'i>,
@@ -47,17 +47,17 @@ impl<'i, E> Reader<'i, E> {
         with_context(self.input, context, || f(self))
     }
 
-    /// Returns `true` if the reader has no more input to consume.
+    /// Returns `true` if the `Reader` has no more input to consume.
     #[inline]
     pub fn at_end(&self) -> bool {
         self.input.is_empty()
     }
 
-    /// Skip `len` number of bytes in the input.
+    /// Skip `len` number of bytes.
     ///
     /// # Errors
     ///
-    /// Returns an error if the input was not long enough.
+    /// Returns an error if the length requirement to skip could not be met.
     #[inline]
     pub fn skip(&mut self, len: usize) -> Result<(), E>
     where
@@ -70,11 +70,7 @@ impl<'i, E> Reader<'i, E> {
 
     /// Skip a length of input while a predicate check remains true.
     ///
-    /// Returns the length of input skipped.
-    ///
-    /// # Errors
-    ///
-    /// Returns any error the provided function does.
+    /// Returns the total length of input skipped.
     pub fn skip_while<F>(&mut self, pred: F) -> usize
     where
         F: FnMut(u8) -> bool,
@@ -87,7 +83,7 @@ impl<'i, E> Reader<'i, E> {
     /// Try skip a length of input while a predicate check remains successful
     /// and true.
     ///
-    /// Returns the length of input skipped.
+    /// Returns the total length of input skipped.
     ///
     /// # Errors
     ///
@@ -106,7 +102,7 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the required length cannot be fulfilled.
+    /// Returns an error if the length requirement to read could not be met.
     pub fn take(&mut self, len: usize) -> Result<&'i Input, E>
     where
         E: From<ExpectedLength<'i>>,
@@ -116,7 +112,7 @@ impl<'i, E> Reader<'i, E> {
         Ok(head)
     }
 
-    /// Read all of the input left.
+    /// Read all of the remaining input.
     pub fn take_remaining(&mut self) -> &'i Input {
         let all = self.input;
         self.input = all.end();
@@ -149,7 +145,7 @@ impl<'i, E> Reader<'i, E> {
         Ok(head)
     }
 
-    /// Read a length of input that was successfully parsed.
+    /// Read a length of input that was successfully consumed from a sub-parse.
     pub fn take_consumed<F>(&mut self, consumer: F) -> &'i Input
     where
         E: FromContext<'i>,
@@ -160,11 +156,27 @@ impl<'i, E> Reader<'i, E> {
         head
     }
 
-    /// Try read a length of input that was successfully parsed.
+    /// Try read a length of input that was successfully consumed from a
+    /// sub-parse.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Invalid;
+    ///
+    /// let consumed = dangerous::input(b"abc").read_all::<_, _, Invalid>(|r| {
+    ///     r.try_take_consumed(|r| {
+    ///         r.skip(1)?;
+    ///         r.consume(b"bc")
+    ///     })
+    /// }).unwrap();
+    ///
+    /// assert_eq!(consumed, &b"abc"[..]);
+    /// ```
     ///
     /// # Errors
     ///
-    /// Returns an error if the provided function does.
+    /// Returns any error the provided function does.
     pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<&'i Input, E>
     where
         E: FromContext<'i>,
@@ -181,7 +193,7 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the required length cannot be fulfilled.
+    /// Returns an error if the length requirement to peek could not be met.
     pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         E: From<ExpectedLength<'i>>,
@@ -195,25 +207,24 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the required length cannot be fulfilled,
-    /// or if the provided function returns one.
+    /// Returns an error if the length requirement to peek could not be met or
+    /// if the provided function does.
     pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
     where
         E: FromContext<'i>,
         E: From<ExpectedLength<'i>>,
         F: FnOnce(&'i Input) -> Result<O, E>,
-
         O: 'static,
     {
         let (head, _) = self.input.split_at(len, "try peek")?;
         with_context(self.input, OperationContext("try peek"), || f(head))
     }
 
-    /// Returns the next byte in the input without mutating the reader.
+    /// Peek the next byte in the input without mutating the `Reader`.
     ///
     /// # Errors
     ///
-    /// Returns an error if the reader has no more input.
+    /// Returns an error if the `Reader` has no more input.
     #[inline]
     pub fn peek_u8(&self) -> Result<u8, E>
     where
@@ -222,22 +233,22 @@ impl<'i, E> Reader<'i, E> {
         self.input.first("peek u8")
     }
 
-    /// Returns `true` if `bytes` is next in the input.
+    /// Returns `true` if `bytes` is next in the `Reader`.
     #[inline]
     pub fn peek_eq(&self, bytes: &[u8]) -> bool {
         self.input.has_prefix(bytes)
     }
 
-    /// Consume expected bytes from the input.
+    /// Consume expected bytes.
     ///
-    /// Doesn't effect the internal state if the input couldn't be consumed.
+    /// Doesn't effect the internal state of the `Reader` if the bytes couldn't
+    /// be consumed.
     ///
     /// # Errors
     ///
-    /// Returns an error if the bytes could not be consumed from the input.
+    /// Returns an error if the bytes could not be consumed.
     pub fn consume(&mut self, bytes: &'i [u8]) -> Result<(), E>
     where
-        E: From<ExpectedLength<'i>>,
         E: From<ExpectedValue<'i>>,
     {
         let prefix = Value::Bytes(bytes);
@@ -246,20 +257,72 @@ impl<'i, E> Reader<'i, E> {
         Ok(())
     }
 
-    /// Consume expected bytes from the input.
+    /// Consume an expected byte.
     ///
-    /// Doesn't effect the internal state if the input couldn't be consumed.
+    /// Doesn't effect the internal state of the `Reader` if the byte couldn't
+    /// be consumed.
     ///
     /// # Errors
     ///
-    /// Returns an error if the bytes could not be consumed from the input.
+    /// Returns an error if the byte could not be consumed.
     pub fn consume_u8(&mut self, byte: u8) -> Result<(), E>
     where
-        E: From<ExpectedLength<'i>>,
         E: From<ExpectedValue<'i>>,
     {
         let prefix = Value::Byte(byte);
         let tail = self.input.split_prefix::<E>(prefix, "consume u8")?;
+        self.input = tail;
+        Ok(())
+    }
+
+    /// Read and validate a value without returning it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the validator function returned `false`.
+    pub fn validate<F>(&mut self, expected: &'static str, validator: F) -> Result<(), E>
+    where
+        F: FnOnce(&mut Self) -> bool,
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        let ((), tail) = self.input.split_expect(
+            |r: &mut Self| {
+                if validator(r) {
+                    Some(())
+                } else {
+                    None
+                }
+            },
+            expected,
+            "validate",
+        )?;
+        self.input = tail;
+        Ok(())
+    }
+
+    /// Try read and validate a value without returning it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the validator function returned `false` or an error.
+    pub fn try_validate<F>(&mut self, expected: &'static str, validator: F) -> Result<(), E>
+    where
+        F: FnOnce(&mut Self) -> Result<bool, E>,
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+    {
+        let ((), tail) = self.input.try_split_expect(
+            |r: &mut Self| {
+                if validator(r)? {
+                    Ok(Some(()))
+                } else {
+                    Ok(None)
+                }
+            },
+            expected,
+            "try validate",
+        )?;
         self.input = tail;
         Ok(())
     }
@@ -284,7 +347,8 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if failed to read, or the returned value was `None`.
+    /// Returns an error if the returned value was `None` or if the provided
+    /// function does.
     pub fn try_expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
     where
         E: FromContext<'i>,
@@ -307,24 +371,22 @@ impl<'i, E> Reader<'i, E> {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{Invalid, Expected, Error};
+    /// use dangerous::{Error, Expected, Invalid, Reader};
     ///
     /// // Our custom reader function
-    /// fn read_ipv4_addr<'i, E>(input: &'i dangerous::Input) -> Result<Ipv4Addr, E>
+    /// fn read_ipv4_addr<'i, E>(r: &mut Reader<'i, E>) -> Result<Ipv4Addr, E>
     /// where
     ///   E: Error<'i>,
     /// {
-    ///     input.read_all(|r| {
-    ///         r.try_expect_erased("ipv4 addr", |i| {
-    ///             i.take_remaining()
-    ///                 .to_dangerous_str()
-    ///                 .and_then(|s| s.parse().map_err(|_| Invalid::fatal()))
-    ///         })
+    ///     r.try_expect_erased("ipv4 addr", |i| {
+    ///         i.take_remaining()
+    ///             .to_dangerous_str()
+    ///             .and_then(|s| s.parse().map_err(|_| Invalid::fatal()))
     ///     })
     /// }
     ///
     /// let input = dangerous::input(b"192.168.1.x");
-    /// let error: Expected = read_ipv4_addr(input).unwrap_err();
+    /// let error: Expected = input.read_all(read_ipv4_addr).unwrap_err();
     ///
     /// // Prefer string input formatting
     /// println!("{:#}", error);
@@ -332,8 +394,7 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// # Errors
     ///
-    /// Returns an error if either the provided function does, or there is
-    /// trailing input.
+    /// Returns an error if provided function does.
     ///
     /// [`RetryRequirement`]: crate::error::RetryRequirement
     pub fn try_expect_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
@@ -350,7 +411,7 @@ impl<'i, E> Reader<'i, E> {
         Ok(ok)
     }
 
-    /// Read a byte, consuming the input.
+    /// Read a byte.
     ///
     /// # Errors
     ///
