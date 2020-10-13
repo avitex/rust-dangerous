@@ -1,3 +1,4 @@
+use core::convert::TryInto;
 use core::slice;
 
 use crate::error::{
@@ -338,8 +339,7 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         let (head, tail) = self.split_at(2, operation)?;
-        let bytes = head.as_dangerous();
-        Ok(([bytes[0], bytes[1]], tail))
+        Ok((head.as_dangerous().try_into().unwrap(), tail))
     }
 
     #[inline(always)]
@@ -351,8 +351,7 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         let (head, tail) = self.split_at(4, operation)?;
-        let bytes = head.as_dangerous();
-        Ok(([bytes[0], bytes[1], bytes[2], bytes[3]], tail))
+        Ok((head.as_dangerous().try_into().unwrap(), tail))
     }
 
     #[inline(always)]
@@ -364,13 +363,7 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         let (head, tail) = self.split_at(8, operation)?;
-        let bytes = head.as_dangerous();
-        Ok((
-            [
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            ],
-            tail,
-        ))
+        Ok((head.as_dangerous().try_into().unwrap(), tail))
     }
 
     #[inline(always)]
@@ -382,14 +375,6 @@ impl Input {
         E: From<ExpectedLength<'i>>,
     {
         let (head, tail) = self.split_at(16, operation)?;
-        let bytes = head.as_dangerous();
-        Ok((
-            [
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
-                bytes[15],
-            ],
-            tail,
-        ))
+        Ok((head.as_dangerous().try_into().unwrap(), tail))
     }
 }

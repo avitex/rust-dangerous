@@ -275,12 +275,12 @@ impl<'i, E> Reader<'i, E> {
         Ok(())
     }
 
-    /// Read and validate a value without returning it.
+    /// Read and verify a value without returning it.
     ///
     /// # Errors
     ///
-    /// Returns an error if the validator function returned `false`.
-    pub fn validate<F>(&mut self, expected: &'static str, validator: F) -> Result<(), E>
+    /// Returns an error if the verifier function returned `false`.
+    pub fn verify<F>(&mut self, expected: &'static str, verifier: F) -> Result<(), E>
     where
         F: FnOnce(&mut Self) -> bool,
         E: FromContext<'i>,
@@ -288,25 +288,25 @@ impl<'i, E> Reader<'i, E> {
     {
         let ((), tail) = self.input.split_expect(
             |r: &mut Self| {
-                if validator(r) {
+                if verifier(r) {
                     Some(())
                 } else {
                     None
                 }
             },
             expected,
-            "validate",
+            "verify",
         )?;
         self.input = tail;
         Ok(())
     }
 
-    /// Try read and validate a value without returning it.
+    /// Try read and verify a value without returning it.
     ///
     /// # Errors
     ///
-    /// Returns an error if the validator function returned `false` or an error.
-    pub fn try_validate<F>(&mut self, expected: &'static str, validator: F) -> Result<(), E>
+    /// Returns an error if the verifier function returned `false` or an error.
+    pub fn try_verify<F>(&mut self, expected: &'static str, verifier: F) -> Result<(), E>
     where
         F: FnOnce(&mut Self) -> Result<bool, E>,
         E: FromContext<'i>,
@@ -314,14 +314,14 @@ impl<'i, E> Reader<'i, E> {
     {
         let ((), tail) = self.input.try_split_expect(
             |r: &mut Self| {
-                if validator(r)? {
+                if verifier(r)? {
                     Ok(Some(()))
                 } else {
                     Ok(None)
                 }
             },
             expected,
-            "try validate",
+            "try verify",
         )?;
         self.input = tail;
         Ok(())

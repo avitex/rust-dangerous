@@ -31,6 +31,10 @@ unicode-width = { version = "0.1", optional = true }
 criterion = "0.3"
 
 [[bench]]
+name = "reader"
+harness = false
+
+[[bench]]
 name = "context"
 harness = false
 
