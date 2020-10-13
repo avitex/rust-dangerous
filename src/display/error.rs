@@ -172,27 +172,33 @@ where
     {
         let input = self.error.input();
         let span = self.error.span();
-        writeln!(w, "additional:")?;
+        write!(w, "additional:\n  ")?;
         if span.is_within(input) {
             let input_bounds = slice_ptr_range(input.as_dangerous());
             let span_bounds = slice_ptr_range(self.error.span().as_dangerous());
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
+            match self.format {
+                PreferredFormat::Str | PreferredFormat::StrCjk => {
+                    write!(w, "error line: {}, ", line_offset(input, span_offset))?;
+                }
+                _ => (),
+            }
             writeln!(
                 w,
-                "  error offset: {}, input length: {}",
+                "error offset: {}, input length: {}",
                 span_offset,
                 input.len()
             )
         } else {
             writeln!(
                 w,
-                "  span ptr: {:?}, span length: {}",
+                "span ptr: {:?}, span length: {}",
                 span.as_dangerous().as_ptr(),
                 span.len(),
             )?;
             writeln!(
                 w,
-                "  input ptr: {:?}, input length: {}",
+                "input ptr: {:?}, input length: {}",
                 input.as_dangerous().as_ptr(),
                 input.len(),
             )
@@ -220,6 +226,20 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)
     }
+}
+
+#[cfg(feature = "bytecount")]
+fn line_offset(input: &Input, span_offset: usize) -> usize {
+    bytecount::count(&input.as_dangerous()[..span_offset], b'\n') + 1
+}
+
+#[cfg(not(feature = "bytecount"))]
+fn line_offset(input: &Input, span_offset: usize) -> usize {
+    input.as_dangerous()[..span_offset]
+        .iter()
+        .filter(|b| **b == b'\n')
+        .count()
+        + 1
 }
 
 fn write_input<W>(w: &mut W, mut input: InputDisplay<'_>, underline: bool) -> fmt::Result

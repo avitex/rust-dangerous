@@ -26,7 +26,7 @@ dangerous = "0.1"
 
 **\[1]** Allocations for error cases (`box-expected` feature is recommended for better
 perf).  
-**\[2]** Zero-dependencies if the `unicode` feature is disabled.
+**\[2]** Zero-dependencies both the `unicode` and `bytecount` features are disabled.
 
 This library's intentions are to provide a simple interface for explicitly
 parsing untrusted data safely. It tries to achieve this by providing useful
