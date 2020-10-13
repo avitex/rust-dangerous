@@ -58,6 +58,12 @@ impl fmt::Display for RetryRequirement {
 pub trait ToRetryRequirement {
     /// Returns the requirement, if applicable, to retry processing the `Input`.
     fn to_retry_requirement(&self) -> Option<RetryRequirement>;
+
+    /// Returns `true` if [`Self::to_retry_requirement()`] will return `None`,
+    /// or `false` if `Some(RetryRequirement)`.
+    fn is_fatal(&self) -> bool {
+        self.to_retry_requirement().is_none()
+    }
 }
 
 impl ToRetryRequirement for RetryRequirement {

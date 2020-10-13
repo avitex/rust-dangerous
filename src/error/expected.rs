@@ -127,6 +127,14 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
             ExpectedKind::Length(err) => err.to_retry_requirement(),
         }
     }
+
+    fn is_fatal(&self) -> bool {
+        match &self.inner.kind {
+            ExpectedKind::Value(err) => err.is_fatal(),
+            ExpectedKind::Valid(err) => err.is_fatal(),
+            ExpectedKind::Length(err) => err.is_fatal(),
+        }
+    }
 }
 
 impl<'i, S> FromContext<'i> for Expected<'i, S>
@@ -240,12 +248,6 @@ impl<'i> ExpectedValue<'i> {
     pub fn expected(&self) -> &Input {
         self.expected.as_input()
     }
-
-    /// Returns `true` if the value could never match and `false` if the matching
-    /// was incomplete.
-    pub fn is_fatal(&self) -> bool {
-        !self.expected().has_prefix(self.found().as_dangerous())
-    }
 }
 
 impl<'i> fmt::Display for ExpectedValue<'i> {
@@ -263,6 +265,12 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
             let had = self.found().len();
             RetryRequirement::from_had_and_needed(had, needed)
         }
+    }
+
+    /// Returns `true` if the value could never match and `false` if the matching
+    /// was incomplete.
+    fn is_fatal(&self) -> bool {
+        !self.expected().has_prefix(self.found().as_dangerous())
     }
 }
 
@@ -319,11 +327,6 @@ impl<'i> ExpectedLength<'i> {
         Some(self.min) == self.max
     }
 
-    /// Returns `true` if `max()` has a value.
-    pub fn is_fatal(&self) -> bool {
-        self.max.is_some()
-    }
-
     /// The exact length that was expected in a context, if applicable.
     ///
     /// Will return a value if `is_exact()` returns `true`.
@@ -363,6 +366,11 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
             let needed = self.min();
             RetryRequirement::from_had_and_needed(had, needed)
         }
+    }
+
+    /// Returns `true` if `max()` has a value.
+    fn is_fatal(&self) -> bool {
+        self.max.is_some()
     }
 }
 
