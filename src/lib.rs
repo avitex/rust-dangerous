@@ -44,7 +44,7 @@
     clippy::type_repetition_in_bounds
 )]
 
-#[cfg(feature = "full-context")]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 #[macro_use]

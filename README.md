@@ -24,7 +24,7 @@ dangerous = "0.1"
 - Primitive type support.
 - Optional verbose errors.
 
-**\[1]** Allocations for error cases (`alloc` feature is recommended for better
+**\[1]** Allocations for error cases (`box-expected` feature is recommended for better
 perf).  
 **\[2]** Zero-dependencies if the `unicode` feature is disabled.
 

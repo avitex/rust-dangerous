@@ -12,15 +12,15 @@ license = "MIT"
 readme = "README.md"
 
 [features]
-default = ["full-context", "unicode"]
+default = ["full-context", "box-expected", "unicode"]
 # Enables `std::error::Error` implementation for errors.
 std = []
-# Enables allocation.
-# This feature also enables the boxing of `Expected`'s
-# internals, improving performance of successful parsing.
+# Enables allocations.
 alloc = []
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
+# Enables the boxing of `Expected`'s internals.
+box-expected = ["alloc"]
 # Enables full context backtraces.
 full-context = ["alloc"]
 

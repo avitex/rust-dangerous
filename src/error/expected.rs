@@ -1,6 +1,6 @@
 use core::fmt;
 
-#[cfg(feature = "full-context")]
+#[cfg(feature = "box-expected")]
 use alloc::boxed::Box;
 
 use crate::display::{ByteCount, ErrorDisplay};
@@ -20,14 +20,14 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///
 /// - Enable the `full-context` feature (enabled by default), for full-context
 ///   stacks.
-/// - It's recommended to have the `alloc` feature enabled (enabled by default)
+/// - It's recommended to have the `box-expected` feature enabled (enabled by default)
 ///   for better performance with this error.
 ///
 /// See [`crate::error`] for additional documentation around the error system.
 pub struct Expected<'i, S = ExpectedContextStack> {
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "box-expected")]
     inner: Box<ExpectedInner<'i, S>>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "box-expected"))]
     inner: ExpectedInner<'i, S>,
 }
 
@@ -72,7 +72,7 @@ where
             stack: S::from_root(context),
         };
 
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "box-expected")]
         let inner = Box::new(inner);
 
         Self { inner }
