@@ -316,7 +316,7 @@ impl<'i> ExpectedLength<'i> {
     /// The maximum length that was expected in a context, if applicable.
     ///
     /// If max has a value, this signifies the [`Input`] exceeded it in some
-    /// way. An example of this would be [`Input::read_all`], where there was
+    /// way. An example of this would be [`Input::read_all()`], where there was
     /// [`Input`] left over.
     pub fn max(&self) -> Option<usize> {
         self.max

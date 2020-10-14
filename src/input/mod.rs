@@ -1,7 +1,7 @@
 mod internal;
 
-use core::{fmt, str};
 use core::convert::Infallible;
+use core::{fmt, str};
 
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};

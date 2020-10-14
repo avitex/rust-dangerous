@@ -18,6 +18,12 @@ macro_rules! read_partial {
     };
 }
 
+macro_rules! read_infallible {
+    ($input:expr, $read_fn:expr) => {
+        input!($input).read_infallible($read_fn)
+    };
+}
+
 macro_rules! assert_input_display_eq {
     ($input:expr, $format:expr, $expected:expr) => {
         assert_eq!(format!($format, input!($input)), $expected);

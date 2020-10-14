@@ -9,8 +9,8 @@ use crate::input::Input;
 
 /// A `Reader` is created from and consumes an [`Input`].
 ///
-/// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`] or
-/// [`Input::read_partial()`].
+/// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`],
+/// [`Input::read_partial()`] or [`Input::read_infallible()`].
 pub struct Reader<'i, E> {
     input: &'i Input,
     error: PhantomData<E>,
