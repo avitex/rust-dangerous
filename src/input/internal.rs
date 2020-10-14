@@ -154,16 +154,16 @@ impl Input {
     }
 
     #[inline(always)]
-    pub(crate) fn split_expect<'i, F, O, E>(
+    pub(crate) fn split_expect<'i, F, T, E>(
         &'i self,
         f: F,
         expected: &'static str,
         operation: &'static str,
-    ) -> Result<(O, &'i Input), E>
+    ) -> Result<(T, &'i Input), E>
     where
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Reader<'i, E>) -> Option<O>,
+        F: FnOnce(&mut Reader<'i, E>) -> Option<T>,
     {
         let mut reader = Reader::new(self);
         match f(&mut reader) {
@@ -185,16 +185,16 @@ impl Input {
     }
 
     #[inline(always)]
-    pub(crate) fn try_split_expect<'i, F, O, E>(
+    pub(crate) fn try_split_expect<'i, F, T, E>(
         &'i self,
         f: F,
         expected: &'static str,
         operation: &'static str,
-    ) -> Result<(O, &'i Input), E>
+    ) -> Result<(T, &'i Input), E>
     where
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Reader<'i, E>) -> Result<Option<O>, E>,
+        F: FnOnce(&mut Reader<'i, E>) -> Result<Option<T>, E>,
     {
         let context = ExpectedContext {
             expected,
@@ -217,16 +217,16 @@ impl Input {
     }
 
     #[inline(always)]
-    pub(crate) fn try_split_expect_erased<'i, F, O, R, E>(
+    pub(crate) fn try_split_expect_erased<'i, F, T, R, E>(
         &'i self,
         f: F,
         expected: &'static str,
         operation: &'static str,
-    ) -> Result<(O, &'i Input), E>
+    ) -> Result<(T, &'i Input), E>
     where
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Reader<'i, E>) -> Result<O, R>,
+        F: FnOnce(&mut Reader<'i, E>) -> Result<T, R>,
         R: ToRetryRequirement,
     {
         let mut reader = Reader::new(self);

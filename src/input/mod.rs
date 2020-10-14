@@ -204,9 +204,9 @@ impl Input {
     ///
     /// Returns an error if either the provided function does, or there is
     /// trailing input.
-    pub fn read_all<'i, F, O, E>(&'i self, f: F) -> Result<O, E>
+    pub fn read_all<'i, F, T, E>(&'i self, f: F) -> Result<T, E>
     where
-        F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
+        F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
         E: FromContext<'i>,
         E: From<ExpectedLength<'i>>,
     {
@@ -233,9 +233,9 @@ impl Input {
     /// # Errors
     ///
     /// Returns an error if the provided function does.
-    pub fn read_partial<'i, F, O, E>(&'i self, f: F) -> Result<(O, &'i Input), E>
+    pub fn read_partial<'i, F, T, E>(&'i self, f: F) -> Result<(T, &'i Input), E>
     where
-        F: FnOnce(&mut Reader<'i, E>) -> Result<O, E>,
+        F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
         E: FromContext<'i>,
     {
         let mut r = Reader::new(self);
@@ -245,9 +245,9 @@ impl Input {
 
     /// Create a reader to read a part of the input and return the rest
     /// without any errors.
-    pub fn read_infallible<'i, F, O>(&'i self, f: F) -> (O, &'i Input)
+    pub fn read_infallible<'i, F, T>(&'i self, f: F) -> (T, &'i Input)
     where
-        F: FnOnce(&mut Reader<'i, Infallible>) -> O,
+        F: FnOnce(&mut Reader<'i, Infallible>) -> T,
     {
         let mut r = Reader::new(self);
         let ok = f(&mut r);

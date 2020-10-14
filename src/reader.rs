@@ -23,11 +23,11 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// Returns any error returned by the provided function with the specified
     /// context attached.
-    pub fn context<C, F, O>(&mut self, context: C, f: F) -> Result<O, E>
+    pub fn context<C, F, T>(&mut self, context: C, f: F) -> Result<T, E>
     where
         E: FromContext<'i>,
         C: Context,
-        F: FnOnce(&mut Self) -> Result<O, E>,
+        F: FnOnce(&mut Self) -> Result<T, E>,
     {
         with_context(self.input, context, || f(self))
     }
@@ -38,11 +38,11 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// Returns any error returned by the provided function with the specified
     /// context attached.
-    pub fn peek_context<C, F, O>(&self, context: C, f: F) -> Result<O, E>
+    pub fn peek_context<C, F, T>(&self, context: C, f: F) -> Result<T, E>
     where
         E: FromContext<'i>,
         C: Context,
-        F: FnOnce(&Self) -> Result<O, E>,
+        F: FnOnce(&Self) -> Result<T, E>,
     {
         with_context(self.input, context, || f(self))
     }
@@ -194,10 +194,10 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the length requirement to peek could not be met.
-    pub fn peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
+    pub fn peek<F, T>(&self, len: usize, f: F) -> Result<T, E>
     where
         E: From<ExpectedLength<'i>>,
-        F: FnOnce(&Input) -> O,
+        F: FnOnce(&Input) -> T,
     {
         let (head, _) = self.input.split_at(len, "peek")?;
         Ok(f(head))
@@ -209,12 +209,12 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// Returns an error if the length requirement to peek could not be met or
     /// if the provided function does.
-    pub fn try_peek<F, O>(&self, len: usize, f: F) -> Result<O, E>
+    pub fn try_peek<F, T>(&self, len: usize, f: F) -> Result<T, E>
     where
         E: FromContext<'i>,
         E: From<ExpectedLength<'i>>,
-        F: FnOnce(&'i Input) -> Result<O, E>,
-        O: 'static,
+        F: FnOnce(&'i Input) -> Result<T, E>,
+        T: 'static,
     {
         let (head, _) = self.input.split_at(len, "try peek")?;
         with_context(self.input, OperationContext("try peek"), || f(head))
@@ -418,7 +418,6 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn recover<F, T>(&mut self, f: F) -> Option<T>
     where
-        E: FromContext<'i>,
         F: FnOnce(&mut Self) -> Result<T, E>,
     {
         let complete = self.input;
@@ -457,7 +456,7 @@ impl<'i, E> Reader<'i, E> {
                     self.input = complete;
                     Ok(None)
                 } else {
-                    Err(err)
+                    Err(err.from_context(complete, OperationContext("try recover")))
                 }
             }
         }
