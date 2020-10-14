@@ -178,7 +178,7 @@ where
             let span_bounds = slice_ptr_range(self.error.span().as_dangerous());
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
             match self.format {
-                PreferredFormat::Str | PreferredFormat::StrCjk => {
+                PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
                     write!(w, "error line: {}, ", line_offset(input, span_offset))?;
                 }
                 _ => (),
