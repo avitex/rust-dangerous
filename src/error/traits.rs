@@ -40,7 +40,7 @@ impl<'i, T> FromExpected<'i> for T where
 /// erroring will be removed in compilation.
 ///
 /// [`Invalid`]: crate::error::Invalid
-pub trait ErrorDetails<'i> {
+pub trait Details<'i> {
     /// The input in its entirety that was being processed when an error
     /// occurred.
     ///
@@ -69,9 +69,9 @@ pub trait ErrorDetails<'i> {
     fn context_stack(&self) -> &dyn ContextStack;
 }
 
-impl<'i, T> ErrorDetails<'i> for &T
+impl<'i, T> Details<'i> for &T
 where
-    T: ErrorDetails<'i>,
+    T: Details<'i>,
 {
     fn input(&self) -> &'i Input {
         (**self).input()

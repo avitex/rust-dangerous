@@ -66,6 +66,12 @@ pub trait ToRetryRequirement {
     }
 }
 
+/// Implemented for errors that can have their retry requirement removed.
+pub trait IntoFatal: ToRetryRequirement {
+    /// Returns `self` without the ability to return a retry requirement.
+    fn into_fatal(self) -> Self;
+}
+
 impl ToRetryRequirement for RetryRequirement {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         Some(*self)
@@ -79,5 +85,18 @@ where
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         self.as_ref()
             .and_then(ToRetryRequirement::to_retry_requirement)
+    }
+
+    fn is_fatal(&self) -> bool {
+        self.is_none()
+    }
+}
+
+impl<T> IntoFatal for Option<T>
+where
+    T: ToRetryRequirement,
+{
+    fn into_fatal(self) -> Self {
+        None
     }
 }

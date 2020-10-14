@@ -327,14 +327,14 @@ impl<'i, E> Reader<'i, E> {
         Ok(())
     }
 
-    /// Expect a value to be read and returned as `Some`.
+    /// Expect a value to be read and returned as `Some(T)`.
     ///
     /// # Errors
     ///
     /// Returns an error if the returned value was `None`.
-    pub fn expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    pub fn expect<F, T>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
-        F: FnOnce(&mut Self) -> Option<O>,
+        F: FnOnce(&mut Self) -> Option<T>,
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
@@ -343,17 +343,17 @@ impl<'i, E> Reader<'i, E> {
         Ok(ok)
     }
 
-    /// Expect a value to be read successfully and returned as `Some`.
+    /// Expect a value to be read successfully and returned as `Some(O)`.
     ///
     /// # Errors
     ///
     /// Returns an error if the returned value was `None` or if the provided
     /// function does.
-    pub fn try_expect<F, O>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    pub fn try_expect<F, T>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Self) -> Result<Option<O>, E>,
+        F: FnOnce(&mut Self) -> Result<Option<T>, E>,
     {
         let (ok, tail) = self.input.try_split_expect(f, expected, "try expect")?;
         self.input = tail;
@@ -397,11 +397,11 @@ impl<'i, E> Reader<'i, E> {
     /// Returns an error if provided function does.
     ///
     /// [`RetryRequirement`]: crate::error::RetryRequirement
-    pub fn try_expect_erased<F, O, R>(&mut self, expected: &'static str, f: F) -> Result<O, E>
+    pub fn try_expect_erased<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Self) -> Result<O, R>,
+        F: FnOnce(&mut Self) -> Result<T, R>,
         R: ToRetryRequirement,
     {
         let (ok, tail) = self
@@ -409,6 +409,58 @@ impl<'i, E> Reader<'i, E> {
             .try_split_expect_erased(f, expected, "try expect erased")?;
         self.input = tail;
         Ok(ok)
+    }
+
+    /// Recovers from an error returning `Some(O)` if successful, or `None` if
+    /// an error occurred.
+    ///
+    /// If an error is recovered from the `Reader`'s internal state is reset.
+    #[inline]
+    pub fn recover<F, T>(&mut self, f: F) -> Option<T>
+    where
+        E: FromContext<'i>,
+        F: FnOnce(&mut Self) -> Result<T, E>,
+    {
+        let complete = self.input;
+        match f(self) {
+            Ok(ok) => Some(ok),
+            Err(_) => {
+                self.input = complete;
+                None
+            }
+        }
+    }
+
+    /// Recovers from an error based on a predicate.
+    ///
+    /// If an error is recovered from the `Reader`'s internal state is reset.
+    ///
+    /// If an error occurs and the predicate returns `true` the error is
+    /// recovered, `Ok(None)` is returned.
+    ///
+    /// # Errors
+    ///
+    /// If an error occurs and the predicate returns `false` the error is not
+    /// recovered, `Err(E)` is returned.
+    #[inline]
+    pub fn try_recover<F, T, R>(&mut self, f: F, pred: R) -> Result<Option<T>, E>
+    where
+        E: FromContext<'i>,
+        F: FnOnce(&mut Self) -> Result<T, E>,
+        R: FnOnce(&E) -> bool,
+    {
+        let complete = self.input;
+        match f(self) {
+            Ok(ok) => Ok(Some(ok)),
+            Err(err) => {
+                if pred(&err) {
+                    self.input = complete;
+                    Ok(None)
+                } else {
+                    Err(err)
+                }
+            }
+        }
     }
 
     /// Read a byte.

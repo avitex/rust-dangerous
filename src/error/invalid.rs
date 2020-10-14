@@ -4,7 +4,7 @@ use crate::input::Input;
 
 use super::{
     Context, ContextStack, Expected, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
-    RetryRequirement, ToRetryRequirement,
+    IntoFatal, RetryRequirement, ToRetryRequirement,
 };
 
 /// `Invalid` contains no details around what went wrong other than a
@@ -58,6 +58,14 @@ impl fmt::Display for Invalid {
 impl ToRetryRequirement for Invalid {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         self.retry_requirement
+    }
+}
+
+impl IntoFatal for Invalid {
+    fn into_fatal(self) -> Self {
+        Self {
+            retry_requirement: None,
+        }
     }
 }
 

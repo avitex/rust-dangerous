@@ -3,7 +3,7 @@
 
 #[macro_use]
 mod common;
-use dangerous::error::{ErrorDetails, ExpectedContext, RetryRequirement, ToRetryRequirement};
+use dangerous::error::{Details, ExpectedContext, RetryRequirement, ToRetryRequirement};
 use std::any::Any;
 
 #[test]

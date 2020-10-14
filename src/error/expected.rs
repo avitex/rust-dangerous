@@ -7,7 +7,7 @@ use crate::display::{ByteCount, ErrorDisplay};
 use crate::input::{input, Input};
 
 use super::{
-    Context, ContextStack, ContextStackBuilder, ErrorDetails, ExpectedContext, FromContext,
+    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, FromContext, IntoFatal,
     RetryRequirement, ToRetryRequirement,
 };
 
@@ -33,6 +33,7 @@ pub struct Expected<'i, S = ExpectedContextStack> {
 
 struct ExpectedInner<'i, S> {
     stack: S,
+    fatal: bool,
     kind: ExpectedKind<'i>,
 }
 
@@ -69,6 +70,7 @@ where
 
         let inner = ExpectedInner {
             kind,
+            fatal: false,
             stack: S::from_root(context),
         };
 
@@ -79,7 +81,7 @@ where
     }
 }
 
-impl<'i, S> ErrorDetails<'i> for Expected<'i, S>
+impl<'i, S> Details<'i> for Expected<'i, S>
 where
     S: ContextStack,
 {
@@ -129,11 +131,21 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     }
 
     fn is_fatal(&self) -> bool {
+        if self.inner.fatal {
+            return true;
+        }
         match &self.inner.kind {
             ExpectedKind::Value(err) => err.is_fatal(),
             ExpectedKind::Valid(err) => err.is_fatal(),
             ExpectedKind::Length(err) => err.is_fatal(),
         }
+    }
+}
+
+impl<'i, S> IntoFatal for Expected<'i, S> {
+    fn into_fatal(mut self) -> Self {
+        self.inner.fatal = true;
+        self
     }
 }
 

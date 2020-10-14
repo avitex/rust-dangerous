@@ -10,9 +10,9 @@
 //!   before jumping to custom errors. If you do require a custom error,
 //!   implementing it is easy enough. Just implement [`FromContext`] and
 //!   [`From`] for [`ExpectedValue`], [`ExpectedLength`] and [`ExpectedValid`]
-//!   and you'll be on your merry way. Additionally implement [`ErrorDetails`]
-//!   to support lovely error printing and [`ToRetryRequirement`] for streaming
-//!   protocols.
+//!   and you'll be on your merry way. Additionally implement [`Details`] to
+//!   support lovely error printing and [`ToRetryRequirement`] and [`IntoFatal`]
+//!   for streaming protocols.
 //!
 //! Most of what `dangerous` supports out of the box is good to go. If you need
 //! to stretch out performance more, or provide additional functionality on what
@@ -33,8 +33,8 @@ pub use self::context::{
 };
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::invalid::Invalid;
-pub use self::retry::{RetryRequirement, ToRetryRequirement};
-pub use self::traits::{Error, ErrorDetails, FromContext, FromExpected};
+pub use self::retry::{IntoFatal, RetryRequirement, ToRetryRequirement};
+pub use self::traits::{Details, Error, FromContext, FromExpected};
 
 pub(crate) use self::context::{with_context, OperationContext};
 pub(crate) use self::expected::Value;
