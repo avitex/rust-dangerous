@@ -9,7 +9,7 @@ pub trait Error<'i>: FromContext<'i> + FromExpected<'i> {}
 
 impl<'i, T> Error<'i> for T where T: FromContext<'i> + FromExpected<'i> {}
 
-/// Implemented for errors that collect contexts.
+/// Implemented for errors that collect [`Context`]s.
 pub trait FromContext<'i> {
     /// Return `Self` with context.
     ///

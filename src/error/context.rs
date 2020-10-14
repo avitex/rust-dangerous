@@ -32,7 +32,7 @@ pub trait Context: Any + Debug {
     fn as_any(&self) -> &dyn Any;
 }
 
-/// A walkable stack of contexts collected from an error.
+/// A walkable stack of [`Context`]s collected from an error.
 pub trait ContextStack: 'static {
     /// The root context.
     fn root(&self) -> ExpectedContext;
@@ -87,7 +87,7 @@ impl Context for &'static str {
 ///////////////////////////////////////////////////////////////////////////////
 // Expected context
 
-/// A sealed expected context.
+/// A sealed expected [`Context`].
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedContext {
     pub(crate) operation: &'static str,
@@ -131,7 +131,7 @@ impl Context for OperationContext {
 ///////////////////////////////////////////////////////////////////////////////
 // Root context stack
 
-/// A context stack that only contains the root [`ExpectedContext`].
+/// A [`ContextStack`] that only contains the root [`ExpectedContext`].
 pub struct RootContextStack {
     context: ExpectedContext,
 }
@@ -165,7 +165,7 @@ impl ContextStack for RootContextStack {
 ///////////////////////////////////////////////////////////////////////////////
 // Full context stack
 
-/// A context stack that contains all contexts collected.
+/// A [`ContextStack`] that contains all [`Context`]s collected.
 #[cfg(feature = "full-context")]
 #[cfg_attr(docsrs, doc(cfg(feature = "full-context")))]
 pub struct FullContextStack {

@@ -54,7 +54,7 @@ impl fmt::Display for RetryRequirement {
     }
 }
 
-/// Implemented for errors that return input requirements.
+/// Implemented for errors that return a [`RetryRequirement`].
 pub trait ToRetryRequirement {
     /// Returns the requirement, if applicable, to retry processing the `Input`.
     fn to_retry_requirement(&self) -> Option<RetryRequirement>;
@@ -66,9 +66,9 @@ pub trait ToRetryRequirement {
     }
 }
 
-/// Implemented for errors that can have their retry requirement removed.
+/// Implemented for errors that can have their [`RetryRequirement`] removed.
 pub trait IntoFatal: ToRetryRequirement {
-    /// Returns `self` without the ability to return a retry requirement.
+    /// Returns `self` with any [`RetryRequirement`] removed.
     fn into_fatal(self) -> Self;
 }
 
