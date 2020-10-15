@@ -1,3 +1,4 @@
+//! A basic rather tolerant ini parser, which most certainly does not obey to the standard
 use dangerous::{Error, Expected, Reader};
 use std::io::{self, Read};
 
@@ -83,8 +84,9 @@ where
 
             skip_whitespace_or_comment_on_line(r);
             let value = r.context("value", |r| {
-                r.take_while(|c| !c.is_ascii_whitespace() && c != b'=' && c != b'[')
+                r.take_while(|c| c != b';' && c != b'\n' && c != b'=' && c != b'[')
                     .to_dangerous_non_empty_str()
+                    .map(str::trim)
             })?;
             skip_whitespace_or_comment(r);
             out.push(Pair { name, value });
@@ -100,10 +102,12 @@ where
 {
     skip_whitespace_or_comment(r);
     r.consume_u8(b'[')?;
-    let name = r.context("section name", |r| {
-        r.take_while(|c| c != b']' && c != b'\n')
-            .to_dangerous_non_empty_str()
-    })?;
+    let name = r
+        .context("section name", |r| {
+            r.take_while(|c| c != b']' && c != b'\n')
+                .to_dangerous_non_empty_str()
+        })?
+        .trim();
     r.consume_u8(b']')?;
 
     r.try_expect::<_, ()>("newline after section", |r| {
@@ -114,7 +118,6 @@ where
             Ok(None)
         }
     })?;
-    let name = name.trim();
     let properties = read_zero_or_more_properties_until_section(r)?;
 
     Ok(Section { name, properties })
