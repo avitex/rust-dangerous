@@ -80,34 +80,30 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    // todo: comment with ;
-
-    #[test]
-    fn global_values_with_comments() {
-        let input = dangerous::input(
-            br#"
+    static GLOBALS_WITHOUT_SECTIONS: &[u8] = br#"
             ; comment before
           hello = value
           a = b  ; comment
           ; comment after
-        "#,
-        );
-        let ini = input.read_all::<_, _, Expected>(read_ini).expect("success");
+        "#;
+
+    #[test]
+    fn global_values_with_comments() {
+        let values = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
+            .read_all::<_, _, Expected>(read_values_until_section)
+            .expect("success");
         assert_eq!(
-            ini,
-            Document {
-                globals: vec![
-                    Pair {
-                        name: "hello",
-                        value: "value"
-                    },
-                    Pair {
-                        name: "a",
-                        value: "b"
-                    }
-                ],
-                sections: vec![],
-            }
+            values,
+            vec![
+                Pair {
+                    name: "hello",
+                    value: "value"
+                },
+                Pair {
+                    name: "a",
+                    value: "b"
+                }
+            ]
         )
     }
 }
