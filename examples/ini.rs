@@ -40,7 +40,10 @@ where
     }
     let (globals, sections) = match r.peek_u8()? {
         b'[' => (vec![], read_sections(r)?),
-        _ => (read_values_until_section(r)?, read_sections(r)?),
+        _ => (
+            read_at_least_one_property_until_section(r)?,
+            read_sections(r)?,
+        ),
     };
     Ok(Document { globals, sections })
 }
@@ -56,7 +59,9 @@ where
     Ok(sections)
 }
 
-fn read_values_until_section<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Pair<'i>>, E>
+fn read_at_least_one_property_until_section<'i, E>(
+    r: &mut Reader<'i, E>,
+) -> Result<Vec<Pair<'i>>, E>
 where
     E: Error<'i>,
 {
@@ -64,22 +69,28 @@ where
     fn is_bare_text(c: u8) -> bool {
         !c.is_ascii_whitespace() && c != b'=' && c != b'['
     }
-    while !r.at_end() {
-        skip_whitespace_or_comment(r);
-        let name = r.context("property name", |r| {
-            r.take_while(is_bare_text).to_dangerous_non_empty_str()
-        })?;
-        skip_whitespace_or_comment(r);
+    loop {
+        r.context("property", |r| {
+            skip_whitespace_or_comment(r);
+            let name = r.context("name", |r| {
+                r.take_while(is_bare_text).to_dangerous_non_empty_str()
+            })?;
+            skip_whitespace_or_comment(r);
 
-        r.consume_u8(b'=')?;
+            r.consume_u8(b'=')?;
 
-        skip_whitespace_or_comment(r);
-        let value = r.context("property value", |r| {
-            r.take_while(|c| !c.is_ascii_whitespace() && c != b'=' && c != b'[')
-                .to_dangerous_non_empty_str()
+            skip_whitespace_or_comment(r);
+            let value = r.context("value", |r| {
+                r.take_while(|c| !c.is_ascii_whitespace() && c != b'=' && c != b'[')
+                    .to_dangerous_non_empty_str()
+            })?;
+            skip_whitespace_or_comment(r);
+            out.push(Pair { name, value });
+            Ok(())
         })?;
-        skip_whitespace_or_comment(r);
-        out.push(Pair { name, value })
+        if r.at_end() {
+            break;
+        }
     }
     Ok(out)
 }
@@ -104,7 +115,7 @@ mod tests {
     #[test]
     fn global_values_with_comments() {
         let values = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
-            .read_all::<_, _, Expected>(read_values_until_section)
+            .read_all::<_, _, Expected>(read_at_least_one_property_until_section)
             .expect("success");
         assert_eq!(
             values,
