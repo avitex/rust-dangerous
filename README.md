@@ -43,6 +43,33 @@ prevent. An optional, but solid, debugging interface with sane input formatting
 and helpful errors is included to weed out problems before, or after they arise
 in production.
 
+## Usage
+
+```rust
+fn decode_message<'i, E>(r: &mut Reader<'i, E>) -> Result<Message<'i>, E>
+where
+    E: Error<'i>,
+{
+    r.context("message", |r| {
+        // Expect version 1
+        r.context("version", |r| r.consume_u8(0x01))?;
+        // Read the body length
+        let body_len = r.context("body len", |r| r.read_u8())?;
+        // Take the body input
+        let body = r.context("body", |r| {
+            let body_input = r.take(body_len as usize)?;
+            // Decode the body input as a UTF-8 str
+            body_input.to_dangerous_str::<E>()
+        })?;
+        // We did it!
+        Ok(Message { body })
+    })
+}
+
+let input = dangerous::input(/* data */);
+let result: Result<_, Invalid> = input.read_all(decode_message);
+```
+
 ## Errors
 
 Custom errors for protocols often do not provide much context around why and

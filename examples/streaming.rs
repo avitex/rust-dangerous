@@ -7,7 +7,7 @@
 use std::error::Error as StdError;
 use std::io;
 
-use dangerous::{Error, Expected, Invalid, ToRetryRequirement};
+use dangerous::{Error, Expected, Invalid, Reader, ToRetryRequirement};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
@@ -80,8 +80,8 @@ impl Decoder {
             // error, but we can't mut borrow and return immutable within a loop
             // yet. See: https://github.com/rust-lang/rust/issues/51132
             let input = dangerous::input(&self.buf[..written_cur]);
-            match decode_message::<Invalid>(input) {
-                Err(err) => match err.to_retry_requirement() {
+            match input.read_all(decode_message) {
+                Err(err) => match Invalid::to_retry_requirement(&err) {
                     Some(req) => {
                         expects_cur += req.continue_after();
                         continue;
@@ -93,30 +93,29 @@ impl Decoder {
         }
         // Decode the input returning the message or any error, see above why
         // this is required.
-        let input = dangerous::input(&self.buf[..written_cur]);
-        decode_message::<Expected<'i>>(input).map_err(Into::into)
+        dangerous::input(&self.buf[..written_cur])
+            .read_all(decode_message)
+            .map_err(Expected::into)
     }
 }
 
-fn decode_message<'i, E>(input: &'i dangerous::Input) -> Result<Message<'i>, E>
+fn decode_message<'i, E>(r: &mut Reader<'i, E>) -> Result<Message<'i>, E>
 where
     E: Error<'i>,
 {
-    input.read_all::<_, _, E>(|r| {
-        r.context("message", |r| {
-            // Expect version 1
-            r.context("version", |r| r.consume_u8(0x01))?;
-            // Read the body length
-            let body_len = r.context("body len", |r| r.read_u8())?;
-            // Take the body input
-            let body = r.context("body", |r| {
-                let body_input = r.take(body_len as usize)?;
-                // Decode the body input as a UTF-8 str
-                body_input.to_dangerous_str::<E>()
-            })?;
-            // We did it!
-            Ok(Message { body })
-        })
+    r.context("message", |r| {
+        // Expect version 1
+        r.context("version", |r| r.consume_u8(0x01))?;
+        // Read the body length
+        let body_len = r.context("body len", |r| r.read_u8())?;
+        // Take the body input
+        let body = r.context("body", |r| {
+            let body_input = r.take(body_len as usize)?;
+            // Decode the body input as a UTF-8 str
+            body_input.to_dangerous_str::<E>()
+        })?;
+        // We did it!
+        Ok(Message { body })
     })
 }
 
