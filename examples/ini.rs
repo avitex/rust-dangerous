@@ -83,11 +83,13 @@ mod tests {
     // todo: comment with ;
 
     #[test]
-    fn global_values() {
+    fn global_values_with_comments() {
         let input = dangerous::input(
             br#"
+            ; comment before
           hello = value
-          a = b 
+          a = b  ; comment
+          ; comment after
         "#,
         );
         let ini = input.read_all::<_, _, Expected>(read_ini).expect("success");
@@ -114,15 +116,24 @@ fn skip_whitespace_or_comment<'i, E>(r: &mut Reader<'i, E>)
 where
     E: Error<'i>,
 {
-    skip_comment(r);
-    r.skip_while(|c| c.is_ascii_whitespace());
+    let (mut last, mut current) = (0, 0);
+    loop {
+        current += skip_comment(r);
+        current += r.skip_while(|c| c.is_ascii_whitespace());
+        if last == current {
+            break;
+        }
+        last = current;
+    }
 }
 
-fn skip_comment<'i, E>(r: &mut Reader<'i, E>)
+fn skip_comment<'i, E>(r: &mut Reader<'i, E>) -> usize
 where
     E: Error<'i>,
 {
     if r.peek_eq(b";") {
-        r.skip_while(|c| c != b'\n');
+        r.skip_while(|c| c != b'\n')
+    } else {
+        0
     }
 }
