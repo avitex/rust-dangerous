@@ -9,9 +9,9 @@ matrix:
     - rust: nightly
 cache: cargo
 before_cache:
+  - rustup component add rustfmt
   - cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed"
   - cargo install cargo-update  || echo "cargo-update already installed"
-  - cargo install cargo-audit  || echo "cargo-audit already installed"
   - cargo install-update --all
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
