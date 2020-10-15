@@ -75,11 +75,11 @@ where
             let name = r.context("name", |r| {
                 r.take_while(is_bare_text).to_dangerous_non_empty_str()
             })?;
-            skip_whitespace_or_comment(r);
+            skip_whitespace_or_comment_on_line(r);
 
             r.consume_u8(b'=')?;
 
-            skip_whitespace_or_comment(r);
+            skip_whitespace_or_comment_on_line(r);
             let value = r.context("value", |r| {
                 r.take_while(|c| !c.is_ascii_whitespace() && c != b'=' && c != b'[')
                     .to_dangerous_non_empty_str()
@@ -177,6 +177,21 @@ where
     loop {
         current += skip_comment(r);
         current += r.skip_while(|c| c.is_ascii_whitespace());
+        if last == current {
+            break;
+        }
+        last = current;
+    }
+}
+
+fn skip_whitespace_or_comment_on_line<'i, E>(r: &mut Reader<'i, E>)
+where
+    E: Error<'i>,
+{
+    let (mut last, mut current) = (0, 0);
+    loop {
+        current += skip_comment(r);
+        current += r.skip_while(|c| c.is_ascii_whitespace() && c != b'\n');
         if last == current {
             break;
         }
