@@ -35,7 +35,7 @@ fn read_ini<'i, E>(r: &mut Reader<'i, E>) -> Result<Document<'i>, E>
 where
     E: Error<'i>,
 {
-    skip_whitespace_or_comment(r);
+    skip_whitespace_or_comment(r, ConsumeTo::NextToken);
     if r.at_end() {
         return Ok(Document::default());
     }
@@ -71,24 +71,24 @@ where
         !c.is_ascii_whitespace() && c != b'=' && c != b'\n' && c != b'['
     }
 
-    skip_whitespace_or_comment(r);
+    skip_whitespace_or_comment(r, ConsumeTo::NextToken);
     while !(r.at_end() || matches!(r.peek_u8(), Ok(b'['))) {
         r.context("property", |r| {
-            skip_whitespace_or_comment(r);
+            skip_whitespace_or_comment(r, ConsumeTo::NextToken);
             let name = r.context("name", |r| {
                 r.take_while(is_bare_text).to_dangerous_non_empty_str()
             })?;
-            skip_whitespace_or_comment_on_line(r);
+            skip_whitespace_or_comment(r, ConsumeTo::EndOfLine);
 
             r.consume_u8(b'=')?;
 
-            skip_whitespace_or_comment_on_line(r);
+            skip_whitespace_or_comment(r, ConsumeTo::EndOfLine);
             let value = r.context("value", |r| {
                 r.take_while(|c| c != b';' && c != b'\n' && c != b'=' && c != b'[')
                     .to_dangerous_non_empty_str()
                     .map(str::trim)
             })?;
-            skip_whitespace_or_comment(r);
+            skip_whitespace_or_comment(r, ConsumeTo::NextToken);
             out.push(Pair { name, value });
             Ok(())
         })?;
@@ -100,7 +100,7 @@ fn read_section<'i, E>(r: &mut Reader<'i, E>) -> Result<Section<'i>, E>
 where
     E: Error<'i>,
 {
-    skip_whitespace_or_comment(r);
+    skip_whitespace_or_comment(r, ConsumeTo::NextToken);
     r.consume_u8(b'[')?;
     let name = r
         .context("section name", |r| {
@@ -121,6 +121,43 @@ where
     let properties = read_zero_or_more_properties_until_section(r)?;
 
     Ok(Section { name, properties })
+}
+
+enum ConsumeTo {
+    NextToken,
+    EndOfLine,
+}
+
+fn skip_whitespace_or_comment<'i, E>(r: &mut Reader<'i, E>, to_where: ConsumeTo)
+where
+    E: Error<'i>,
+{
+    fn skip_comment<'i, E>(r: &mut Reader<'i, E>) -> usize
+    where
+        E: Error<'i>,
+    {
+        if r.peek_eq(b";") {
+            r.skip_while(|c| c != b'\n')
+        } else {
+            0
+        }
+    }
+
+    let (mut last, mut current) = (0, 0);
+    loop {
+        current += skip_comment(r);
+        current += r.skip_while(|c| {
+            let iwb = c.is_ascii_whitespace();
+            iwb && match to_where {
+                ConsumeTo::NextToken => true,
+                ConsumeTo::EndOfLine => c != b'\n',
+            }
+        });
+        if last == current {
+            break;
+        }
+        last = current;
+    }
 }
 
 #[cfg(test)]
@@ -251,46 +288,5 @@ type = manual
             .read_all::<_, _, Expected>(read_ini)
             .expect("success");
         assert_eq!(ini, Document::default())
-    }
-}
-
-fn skip_whitespace_or_comment<'i, E>(r: &mut Reader<'i, E>)
-where
-    E: Error<'i>,
-{
-    let (mut last, mut current) = (0, 0);
-    loop {
-        current += skip_comment(r);
-        current += r.skip_while(|c| c.is_ascii_whitespace());
-        if last == current {
-            break;
-        }
-        last = current;
-    }
-}
-
-fn skip_whitespace_or_comment_on_line<'i, E>(r: &mut Reader<'i, E>)
-where
-    E: Error<'i>,
-{
-    let (mut last, mut current) = (0, 0);
-    loop {
-        current += skip_comment(r);
-        current += r.skip_while(|c| c.is_ascii_whitespace() && c != b'\n');
-        if last == current {
-            break;
-        }
-        last = current;
-    }
-}
-
-fn skip_comment<'i, E>(r: &mut Reader<'i, E>) -> usize
-where
-    E: Error<'i>,
-{
-    if r.peek_eq(b";") {
-        r.skip_while(|c| c != b'\n')
-    } else {
-        0
     }
 }
