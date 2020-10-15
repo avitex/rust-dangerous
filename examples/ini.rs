@@ -42,11 +42,32 @@ where
     Ok(Document { globals, sections })
 }
 
-fn read_values_until_section<'i, E>(_r: &mut Reader<'i, E>) -> Result<Vec<Pair<'i>>, E>
+fn read_values_until_section<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Pair<'i>>, E>
 where
     E: Error<'i>,
 {
-    unimplemented!("read values")
+    let mut out = Vec::new();
+    fn is_bare_text(c: u8) -> bool {
+        !c.is_ascii_whitespace() && c != b'=' && c != b'['
+    }
+    while !r.at_end() {
+        skip_whitespace_or_comment(r);
+        let name = r.context("property name", |r| {
+            r.take_while(is_bare_text).to_dangerous_non_empty_str()
+        })?;
+        skip_whitespace_or_comment(r);
+
+        r.consume_u8(b'=')?;
+
+        skip_whitespace_or_comment(r);
+        let value = r.context("property value", |r| {
+            r.take_while(|c| !c.is_ascii_whitespace() && c != b'=' && c != b'[')
+                .to_dangerous_non_empty_str()
+        })?;
+        skip_whitespace_or_comment(r);
+        out.push(Pair { name, value })
+    }
+    Ok(out)
 }
 
 fn read_section<'i, E>(_r: &mut Reader<'i, E>) -> Result<Section<'i>, E>
@@ -59,28 +80,49 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    // todo: comment with ;
 
     #[test]
-    fn global_value() {
+    fn global_values() {
         let input = dangerous::input(
             br#"
           hello = value
+          a = b 
         "#,
         );
         let ini = input.read_all::<_, _, Expected>(read_ini).expect("success");
         assert_eq!(
             ini,
             Document {
-                globals: vec![Pair {
-                    name: "hello",
-                    value: "value"
-                }],
+                globals: vec![
+                    Pair {
+                        name: "hello",
+                        value: "value"
+                    },
+                    Pair {
+                        name: "a",
+                        value: "b"
+                    }
+                ],
                 sections: vec![],
             }
         )
     }
 }
 
-fn skip_whitespace<E>(r: &mut Reader<'_, E>) {
+fn skip_whitespace_or_comment<'i, E>(r: &mut Reader<'i, E>)
+where
+    E: Error<'i>,
+{
+    skip_comment(r);
     r.skip_while(|c| c.is_ascii_whitespace());
+}
+
+fn skip_comment<'i, E>(r: &mut Reader<'i, E>)
+where
+    E: Error<'i>,
+{
+    if r.peek_eq(b";") {
+        r.skip_while(|c| c != b'\n');
+    }
 }
