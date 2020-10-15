@@ -8,13 +8,11 @@ matrix:
   allow_failures:
     - rust: nightly
 cache: cargo
-before_cache:
+before_script:
   - rustup component add rustfmt
-  - cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed"
-  - cargo install cargo-update  || echo "cargo-update already installed"
+  - cargo install cargo-tarpaulin
+  - cargo install cargo-update
   - cargo install-update --all
-  # Travis can't cache files that are not readable by "others"
-  - chmod -R a+r $HOME/.cargo
 script:
   - cargo clean
   - cargo build
@@ -27,3 +25,6 @@ after_success: |
     cargo tarpaulin -f --ignore-panics --ignore-tests --run-types Tests Doctests --out Xml
     bash <(curl -s https://codecov.io/bash)
   fi
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
