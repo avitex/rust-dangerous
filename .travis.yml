@@ -2,10 +2,12 @@ language: rust
 dist: bionic
 rust:
   - stable
+  - beta
   - nightly
 matrix:
   allow_failures:
     - rust: nightly
+cache: cargo
 before_cache:
   - cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed"
   - cargo install cargo-update  || echo "cargo-update already installed"
