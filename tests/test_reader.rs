@@ -37,7 +37,10 @@ fn test_at_end() {
 #[test]
 fn test_context() {
     let err = read_all!(b"hello", |r| { r.context("bob", |r| r.consume(b"world")) }).unwrap_err();
+    #[cfg(feature = "full-context")]
     assert_eq!(err.context_stack().count(), 3);
+    #[cfg(not(feature = "full-context"))]
+    assert_eq!(err.context_stack().count(), 1);
     err.context_stack().walk(&mut |i, c| {
         // i == 1 is an operation context which cannot be downcast
         if i == 2 {

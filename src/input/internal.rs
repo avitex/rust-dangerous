@@ -49,7 +49,7 @@ impl Input {
                 input: self,
                 context: ExpectedContext {
                     operation,
-                    expected: "non-empty input",
+                    expected: "a byte",
                 },
             })
         })

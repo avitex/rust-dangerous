@@ -20,8 +20,13 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///
 /// - Enable the `full-context` feature (enabled by default), for full-context
 ///   stacks.
-/// - It's recommended to have the `box-expected` feature enabled (enabled by default)
-///   for better performance with this error.
+/// - It is generally recommended for better performance to have the
+///   `box-expected` feature enabled (enabled by default) if the structures
+///   being returned from parsing are smaller than or equal to `~128 bytes`.
+///   This is because the `Expected` structure is `136 bytes` large on 64 bit
+///   systems and successful parses may be hindered by the time to move the
+///   `Result<T, Expected>` value. By boxing the internals of `Expected` the
+///   size becomes only `8 bytes`. When in doubt, write a benchmark.
 ///
 /// See [`crate::error`] for additional documentation around the error system.
 pub struct Expected<'i, S = ExpectedContextStack> {
@@ -429,5 +434,22 @@ impl<'i> fmt::Display for ExpectedValid<'i> {
 impl<'i> ToRetryRequirement for ExpectedValid<'i> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         self.retry_requirement
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(all(target_pointer_width = "64", feature = "box-expected"))]
+    fn test_expected_size() {
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 8);
+    }
+
+    #[test]
+    #[cfg(all(target_pointer_width = "64", not(feature = "box-expected")))]
+    fn test_expected_size() {
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 136);
     }
 }

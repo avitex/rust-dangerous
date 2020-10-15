@@ -16,7 +16,7 @@ pub trait Context: Any + Debug {
     /// make sense in the following sentence if you were to substitute it:
     ///
     /// ```text
-    /// Something failed while attempting to <operation> from the input.
+    /// error attempting to <operation>.
     /// ```
     fn operation(&self) -> &'static str;
 
