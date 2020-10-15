@@ -1,7 +1,8 @@
-//! This example demonstrates a simple strict JSON parser.
+//! This example demonstrates a simple JSON parser (doesn't support escaping
+//! fully).
 //!
 //! ```
-//! echo -n '{ "hello": "bob" }' | cargo run --example json
+//! echo '{ "hello": "bob" }' | cargo run --example json
 //! ```
 
 use dangerous::{Error, Expected, Invalid, Reader};
