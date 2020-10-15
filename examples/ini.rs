@@ -18,7 +18,7 @@ struct Pair<'a> {
     value: &'a str,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 struct Document<'a> {
     globals: Vec<Pair<'a>>,
     sections: Vec<Section<'a>>,
@@ -34,12 +34,26 @@ fn read_ini<'i, E>(r: &mut Reader<'i, E>) -> Result<Document<'i>, E>
 where
     E: Error<'i>,
 {
-    let globals = read_values_until_section(r)?;
+    skip_whitespace_or_comment(r);
+    if r.at_end() {
+        return Ok(Document::default());
+    }
+    let (globals, sections) = match r.peek_u8()? {
+        b'[' => (vec![], read_sections(r)?),
+        _ => (read_values_until_section(r)?, read_sections(r)?),
+    };
+    Ok(Document { globals, sections })
+}
+
+fn read_sections<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Section<'i>>, E>
+where
+    E: Error<'i>,
+{
     let mut sections = Vec::new();
     while !r.at_end() {
         sections.push(read_section(r)?);
     }
-    Ok(Document { globals, sections })
+    Ok(sections)
 }
 
 fn read_values_until_section<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Pair<'i>>, E>
@@ -105,6 +119,42 @@ mod tests {
                 }
             ]
         )
+    }
+
+    #[test]
+    fn document_without_sections() {
+        let ini = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
+            .read_all::<_, _, Expected>(read_ini)
+            .expect("success");
+        assert_eq!(
+            ini,
+            Document {
+                globals: vec![
+                    Pair {
+                        name: "hello",
+                        value: "value"
+                    },
+                    Pair {
+                        name: "a",
+                        value: "b"
+                    }
+                ],
+                sections: vec![]
+            }
+        )
+    }
+
+    #[test]
+    fn empty_input() {
+        let ini = dangerous::input(b"")
+            .read_all::<_, _, Expected>(read_ini)
+            .expect("success");
+        assert_eq!(ini, Document::default());
+
+        let ini = dangerous::input(b"  \n ; empty ")
+            .read_all::<_, _, Expected>(read_ini)
+            .expect("success");
+        assert_eq!(ini, Document::default())
     }
 }
 
