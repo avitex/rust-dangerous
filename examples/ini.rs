@@ -36,17 +36,17 @@ where
     E: Error<'i>,
 {
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
-    if r.at_end() {
-        return Ok(Document::default());
-    }
-    let (globals, sections) = match r.peek_u8()? {
-        b'[' => (vec![], read_sections(r)?),
-        _ => (
-            read_zero_or_more_properties_until_section(r)?,
-            read_sections(r)?,
-        ),
-    };
-    Ok(Document { globals, sections })
+    Ok(match r.peek_u8().ok() {
+        None => Document::default(),
+        Some(b'[') => Document {
+            globals: vec![],
+            sections: read_sections(r)?,
+        },
+        Some(_) => Document {
+            globals: read_zero_or_more_properties_until_section(r)?,
+            sections: read_sections(r)?,
+        },
+    })
 }
 
 fn read_sections<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Section<'i>>, E>
@@ -68,11 +68,11 @@ where
 {
     let mut out = Vec::new();
     fn is_bare_text(c: u8) -> bool {
-        !c.is_ascii_whitespace() && c != b'=' && c != b'\n' && c != b'['
+        !(c.is_ascii_whitespace() || c == b'=' || c == b'[')
     }
 
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
-    while !(r.at_end() || matches!(r.peek_u8(), Ok(b'['))) {
+    while !(r.at_end() || r.peek_eq(b"[")) {
         r.context("property", |r| {
             skip_whitespace_or_comment(r, ConsumeTo::NextToken);
             let name = r.context("name", |r| {
@@ -102,24 +102,20 @@ where
 {
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
     r.consume_u8(b'[')?;
-    let name = r
-        .context("section name", |r| {
-            r.take_while(|c| c != b']' && c != b'\n')
-                .to_dangerous_non_empty_str()
-        })?
-        .trim();
+    let name = r.context("section name", |r| {
+        r.take_while(|c| c != b']' && c != b'\n')
+            .to_dangerous_non_empty_str()
+            .map(str::trim)
+    })?;
     r.consume_u8(b']')?;
 
-    r.try_expect::<_, ()>("newline after section", |r| {
-        let past_section = r.take_while(|c| c.is_ascii_whitespace());
-        if past_section.as_dangerous().contains(&b'\n') {
-            Ok(Some(()))
-        } else {
-            Ok(None)
-        }
+    r.verify("newline after section", |r| {
+        r.take_while(|c| c.is_ascii_whitespace())
+            .as_dangerous()
+            .contains(&b'\n')
     })?;
-    let properties = read_zero_or_more_properties_until_section(r)?;
 
+    let properties = read_zero_or_more_properties_until_section(r)?;
     Ok(Section { name, properties })
 }
 
@@ -128,14 +124,8 @@ enum ConsumeTo {
     EndOfLine,
 }
 
-fn skip_whitespace_or_comment<'i, E>(r: &mut Reader<'i, E>, to_where: ConsumeTo)
-where
-    E: Error<'i>,
-{
-    fn skip_comment<'i, E>(r: &mut Reader<'i, E>) -> usize
-    where
-        E: Error<'i>,
-    {
+fn skip_whitespace_or_comment<E>(r: &mut Reader<'_, E>, to_where: ConsumeTo) {
+    fn skip_comment<E>(r: &mut Reader<E>) -> usize {
         if r.peek_eq(b";") {
             r.skip_while(|c| c != b'\n')
         } else {
