@@ -25,7 +25,7 @@ use crate::input::Input;
 /// If want to verify input and optionally return a type from that verification,
 /// [`verify()`], [`try_verify()`], [`expect()`], [`try_expect()`] and
 /// [`try_expect_erased()`] is provided. These functions are the interface for
-/// creating errors based of what was expected.
+/// creating errors based off what was expected.
 ///
 /// [`try_expect_erased()`] is provided for reading a custom type that does not
 /// support a `&mut Reader<'i, E>` interface, for example a type implementing
