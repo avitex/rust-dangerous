@@ -24,7 +24,7 @@ fn main() {
         .read_to_end(&mut input_data)
         .expect("read input");
     let input = dangerous::input(input_data.as_ref());
-    match input.read_all::<_, _, Expected>(read_value) {
+    match input.read_all::<_, _, Box<Expected>>(read_value) {
         Ok(json) => println!("{:#?}", json),
         Err(e) => eprintln!("{:#}", e),
     }
