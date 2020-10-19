@@ -244,34 +244,19 @@ impl<'i, E> Reader<'i, E> {
 
     /// Peek a length of input.
     ///
+    /// The function lifetime is to prevent the peeked `Input` being used as a
+    /// value in a parsed structure. Peeked values should only be used in
+    /// choosing a correct parse path.
+    ///
     /// # Errors
     ///
     /// Returns an error if the length requirement to peek could not be met.
-    pub fn peek<F, T>(&self, len: usize, f: F) -> Result<T, E>
+    pub fn peek<'a>(&'a self, len: usize) -> Result<&'a Input, E>
     where
         E: From<ExpectedLength<'i>>,
-        F: FnOnce(&Input) -> T,
-        T: 'static,
     {
         let (head, _) = self.input.split_at(len, "peek")?;
-        Ok(f(head))
-    }
-
-    /// Try peek a length of input.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the length requirement to peek could not be met or
-    /// if the provided function does.
-    pub fn try_peek<F, T>(&self, len: usize, f: F) -> Result<T, E>
-    where
-        E: FromContext<'i>,
-        E: From<ExpectedLength<'i>>,
-        F: FnOnce(&'i Input) -> Result<T, E>,
-        T: 'static,
-    {
-        let (head, _) = self.input.split_at(len, "try peek")?;
-        with_context(self.input, OperationContext("try peek"), || f(head))
+        Ok(head)
     }
 
     /// Returns `true` if `bytes` is next in the `Reader`.
