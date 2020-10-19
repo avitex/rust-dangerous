@@ -16,3 +16,16 @@ fn test_usage_with_fn() {
         RetryRequirement::new(1)
     );
 }
+
+#[test]
+fn test_streaming_usage_with_fatal_requirement() {
+    use dangerous::Invalid;
+
+    let input = dangerous::input(b"blah");
+    let result: Result<_, Invalid> = input.read_all(|r| {
+        r.take(2)?.read_all::<_, _, Invalid>(|r| r.take(4))?;
+        r.consume(b"ah")
+    });
+
+    assert_eq!(result, Err(Invalid::fatal()));
+}
