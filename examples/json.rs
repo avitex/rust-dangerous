@@ -186,3 +186,14 @@ where
 fn skip_whitespace<E>(r: &mut Reader<'_, E>) {
     r.skip_while(|c| c.is_ascii_whitespace());
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn value_size() {
+        // If true, we box Expected!
+        assert!(core::mem::size_of::<Value<'_>>() < 128);
+    }
+}
