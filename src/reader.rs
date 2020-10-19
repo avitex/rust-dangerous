@@ -262,7 +262,8 @@ impl<'i, E> Reader<'i, E> {
 
     /// Peek a length of input.
     ///
-    /// This is equivalent to `peek` but does not return an error.
+    /// This is equivalent to `peek` but does not return an error. Don't use
+    /// this function if you want an error if there isn't enough input.
     pub fn peek_opt(&self, len: usize) -> Option<&Input> {
         self.input.split_at_opt(len).map(|(head, _)| head)
     }
@@ -288,7 +289,8 @@ impl<'i, E> Reader<'i, E> {
 
     /// Peek the next byte in the input without mutating the `Reader`.
     ///
-    /// This is equivalent to `peek_u8` but does not return an error.
+    /// This is equivalent to `peek_u8` but does not return an error. Don't use
+    /// this function if you want an error if there isn't enough input.
     #[inline]
     pub fn peek_u8_opt(&self) -> Option<u8> {
         self.input.first_opt()
