@@ -157,7 +157,7 @@ fn test_try_take_consumed() {
 fn test_peek() {
     assert_eq!(
         read_all!(b"hello", |r| {
-            let v = r.peek(4, |i| i == b"hell"[..])?;
+            let v = r.peek(4)? == b"hell"[..];
             r.skip(5)?;
             Ok(v)
         })
@@ -176,26 +176,6 @@ fn test_peek_eq() {
         Ok(())
     })
     .unwrap();
-}
-
-#[test]
-fn test_try_peek() {
-    // Valid
-    assert_eq!(
-        read_all!(b"hello", |r| {
-            let v = r.try_peek(4, |i| Ok(i == b"hell"[..]))?;
-            r.skip(5)?;
-            Ok(v)
-        })
-        .unwrap(),
-        true
-    );
-
-    // Invalid
-    read_all!(b"hello", |r| {
-        r.try_peek(4, |i| i.read_all(|r| r.consume(b"world")).map(drop))
-    })
-    .unwrap_err();
 }
 
 #[test]
