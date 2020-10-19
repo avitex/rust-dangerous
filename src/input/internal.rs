@@ -32,6 +32,12 @@ impl Input {
     }
 
     /// Returns the first byte in the input.
+    #[inline(always)]
+    pub(crate) fn first_opt(&self) -> Option<u8> {
+        self.as_dangerous().first().copied()
+    }
+
+    /// Returns the first byte in the input.
     ///
     /// # Errors
     ///
@@ -41,7 +47,7 @@ impl Input {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.as_dangerous().first().copied().ok_or_else(|| {
+        self.first_opt().ok_or_else(|| {
             E::from(ExpectedLength {
                 min: 1,
                 max: None,
