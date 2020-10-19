@@ -95,7 +95,7 @@ impl Decoder {
         // this is required.
         dangerous::input(&self.buf[..written_cur])
             .read_all(decode_message)
-            .map_err(Expected::into)
+            .map_err(Box::<Expected>::into)
     }
 }
 
@@ -143,5 +143,16 @@ impl io::Read for Stream {
         self.cur += 1;
         // Return the number of bytes we read
         Ok(1)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn message_size() {
+        // If true, we box Expected!
+        assert!(core::mem::size_of::<Message<'_>>() < 128);
     }
 }
