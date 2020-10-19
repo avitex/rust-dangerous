@@ -63,12 +63,12 @@ where
         let mut items = Vec::new();
         r.consume_u8(b'[')?;
         skip_whitespace(r);
-        if r.peek_u8()? != b']' {
+        if !r.peek_u8_eq(b']') {
             loop {
                 let val = read_value(r)?;
                 skip_whitespace(r);
                 items.push(val);
-                if !r.at_end() && r.peek_u8()? == b',' {
+                if !r.at_end() && r.peek_u8_eq(b',') {
                     r.skip(1)?;
                     continue;
                 } else {
@@ -91,7 +91,7 @@ where
         let mut items = Vec::new();
         r.consume_u8(b'{')?;
         skip_whitespace(r);
-        if r.peek_u8()? != b'}' {
+        if !r.peek_u8_eq(b'}') {
             loop {
                 let key = r.context("json object key", read_str)?;
                 skip_whitespace(r);
@@ -100,7 +100,7 @@ where
                 let val = read_value(r)?;
                 skip_whitespace(r);
                 items.push((key, val));
-                if !r.at_end() && r.peek_u8()? == b',' {
+                if !r.at_end() && r.peek_u8_eq(b',') {
                     r.skip(1)?;
                     continue;
                 } else {

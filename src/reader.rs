@@ -220,6 +220,12 @@ impl<'i, E> Reader<'i, E> {
         with_context(self.input, OperationContext("try peek"), || f(head))
     }
 
+    /// Returns `true` if `bytes` is next in the `Reader`.
+    #[inline]
+    pub fn peek_eq(&self, bytes: &[u8]) -> bool {
+        self.input.has_prefix(bytes)
+    }
+
     /// Peek the next byte in the input without mutating the `Reader`.
     ///
     /// # Errors
@@ -233,10 +239,18 @@ impl<'i, E> Reader<'i, E> {
         self.input.first("peek u8")
     }
 
-    /// Returns `true` if `bytes` is next in the `Reader`.
+    /// Peek the next byte in the input without mutating the `Reader`.
+    ///
+    /// This is equivalent to `peek_u8` but does not return an error.
     #[inline]
-    pub fn peek_eq(&self, bytes: &[u8]) -> bool {
-        self.input.has_prefix(bytes)
+    pub fn peek_u8_opt(&self) -> Option<u8> {
+        self.input.first_opt()
+    }
+
+    /// Returns `true` if `byte` is next in the `Reader`.
+    #[inline]
+    pub fn peek_u8_eq(&self, byte: u8) -> bool {
+        self.peek_eq(&[byte])
     }
 
     /// Consume expected bytes.
