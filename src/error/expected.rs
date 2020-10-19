@@ -22,10 +22,10 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///   stacks.
 /// - It is generally recommended for better performance to box `Expected` if
 ///   the structures being returned from parsing are smaller than or equal to
-///   `~128 bytes`. This is because the `Expected` structure is `160 bytes`
-///   large on 64 bit systems and successful parses may be hindered by the time
-///   to move the `Result<T, Expected>` value. By boxing `Expected` the size
-///   becomes only `8 bytes`. When in doubt, write a benchmark.
+///   `~128 bytes`. This is because the `Expected` structure is `136 - 160
+///   bytes` large on 64 bit systems and successful parses may be hindered by
+///   the time to move the `Result<T, Expected>` value. By boxing `Expected` the
+///   size becomes only `8 bytes`. When in doubt, write a benchmark.
 ///
 /// See [`crate::error`] for additional documentation around the error system.
 pub struct Expected<'i, S = ExpectedContextStack> {
@@ -486,7 +486,14 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(target_pointer_width = "64")]
+    #[cfg(all(target_pointer_width = "64", not(feature = "full-context")))]
+    fn test_expected_size() {
+        // Update the docs if this value changes.
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 136);
+    }
+
+    #[test]
+    #[cfg(all(target_pointer_width = "64", feature = "full-context"))]
     fn test_expected_size() {
         // Update the docs if this value changes.
         assert_eq!(core::mem::size_of::<Expected<'_>>(), 160);

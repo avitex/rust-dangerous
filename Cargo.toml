@@ -38,6 +38,10 @@ name = "context"
 harness = false
 
 [[example]]
+name = "json"
+required-features = ["std"]
+
+[[example]]
 name = "streaming"
 required-features = ["std"]
 
