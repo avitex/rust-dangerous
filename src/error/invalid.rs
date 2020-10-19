@@ -63,9 +63,7 @@ impl ToRetryRequirement for Invalid {
 
 impl IntoFatal for Invalid {
     fn into_fatal(self) -> Self {
-        Self {
-            retry_requirement: None,
-        }
+        Self::fatal()
     }
 }
 

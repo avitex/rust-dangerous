@@ -2,7 +2,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
+    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext, IntoFatal,
     OperationContext, ToRetryRequirement, Value,
 };
 use crate::input::Input;
@@ -11,6 +11,11 @@ use crate::input::Input;
 ///
 /// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`],
 /// [`Input::read_partial()`] or [`Input::read_infallible()`].
+///
+/// # Streaming
+///
+/// If you want to support streaming, ensure you use [`no_retry()`] where it is
+/// invalid to return a [`RetryRequirement`].
 ///
 /// # Errors
 ///
@@ -63,8 +68,10 @@ use crate::input::Input;
 /// [`expect()`]: Reader::expect()  
 /// [`try_expect()`]: Reader::try_expect()  
 /// [`try_expect_erased()`]: Reader::try_expect_erased()  
+/// [`no_retry()`]: Reader::no_retry()  
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
+/// [`RetryRequirement`]: crate::error::RetryRequirement  
 pub struct Reader<'i, E> {
     input: &'i Input,
     error: PhantomData<E>,
@@ -522,6 +529,50 @@ impl<'i, E> Reader<'i, E> {
                     Err(err.from_context(complete, OperationContext("try recover")))
                 }
             }
+        }
+    }
+
+    /// Prevent errors producing a [`RetryRequirement`] within the provided
+    /// scope.
+    ///
+    /// Use this function when parsing `T` when it would always be a fatal error
+    /// to not have enough input to complete.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if provided function does and removes any
+    /// [`RetryRequirement`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Invalid;
+    ///
+    /// // Without `no_retry` this would throw `Invalid` with a 
+    /// // `RetryRequirement` of 1.
+    /// let result = dangerous::input(b"abc\xC2").read_all(|r| {
+    ///     r.no_retry(|r| {
+    ///          r.take_remaining().to_dangerous_non_empty_str()
+    ///     })
+    /// });
+    ///
+    /// // We get a fatal `Invalid` with no `RetryRequirement`.
+    /// assert_eq!(result, Err(Invalid::fatal()));
+    /// ```
+    ///
+    /// [`RetryRequirement`]: crate::error::RetryRequirement
+    pub fn no_retry<F, T>(&mut self, f: F) -> Result<T, E>
+    where
+        E: FromContext<'i>,
+        E: IntoFatal,
+        F: FnOnce(&mut Self) -> Result<T, E>,
+    {
+        let complete = self.input;
+        match f(self) {
+            Ok(ok) => Ok(ok),
+            Err(err) => Err(err
+                .into_fatal()
+                .from_context(complete, OperationContext("no retry"))),
         }
     }
 
