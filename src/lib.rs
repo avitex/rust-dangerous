@@ -2,7 +2,7 @@
 //!
 //! # Basic usage
 //!
-//! ```rust
+//! ```
 //! use dangerous::Invalid;
 //!
 //! let input = dangerous::input(b"hello");
