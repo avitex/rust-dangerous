@@ -259,7 +259,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'i, S> std::error::Error for Expected<'i, S> {}
+impl<'i, S> std::error::Error for Expected<'i, S> where S: ContextStack {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
