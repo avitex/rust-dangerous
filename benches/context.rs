@@ -31,6 +31,12 @@ fn bench_expected(c: &mut Criterion) {
     c.bench_function("expected_err", |b| {
         b.iter(|| expected::<Expected>(black_box(b"1")))
     });
+    c.bench_function("expected_ok_boxed", |b| {
+        b.iter(|| expected::<Box<Expected>>(black_box(b"2")))
+    });
+    c.bench_function("expected_err_boxed", |b| {
+        b.iter(|| expected::<Box<Expected>>(black_box(b"1")))
+    });
 }
 
 criterion_group!(benches, bench_invalid, bench_expected);
