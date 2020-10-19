@@ -11,6 +11,59 @@ use crate::input::Input;
 ///
 /// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`],
 /// [`Input::read_partial()`] or [`Input::read_infallible()`].
+///
+/// # Errors
+///
+/// Functions on `Reader` are designed to provide a panic free interface and if
+/// applicable, clearly define the type of error that can can be thown.
+///
+/// If want to verify input and optionally return a type from that verification,
+/// [`verify()`], [`try_verify()`], [`expect()`], [`try_expect()`] and
+/// [`try_expect_erased()`] is provided. These functions are the interface for
+/// creating errors based of what was expected.
+///
+/// [`try_expect_erased()`] is provided for reading a custom type that does not
+/// support a `&mut Reader<'i, E>` interface, for example a type implementing
+/// `FromStr`.
+///
+/// [`recover()`] and [`recover_if()`] are provided as an escape hatch when you
+/// wish to catch an error and try another branch.
+///
+/// [`context()`] and [`peek_context()`] are provided to add a [`Context`] to
+/// any error thrown inside their scope. This is useful for debugging.
+///
+/// # Peeking
+///
+/// Peeking should be used to find the correct path to consume. Values read from
+/// peeking should not be used for the resulting type.
+///
+/// ```rust
+/// use dangerous::Invalid;
+///
+/// let input = dangerous::input(b"true");
+/// let result: Result<_, Invalid> = input.read_all(|r| {
+///     // We use `peek_u8` here because we expect at least one byte.
+///     // If we wanted to handle the case when there is no more input left,
+///     // for example to provide a default, we would use `peek_u8_opt`.
+///     // This means we can handle a `RetryRequirement` if the `Reader` is
+///     // at the end of the input.s
+///     r.try_expect("boolean", |r| match r.peek_u8()? {
+///         b't' => r.consume(b"true").map(|()| Some(true)),
+///         b'f' => r.consume(b"false").map(|()| Some(false)),
+///         _ => Ok(None),
+///     })
+/// });
+/// assert!(matches!(result, Ok(true)));
+/// ```
+/// [`context()`]: Reader::context()  
+/// [`peek_context()`]: Reader::peek_context()  
+/// [`verify()`]: Reader::verify()  
+/// [`try_verify()`]: Reader::try_verify()  
+/// [`expect()`]: Reader::expect()  
+/// [`try_expect()`]: Reader::try_expect()  
+/// [`try_expect_erased()`]: Reader::try_expect_erased()  
+/// [`recover()`]: Reader::recover()  
+/// [`recover_if()`]: Reader::recover_if()  
 pub struct Reader<'i, E> {
     input: &'i Input,
     error: PhantomData<E>,
