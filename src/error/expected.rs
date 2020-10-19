@@ -1,6 +1,6 @@
 use core::fmt;
 
-#[cfg(feature = "box-expected")]
+#[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
 use crate::display::{ByteCount, ErrorDisplay};
@@ -20,23 +20,15 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///
 /// - Enable the `full-context` feature (enabled by default), for full-context
 ///   stacks.
-/// - It is generally recommended for better performance to have the
-///   `box-expected` feature enabled (enabled by default) if the structures
-///   being returned from parsing are smaller than or equal to `~128 bytes`.
-///   This is because the `Expected` structure is `136 bytes` large on 64 bit
-///   systems and successful parses may be hindered by the time to move the
-///   `Result<T, Expected>` value. By boxing the internals of `Expected` the
-///   size becomes only `8 bytes`. When in doubt, write a benchmark.
+/// - It is generally recommended for better performance to box `Expected` if
+///   the structures being returned from parsing are smaller than or equal to
+///   `~128 bytes`. This is because the `Expected` structure is `160 bytes`
+///   large on 64 bit systems and successful parses may be hindered by the time
+///   to move the `Result<T, Expected>` value. By boxing `Expected` the size
+///   becomes only `8 bytes`. When in doubt, write a benchmark.
 ///
 /// See [`crate::error`] for additional documentation around the error system.
 pub struct Expected<'i, S = ExpectedContextStack> {
-    #[cfg(feature = "box-expected")]
-    inner: Box<ExpectedInner<'i, S>>,
-    #[cfg(not(feature = "box-expected"))]
-    inner: ExpectedInner<'i, S>,
-}
-
-struct ExpectedInner<'i, S> {
     stack: S,
     fatal: bool,
     kind: ExpectedKind<'i>,
@@ -65,6 +57,21 @@ impl<'i, S> Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
+    fn add_context<C>(&mut self, input: &'i Input, context: C)
+    where
+        C: Context,
+    {
+        let current_input = match &mut self.kind {
+            ExpectedKind::Value(err) => &mut err.input,
+            ExpectedKind::Valid(err) => &mut err.input,
+            ExpectedKind::Length(err) => &mut err.input,
+        };
+        if current_input.is_within(input) {
+            *current_input = input
+        }
+        self.stack.push(context);
+    }
+
     #[inline]
     fn from_kind(kind: ExpectedKind<'i>) -> Self {
         let context = match &kind {
@@ -73,16 +80,11 @@ where
             ExpectedKind::Length(err) => err.context(),
         };
 
-        let inner = ExpectedInner {
+        Self {
             kind,
             fatal: false,
             stack: S::from_root(context),
-        };
-
-        #[cfg(feature = "box-expected")]
-        let inner = Box::new(inner);
-
-        Self { inner }
+        }
     }
 }
 
@@ -91,7 +93,7 @@ where
     S: ContextStack,
 {
     fn input(&self) -> &'i Input {
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => err.input(),
             ExpectedKind::Valid(err) => err.input(),
             ExpectedKind::Length(err) => err.input(),
@@ -99,7 +101,7 @@ where
     }
 
     fn span(&self) -> &'i Input {
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => err.found(),
             ExpectedKind::Valid(err) => err.span(),
             ExpectedKind::Length(err) => err.span(),
@@ -107,14 +109,14 @@ where
     }
 
     fn expected(&self) -> Option<&Input> {
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => Some(err.expected()),
             ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,
         }
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => fmt::Display::fmt(err, f),
             ExpectedKind::Valid(err) => fmt::Display::fmt(err, f),
             ExpectedKind::Length(err) => fmt::Display::fmt(err, f),
@@ -122,13 +124,13 @@ where
     }
 
     fn context_stack(&self) -> &dyn ContextStack {
-        &self.inner.stack
+        &self.stack
     }
 }
 
 impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => err.to_retry_requirement(),
             ExpectedKind::Valid(err) => err.to_retry_requirement(),
             ExpectedKind::Length(err) => err.to_retry_requirement(),
@@ -136,10 +138,10 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     }
 
     fn is_fatal(&self) -> bool {
-        if self.inner.fatal {
+        if self.fatal {
             return true;
         }
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => err.is_fatal(),
             ExpectedKind::Valid(err) => err.is_fatal(),
             ExpectedKind::Length(err) => err.is_fatal(),
@@ -149,7 +151,7 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
 
 impl<'i, S> IntoFatal for Expected<'i, S> {
     fn into_fatal(mut self) -> Self {
-        self.inner.fatal = true;
+        self.fatal = true;
         self
     }
 }
@@ -162,15 +164,21 @@ where
     where
         C: Context,
     {
-        let current_input = match &mut self.inner.kind {
-            ExpectedKind::Value(err) => &mut err.input,
-            ExpectedKind::Valid(err) => &mut err.input,
-            ExpectedKind::Length(err) => &mut err.input,
-        };
-        if current_input.is_within(input) {
-            *current_input = input
-        }
-        self.inner.stack.push(context);
+        self.add_context(input, context);
+        self
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'i, S> FromContext<'i> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from_context<C>(mut self, input: &'i Input, context: C) -> Self
+    where
+        C: Context,
+    {
+        self.add_context(input, context);
         self
     }
 }
@@ -196,6 +204,13 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
+impl<'i> From<ExpectedLength<'i>> for Box<Expected<'i>> {
+    fn from(expected: ExpectedLength<'i>) -> Box<Expected<'i>> {
+        Box::new(expected.into())
+    }
+}
+
 impl<'i, S> From<ExpectedValid<'i>> for Expected<'i, S>
 where
     S: ContextStackBuilder,
@@ -205,12 +220,26 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
+impl<'i> From<ExpectedValid<'i>> for Box<Expected<'i>> {
+    fn from(expected: ExpectedValid<'i>) -> Box<Expected<'i>> {
+        Box::new(expected.into())
+    }
+}
+
 impl<'i, S> From<ExpectedValue<'i>> for Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
     fn from(err: ExpectedValue<'i>) -> Self {
         Self::from_kind(ExpectedKind::Value(err))
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'i> From<ExpectedValue<'i>> for Box<Expected<'i>> {
+    fn from(expected: ExpectedValue<'i>) -> Box<Expected<'i>> {
+        Box::new(expected.into())
     }
 }
 
@@ -442,14 +471,9 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(all(target_pointer_width = "64", feature = "box-expected"))]
+    #[cfg(target_pointer_width = "64")]
     fn test_expected_size() {
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 8);
-    }
-
-    #[test]
-    #[cfg(all(target_pointer_width = "64", not(feature = "box-expected")))]
-    fn test_expected_size() {
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 136);
+        // Update the docs if this value changes.
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 160);
     }
 }
