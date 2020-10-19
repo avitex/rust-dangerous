@@ -167,6 +167,19 @@ fn test_peek() {
 }
 
 #[test]
+fn test_peek_opt() {
+    assert_eq!(
+        read_all!(b"hello", |r| {
+            let v = r.peek_opt(4).map_or(false, |v| v == b"hell"[..]);
+            r.skip(5)?;
+            Ok(v)
+        })
+        .unwrap(),
+        true
+    );
+}
+
+#[test]
 fn test_peek_eq() {
     read_partial!(b"helloworld", |r| {
         assert!(r.peek_eq(b"helloworld"));

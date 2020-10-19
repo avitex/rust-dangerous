@@ -116,6 +116,17 @@ impl Input {
     }
 
     /// Splits the input into two at `mid`.
+    #[inline(always)]
+    pub(crate) fn split_at_opt(&self, mid: usize) -> Option<(&Input, &Input)> {
+        if mid > self.len() {
+            None
+        } else {
+            let (head, tail) = self.as_dangerous().split_at(mid);
+            Some((input(head), input(tail)))
+        }
+    }
+
+    /// Splits the input into two at `mid`.
     ///
     /// # Errors
     ///
@@ -129,8 +140,8 @@ impl Input {
     where
         E: From<ExpectedLength<'i>>,
     {
-        if mid > self.len() {
-            Err(E::from(ExpectedLength {
+        self.split_at_opt(mid).ok_or_else(|| {
+            E::from(ExpectedLength {
                 min: mid,
                 max: None,
                 span: self,
@@ -139,11 +150,8 @@ impl Input {
                     operation,
                     expected: "enough input",
                 },
-            }))
-        } else {
-            let (head, tail) = self.as_dangerous().split_at(mid);
-            Ok((input(head), input(tail)))
-        }
+            })
+        })
     }
 
     #[inline(always)]
