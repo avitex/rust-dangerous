@@ -106,6 +106,29 @@ fn test_to_dangerous_str_expected_length() {
 }
 
 #[test]
+fn test_to_dangerous_str_expected_length_fatal() {
+    // Length 1
+    input!(&[0b0111_1111, b'a'])
+        .to_dangerous_str::<Expected>()
+        .unwrap();
+    // Length 2
+    let err = input!(&[0b1101_1111, b'a'])
+        .to_dangerous_str::<Expected>()
+        .unwrap_err();
+    assert_eq!(err.to_retry_requirement(), None);
+    // Length 3
+    let err = input!(&[0b1110_1111, b'a'])
+        .to_dangerous_str::<Expected>()
+        .unwrap_err();
+    assert_eq!(err.to_retry_requirement(), None);
+    // Invalid
+    let err = input!(&[0b1111_0111, b'a'])
+        .to_dangerous_str::<Expected>()
+        .unwrap_err();
+    assert_eq!(err.to_retry_requirement(), None);
+}
+
+#[test]
 fn test_read_all() {
     // Valid
     assert_eq!(

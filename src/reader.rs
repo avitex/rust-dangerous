@@ -548,7 +548,7 @@ impl<'i, E> Reader<'i, E> {
     /// ```
     /// use dangerous::Invalid;
     ///
-    /// // Without `no_retry` this would throw `Invalid` with a 
+    /// // Without `no_retry` this would throw `Invalid` with a
     /// // `RetryRequirement` of 1.
     /// let result = dangerous::input(b"abc\xC2").read_all(|r| {
     ///     r.no_retry(|r| {
