@@ -198,6 +198,7 @@ impl<'i, E> Reader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
         F: FnOnce(&Input) -> T,
+        T: 'static,
     {
         let (head, _) = self.input.split_at(len, "peek")?;
         Ok(f(head))
