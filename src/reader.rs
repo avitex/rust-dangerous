@@ -457,7 +457,7 @@ impl<'i, E> Reader<'i, E> {
     /// If an error occurs and the predicate returns `false` the error is not
     /// recovered, `Err(E)` is returned.
     #[inline]
-    pub fn try_recover<F, T, R>(&mut self, f: F, pred: R) -> Result<Option<T>, E>
+    pub fn recover_if<F, T, R>(&mut self, f: F, pred: R) -> Result<Option<T>, E>
     where
         E: FromContext<'i>,
         F: FnOnce(&mut Self) -> Result<T, E>,
