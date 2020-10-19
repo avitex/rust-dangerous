@@ -1,12 +1,13 @@
 mod internal;
 
 use core::convert::Infallible;
+use core::ops::Range;
 use core::{fmt, str};
 
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
-use crate::util::{is_sub_slice, utf8};
+use crate::util::{is_sub_slice, slice_ptr_range, utf8};
 
 /// Creates a new `Input` from a byte slice.
 ///
@@ -252,6 +253,42 @@ impl Input {
         let mut r = Reader::new(self);
         let ok = f(&mut r);
         (ok, r.take_remaining())
+    }
+
+    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
+    /// within the `parent`. `None` is returned if `self` is not within in the
+    /// `parent`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let parent = dangerous::input(&[1, 2, 3, 4]);
+    /// let sub_range = 1..2;
+    /// let sub = dangerous::input(&parent.as_dangerous()[sub_range.clone()]);
+    ///
+    /// assert_eq!(sub.span_of(parent), Some(sub_range))
+    /// ```
+    pub fn span_of(&self, parent: &Input) -> Option<Range<usize>> {
+        if self.is_within(parent) {
+            let parent_bounds = slice_ptr_range(parent.as_dangerous());
+            let sub_bounds = slice_ptr_range(self.as_dangerous());
+            let start_offset = sub_bounds.start as usize - parent_bounds.start as usize;
+            let end_offset = sub_bounds.end as usize - parent_bounds.start as usize;
+            Some(start_offset..end_offset)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
+    /// within the `parent`. `None` is returned if `self` is not within in the
+    /// `parent` or `self` is empty.
+    pub fn non_empty_span_of(&self, parent: &Input) -> Option<Range<usize>> {
+        if self.is_empty() {
+            None
+        } else {
+            self.span_of(parent)
+        }
     }
 }
 

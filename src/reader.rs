@@ -42,7 +42,7 @@ use crate::input::Input;
 /// Peeking should be used to find the correct path to consume. Values read from
 /// peeking should not be used for the resulting type.
 ///
-/// ```rust
+/// ```
 /// use dangerous::Invalid;
 ///
 /// let input = dangerous::input(b"true");
