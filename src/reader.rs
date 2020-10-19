@@ -55,6 +55,7 @@ use crate::input::Input;
 /// });
 /// assert!(matches!(result, Ok(true)));
 /// ```
+///
 /// [`context()`]: Reader::context()  
 /// [`peek_context()`]: Reader::peek_context()  
 /// [`verify()`]: Reader::verify()  
@@ -251,12 +252,19 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the length requirement to peek could not be met.
-    pub fn peek<'a>(&'a self, len: usize) -> Result<&'a Input, E>
+    pub fn peek<'p>(&'p self, len: usize) -> Result<&'p Input, E>
     where
         E: From<ExpectedLength<'i>>,
     {
         let (head, _) = self.input.split_at(len, "peek")?;
         Ok(head)
+    }
+
+    /// Peek a length of input.
+    ///
+    /// This is equivalent to `peek` but does not return an error.
+    pub fn peek_opt(&self, len: usize) -> Option<&Input> {
+        self.input.split_at_opt(len).map(|(head, _)| head)
     }
 
     /// Returns `true` if `bytes` is next in the `Reader`.
@@ -289,7 +297,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns `true` if `byte` is next in the `Reader`.
     #[inline]
     pub fn peek_u8_eq(&self, byte: u8) -> bool {
-        self.peek_eq(&[byte])
+        self.input.has_prefix(&[byte])
     }
 
     /// Consume expected bytes.
