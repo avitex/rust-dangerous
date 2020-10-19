@@ -183,13 +183,19 @@ where
     }
 }
 
-impl<'i> fmt::Display for Expected<'i> {
+impl<'i, S> fmt::Display for Expected<'i, S>
+where
+    S: ContextStack,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).fmt(f)
     }
 }
 
-impl<'i> fmt::Debug for Expected<'i> {
+impl<'i, S> fmt::Debug for Expected<'i, S>
+where
+    S: ContextStack,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
     }
@@ -205,8 +211,11 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<'i> From<ExpectedLength<'i>> for Box<Expected<'i>> {
-    fn from(expected: ExpectedLength<'i>) -> Box<Expected<'i>> {
+impl<'i, S> From<ExpectedLength<'i>> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from(expected: ExpectedLength<'i>) -> Box<Expected<'i, S>> {
         Box::new(expected.into())
     }
 }
@@ -221,8 +230,11 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<'i> From<ExpectedValid<'i>> for Box<Expected<'i>> {
-    fn from(expected: ExpectedValid<'i>) -> Box<Expected<'i>> {
+impl<'i, S> From<ExpectedValid<'i>> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from(expected: ExpectedValid<'i>) -> Box<Expected<'i, S>> {
         Box::new(expected.into())
     }
 }
@@ -237,14 +249,17 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<'i> From<ExpectedValue<'i>> for Box<Expected<'i>> {
-    fn from(expected: ExpectedValue<'i>) -> Box<Expected<'i>> {
+impl<'i, S> From<ExpectedValue<'i>> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from(expected: ExpectedValue<'i>) -> Box<Expected<'i, S>> {
         Box::new(expected.into())
     }
 }
 
 #[cfg(feature = "std")]
-impl<'i> std::error::Error for Expected<'i> {}
+impl<'i, S> std::error::Error for Expected<'i, S> {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
