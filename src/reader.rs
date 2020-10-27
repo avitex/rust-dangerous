@@ -45,8 +45,8 @@ use crate::input::Input;
 ///     // We use `peek_u8` here because we expect at least one byte.
 ///     // If we wanted to handle the case when there is no more input left,
 ///     // for example to provide a default, we would use `peek_u8_opt`.
-///     // This means we can handle a `RetryRequirement` if the `Reader` is
-///     // at the end of the input.s
+///     // The below allows us to handle a `RetryRequirement` if the
+///     // `Reader` is at the end of the input.
 ///     r.try_expect("boolean", |r| match r.peek_u8()? {
 ///         b't' => r.consume(b"true").map(|()| Some(true)),
 ///         b'f' => r.consume(b"false").map(|()| Some(false)),
@@ -56,10 +56,10 @@ use crate::input::Input;
 /// assert!(matches!(result, Ok(true)));
 /// ```
 ///
-/// [`Input`]: crate::input::Input
-/// [`Input::read_all()`]: crate::input::Input::read_all()
-/// [`Input::read_partial()`]: crate::input::Input::read_partial()
-/// [`Input::read_infallible()`]: crate::input::Input::read_infallible()
+/// [`Input`]: crate::input::Input  
+/// [`Input::read_all()`]: crate::input::Input::read_all()  
+/// [`Input::read_partial()`]: crate::input::Input::read_partial()  
+/// [`Input::read_infallible()`]: crate::input::Input::read_infallible()  
 /// [`context()`]: Reader::context()  
 /// [`peek_context()`]: Reader::peek_context()  
 /// [`verify()`]: Reader::verify()  
