@@ -17,7 +17,7 @@ use crate::input::Input;
 /// Functions on `Reader` are designed to provide a panic free interface and if
 /// applicable, clearly define the type of error that can can be thown.
 ///
-/// If want to verify input and optionally return a type from that verification,
+/// To verify input and optionally return a type from that verification,
 /// [`verify()`], [`try_verify()`], [`expect()`], [`try_expect()`] and
 /// [`try_expect_erased()`] is provided. These functions are the interface for
 /// creating errors based off what was expected.
@@ -496,7 +496,7 @@ impl<'i, E> Reader<'i, E> {
                     self.input = checkpoint;
                     Ok(None)
                 } else {
-                    Err(err.from_context(checkpoint, OperationContext("try recover")))
+                    Err(err.from_context(checkpoint, OperationContext("recover if")))
                 }
             }
         }
