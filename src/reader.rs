@@ -12,11 +12,6 @@ use crate::input::Input;
 /// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`],
 /// [`Input::read_partial()`] or [`Input::read_infallible()`].
 ///
-/// # Streaming
-///
-/// If you want to support streaming, ensure you use [`no_retry()`] where it is
-/// invalid to return a [`RetryRequirement`].
-///
 /// # Errors
 ///
 /// Functions on `Reader` are designed to provide a panic free interface and if
