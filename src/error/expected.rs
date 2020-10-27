@@ -88,11 +88,7 @@ where
     S: ContextStack,
 {
     fn input(&self) -> Input<'i> {
-        match &self.kind {
-            ExpectedKind::Value(err) => err.input(),
-            ExpectedKind::Valid(err) => err.input(),
-            ExpectedKind::Length(err) => err.input(),
-        }
+        self.input.clone()
     }
 
     fn span(&self) -> Input<'i> {
