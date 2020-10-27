@@ -36,7 +36,7 @@ where
     E: Error<'i>,
 {
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
-    Ok(match r.peek_u8().ok() {
+    Ok(match r.peek_u8_opt() {
         None => Document::default(),
         Some(b'[') => Document {
             globals: vec![],
@@ -72,7 +72,7 @@ where
     }
 
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
-    while !(r.at_end() || r.peek_eq(b"[")) {
+    while !(r.at_end() || r.peek_u8_eq(b'[')) {
         r.context("property", |r| {
             skip_whitespace_or_comment(r, ConsumeTo::NextToken);
             let name = r.context("name", |r| {
@@ -126,7 +126,7 @@ enum ConsumeTo {
 
 fn skip_whitespace_or_comment<E>(r: &mut Reader<'_, E>, to_where: ConsumeTo) {
     fn skip_comment<E>(r: &mut Reader<E>) -> usize {
-        if r.peek_eq(b";") {
+        if r.peek_u8_eq(b';') {
             r.skip_while(|c| c != b'\n')
         } else {
             0
