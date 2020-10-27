@@ -112,7 +112,7 @@ where
         let body = r.context("body", |r| {
             let body_input = r.take(body_len as usize)?;
             // Decode the body input as a UTF-8 str
-            body_input.to_dangerous_str::<E>()
+            body_input.to_dangerous_str()
         })?;
         // We did it!
         Ok(Message { body })

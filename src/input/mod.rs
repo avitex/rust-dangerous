@@ -20,22 +20,9 @@ use crate::util::{is_sub_slice, slice_ptr_range, utf8};
 /// dangerous::input(b"hello"); // do this instead
 /// ```
 #[inline(always)]
-#[allow(unsafe_code)]
 #[must_use = "input must be consumed"]
-pub fn input(slice: &[u8]) -> &Input {
-    // Cast the slice reference to a pointer.
-    let slice_ptr: *const [u8] = slice;
-    // Cast the slice pointer to a `Input` pointer.
-    //
-    // The compiler allows this as the types are compatible. This cast is safe
-    // as `Input` is a wrapper around [u8]. As with std::path::Path, `Input` is
-    // not marked repr(transparent) or repr(C).
-    let input_ptr = slice_ptr as *const Input;
-    // Re-borrow the `Input` pointer as a `Input` reference.
-    //
-    // This is safe as the lifetime from the slice is carried from the slice
-    // reference to the `Input` reference.
-    unsafe { &*input_ptr }
+pub const fn input(bytes: &[u8]) -> Input<'_> {
+    Input::new(bytes, false)
 }
 
 /// `Input` is an immutable wrapper around bytes to be processed.
@@ -51,34 +38,133 @@ pub fn input(slice: &[u8]) -> &Input {
 /// pretty printing. See [`InputDisplay`] for formatting options.
 ///
 /// [`dangerous::input()`]: crate::input()
-#[derive(Eq, PartialEq)]
 #[must_use = "input must be consumed"]
-pub struct Input([u8]);
+pub struct Input<'i> {
+    bytes: &'i [u8],
+    #[cfg(not(feature = "no-input-bound"))]
+    bound: bool,
+}
 
-impl Input {
+impl<'i> Input<'i> {
     /// Returns the underlying byte slice length.
     #[inline(always)]
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.as_dangerous().len()
     }
 
     /// Returns `true` if the underlying byte slice length is zero.
     #[inline(always)]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.as_dangerous().is_empty()
     }
 
     /// Returns `true` if the underlying byte slice for `parent` contains that
     /// of `self` in the same section of memory with no bounds out of range.
-    pub fn is_within(&self, parent: &Input) -> bool {
+    pub fn is_within(&self, parent: &Input<'_>) -> bool {
         is_sub_slice(parent.as_dangerous(), self.as_dangerous())
+    }
+
+    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
+    /// within the `parent`. `None` is returned if `self` is not within in the
+    /// `parent`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let parent = dangerous::input(&[1, 2, 3, 4]);
+    /// let sub_range = 1..2;
+    /// let sub = dangerous::input(&parent.as_dangerous()[sub_range.clone()]);
+    ///
+    /// assert_eq!(sub.span_of(&parent), Some(sub_range))
+    /// ```
+    pub fn span_of(&self, parent: &Input<'_>) -> Option<Range<usize>> {
+        if self.is_within(parent) {
+            let parent_bounds = slice_ptr_range(parent.as_dangerous());
+            let sub_bounds = slice_ptr_range(self.as_dangerous());
+            let start_offset = sub_bounds.start as usize - parent_bounds.start as usize;
+            let end_offset = sub_bounds.end as usize - parent_bounds.start as usize;
+            Some(start_offset..end_offset)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
+    /// within the `parent`. `None` is returned if `self` is not within in the
+    /// `parent` or `self` is empty.
+    pub fn non_empty_span_of(&self, parent: &Input<'_>) -> Option<Range<usize>> {
+        if self.is_empty() {
+            None
+        } else {
+            self.span_of(parent)
+        }
     }
 
     /// Returns an [`InputDisplay`] for formatting.
     #[inline(always)]
-    pub const fn display(&self) -> InputDisplay<'_> {
+    pub fn display(&self) -> InputDisplay<'i> {
         InputDisplay::new(self)
     }
+
+    /// Create a reader with the expectation all of the input is read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the provided function does, or there is
+    /// trailing input.
+    pub fn read_all<F, T, E>(self, f: F) -> Result<T, E>
+    where
+        F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
+        E: FromContext<'i>,
+        E: From<ExpectedLength<'i>>,
+    {
+        let mut r = Reader::new(self.clone());
+        match r.context(OperationContext("read all"), f) {
+            Ok(ok) if r.at_end() => Ok(ok),
+            Ok(_) => Err(E::from(ExpectedLength {
+                min: 0,
+                max: Some(0),
+                span: r.take_remaining().as_dangerous(),
+                input: self,
+                context: ExpectedContext {
+                    operation: "read all",
+                    expected: "no trailing input",
+                },
+            })),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Create a reader to read a part of the input and return the rest.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the provided function does.
+    pub fn read_partial<F, T, E>(self, f: F) -> Result<(T, Input<'i>), E>
+    where
+        F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
+        E: FromContext<'i>,
+    {
+        let mut r = Reader::new(self);
+        match r.context(OperationContext("read partial"), f) {
+            Ok(ok) => Ok((ok, r.take_remaining())),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Create a reader to read a part of the input and return the rest
+    /// without any errors.
+    pub fn read_infallible<F, T>(self, f: F) -> (T, Input<'i>)
+    where
+        F: FnOnce(&mut Reader<'i, Infallible>) -> T,
+    {
+        let mut r = Reader::new(self);
+        let ok = f(&mut r);
+        (ok, r.take_remaining())
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // AsDangerous
 
     /// Returns the underlying byte slice.
     ///
@@ -87,8 +173,8 @@ impl Input {
     /// is named this way simply for users to clearly note where the panic-free
     /// guarantees end when handling the input.
     #[inline(always)]
-    pub const fn as_dangerous(&self) -> &[u8] {
-        &self.0
+    pub const fn as_dangerous(&self) -> &'i [u8] {
+        &self.bytes
     }
 
     /// Returns the underlying byte slice if it is not empty.
@@ -98,8 +184,7 @@ impl Input {
     /// # Errors
     ///
     /// Returns [`ExpectedLength`] if the the input is empty.
-    #[inline]
-    pub fn to_dangerous_non_empty<'i, E>(&'i self) -> Result<&'i [u8], E>
+    pub fn to_dangerous_non_empty<E>(&self) -> Result<&'i [u8], E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -107,8 +192,8 @@ impl Input {
             Err(E::from(ExpectedLength {
                 min: 1,
                 max: None,
-                span: self,
-                input: self,
+                span: self.as_dangerous(),
+                input: self.clone(),
                 context: ExpectedContext {
                     operation: "convert input to non-empty slice",
                     expected: "non-empty input",
@@ -128,8 +213,7 @@ impl Input {
     /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8
     /// and [`ExpectedLength`] if a UTF-8 code point was cut short. This is
     /// useful when parsing potentially incomplete buffers.
-    #[inline]
-    pub fn to_dangerous_str<'i, E>(&'i self) -> Result<&'i str, E>
+    pub fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
     where
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
@@ -142,8 +226,8 @@ impl Input {
                     Err(E::from(ExpectedLength {
                         min: utf8::char_len(invalid[0]),
                         max: None,
-                        span: input(invalid),
-                        input: self,
+                        span: invalid,
+                        input: self.clone(),
                         context: ExpectedContext {
                             operation: "convert input to str",
                             expected: "complete utf-8 code point",
@@ -155,8 +239,8 @@ impl Input {
                     let error_start = utf8_err.valid_up_to();
                     let error_end = error_start + error_len;
                     Err(E::from(ExpectedValid {
-                        span: input(&bytes[error_start..error_end]),
-                        input: self,
+                        span: &bytes[error_start..error_end],
+                        input: self.clone(),
                         context: ExpectedContext {
                             operation: "convert input to str",
                             expected: "utf-8 code point",
@@ -177,8 +261,7 @@ impl Input {
     /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8 and
     /// [`ExpectedLength`] if a UTF-8 code point was cut short or the input is
     /// empty. This is useful when parsing potentially incomplete buffers.
-    #[inline]
-    pub fn to_dangerous_non_empty_str<'i, E>(&'i self) -> Result<&'i str, E>
+    pub fn to_dangerous_non_empty_str<E>(&self) -> Result<&'i str, E>
     where
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
@@ -187,8 +270,8 @@ impl Input {
             Err(E::from(ExpectedLength {
                 min: 1,
                 max: None,
-                span: self,
-                input: self,
+                span: self.as_dangerous(),
+                input: self.clone(),
                 context: ExpectedContext {
                     operation: "convert input to non-empty str",
                     expected: "non empty input",
@@ -198,139 +281,72 @@ impl Input {
             self.to_dangerous_str()
         }
     }
-
-    /// Create a reader with the expectation all of the input is read.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if either the provided function does, or there is
-    /// trailing input.
-    pub fn read_all<'i, F, T, E>(&'i self, f: F) -> Result<T, E>
-    where
-        F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
-        E: FromContext<'i>,
-        E: From<ExpectedLength<'i>>,
-    {
-        let mut r = Reader::new(self);
-        let ok = r.context(OperationContext("read all"), f)?;
-        if r.at_end() {
-            Ok(ok)
-        } else {
-            Err(E::from(ExpectedLength {
-                min: 0,
-                max: Some(0),
-                span: r.take_remaining(),
-                input: self,
-                context: ExpectedContext {
-                    operation: "read all",
-                    expected: "no trailing input",
-                },
-            }))
-        }
-    }
-
-    /// Create a reader to read a part of the input and return the rest.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the provided function does.
-    pub fn read_partial<'i, F, T, E>(&'i self, f: F) -> Result<(T, &'i Input), E>
-    where
-        F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
-        E: FromContext<'i>,
-    {
-        let mut r = Reader::new(self);
-        let ok = r.context(OperationContext("read partial"), f)?;
-        Ok((ok, r.take_remaining()))
-    }
-
-    /// Create a reader to read a part of the input and return the rest
-    /// without any errors.
-    pub fn read_infallible<'i, F, T>(&'i self, f: F) -> (T, &'i Input)
-    where
-        F: FnOnce(&mut Reader<'i, Infallible>) -> T,
-    {
-        let mut r = Reader::new(self);
-        let ok = f(&mut r);
-        (ok, r.take_remaining())
-    }
-
-    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
-    /// within the `parent`. `None` is returned if `self` is not within in the
-    /// `parent`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let parent = dangerous::input(&[1, 2, 3, 4]);
-    /// let sub_range = 1..2;
-    /// let sub = dangerous::input(&parent.as_dangerous()[sub_range.clone()]);
-    ///
-    /// assert_eq!(sub.span_of(parent), Some(sub_range))
-    /// ```
-    pub fn span_of(&self, parent: &Input) -> Option<Range<usize>> {
-        if self.is_within(parent) {
-            let parent_bounds = slice_ptr_range(parent.as_dangerous());
-            let sub_bounds = slice_ptr_range(self.as_dangerous());
-            let start_offset = sub_bounds.start as usize - parent_bounds.start as usize;
-            let end_offset = sub_bounds.end as usize - parent_bounds.start as usize;
-            Some(start_offset..end_offset)
-        } else {
-            None
-        }
-    }
-
-    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
-    /// within the `parent`. `None` is returned if `self` is not within in the
-    /// `parent` or `self` is empty.
-    pub fn non_empty_span_of(&self, parent: &Input) -> Option<Range<usize>> {
-        if self.is_empty() {
-            None
-        } else {
-            self.span_of(parent)
-        }
-    }
-}
-
-impl AsRef<Input> for Input {
-    fn as_ref(&self) -> &Input {
-        self
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Equality
 
-impl PartialEq<[u8]> for Input {
+impl<'i> PartialEq for Input<'i> {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        self.as_dangerous() == other.as_dangerous()
+    }
+}
+
+impl<'i> PartialEq<[u8]> for Input<'i> {
+    #[inline(always)]
     fn eq(&self, other: &[u8]) -> bool {
         self.as_dangerous() == other
     }
 }
 
-impl PartialEq<[u8]> for &Input {
+impl<'i> PartialEq<[u8]> for &Input<'i> {
+    #[inline(always)]
     fn eq(&self, other: &[u8]) -> bool {
         self.as_dangerous() == other
     }
 }
 
-impl PartialEq<Input> for [u8] {
-    fn eq(&self, other: &Input) -> bool {
-        other.as_dangerous() == self
+impl<'i> PartialEq<&[u8]> for Input<'i> {
+    #[inline(always)]
+    fn eq(&self, other: &&[u8]) -> bool {
+        self.as_dangerous() == *other
+    }
+}
+
+impl<'i> PartialEq<Input<'i>> for [u8] {
+    #[inline(always)]
+    fn eq(&self, other: &Input<'i>) -> bool {
+        self == other.as_dangerous()
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Formatting
 
-impl fmt::Debug for Input {
+impl<'i> fmt::Debug for Input<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let display = InputDisplay::from_formatter(self, f);
         f.debug_tuple("Input").field(&display).finish()
     }
 }
 
-impl fmt::Display for Input {
+impl<'i> fmt::Display for Input<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         InputDisplay::from_formatter(self, f).fmt(f)
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Clone
+
+impl<'i> Clone for Input<'i> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        Self {
+            bytes: self.bytes,
+            #[cfg(not(feature = "no-input-bound"))]
+            bound: self.bound,
+        }
     }
 }

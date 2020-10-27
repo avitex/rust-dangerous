@@ -35,9 +35,11 @@ macro_rules! impl_read_num {
 
 macro_rules! read_num {
     ($reader:expr, $err_ty:ident, $num_ty:ident, $expected:expr, $from_xx_bytes:ident) => {{
-        let (arr, tail) = split_arr!($reader.input, $num_ty, concat!("read ", $expected))?;
-        $reader.input = tail;
-        Ok(<$num_ty>::$from_xx_bytes(arr))
+        $reader.try_advance(|input| {
+            let (arr, next) = split_arr!(input, $num_ty, concat!("read ", $expected))?;
+            let number = <$num_ty>::$from_xx_bytes(arr);
+            Ok((number, next))
+        })
     }};
 }
 
