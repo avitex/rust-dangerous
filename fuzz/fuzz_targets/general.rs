@@ -20,13 +20,13 @@ fuzz_target!(|data: &[u8]| {
     let input_full = dangerous::input(data);
 
     let (input_a, input_b) = if input_full.is_empty() {
-        (input_full, input_full)
+        (input_full.clone(), input_full.clone())
     } else {
         let (a, b) = data.split_at(rng.gen_range(0, data.len()));
         (dangerous::input(a), dangerous::input(b))
     };
 
-    let _ = input_a.is_within(input_b);
+    let _ = input_a.is_within(&input_b);
 
     if let Err(err) = input_full.to_dangerous_str::<Expected>() {
         write!(DummyWrite, "{}", err).unwrap();
@@ -36,18 +36,18 @@ fuzz_target!(|data: &[u8]| {
     write!(DummyWrite, "{}", input_full.display().head(rng.gen())).unwrap();
     write!(DummyWrite, "{}", input_full.display().tail(rng.gen())).unwrap();
     write!(DummyWrite, "{}", input_full.display().head_tail(rng.gen())).unwrap();
-    write!(DummyWrite, "{}", input_full.display().span(input_a, rng.gen())).unwrap();
+    write!(DummyWrite, "{}", input_full.display().span(&input_a, rng.gen())).unwrap();
 
-    read_partial!(input_full, |r| r.read_u8());
-    read_partial!(input_full, |r| r.peek_u8());
-    read_partial!(input_full, |r| Ok(r.peek_eq(single_slice)));
-    read_partial!(input_full, |r| r.take(rng.gen()));
-    read_partial!(input_full, |r| r.peek(1).map(drop));
-    read_partial!(input_full, |r| r.skip(rng.gen()));
-    read_partial!(input_full, |r| Ok(r.take_while(|c| c == rng.gen())));
-    read_partial!(input_full, |r| Ok(r.skip_while(|c| c == rng.gen())));
-    read_partial!(input_full, |r| r.try_take_while(|c| Ok(c == rng.gen())));
-    read_partial!(input_full, |r| r.try_skip_while(|c| Ok(c == rng.gen())));
+    read_partial!(input_full.clone(), |r| r.read_u8());
+    read_partial!(input_full.clone(), |r| r.peek_u8());
+    read_partial!(input_full.clone(), |r| Ok(r.peek_eq(single_slice)));
+    read_partial!(input_full.clone(), |r| r.take(rng.gen()));
+    read_partial!(input_full.clone(), |r| r.peek(1).map(drop));
+    read_partial!(input_full.clone(), |r| r.skip(rng.gen()));
+    read_partial!(input_full.clone(), |r| Ok(r.take_while(|c| c == rng.gen())));
+    read_partial!(input_full.clone(), |r| Ok(r.skip_while(|c| c == rng.gen())));
+    read_partial!(input_full.clone(), |r| r.try_take_while(|c| Ok(c == rng.gen())));
+    read_partial!(input_full.clone(), |r| r.try_skip_while(|c| Ok(c == rng.gen())));
     read_partial!(input_full, |r| r.consume(single_slice));
 });
 
