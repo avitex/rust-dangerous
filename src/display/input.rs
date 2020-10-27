@@ -45,7 +45,7 @@ pub enum PreferredFormat {
 /// ```
 #[derive(Clone)]
 pub struct InputDisplay<'i> {
-    input: &'i Input,
+    input: &'i [u8],
     underline: bool,
     format: PreferredFormat,
     section: Option<Section<'i>>,
@@ -54,9 +54,9 @@ pub struct InputDisplay<'i> {
 
 impl<'i> InputDisplay<'i> {
     /// Create a new `InputDisplay` given [`Input`].
-    pub const fn new(input: &'i Input) -> Self {
+    pub const fn new(input: &Input<'i>) -> Self {
         Self {
-            input,
+            input: input.as_dangerous(),
             format: PreferredFormat::Bytes,
             underline: false,
             section: None,
@@ -68,7 +68,7 @@ impl<'i> InputDisplay<'i> {
     ///
     /// - Precision (eg. `{:.16}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
-    pub fn from_formatter(input: &'i Input, f: &fmt::Formatter<'_>) -> Self {
+    pub fn from_formatter(input: &Input<'i>, f: &fmt::Formatter<'_>) -> Self {
         let format = Self::new(input).str_hint(f.alternate());
         match f.precision() {
             Some(width) => format.head_tail(width),
@@ -154,11 +154,11 @@ impl<'i> InputDisplay<'i> {
     /// let full = &[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
     /// let input = dangerous::input(full);
     /// let span = dangerous::input(&full[5..]);
-    /// let formatted = input.display().span(span, 16).to_string();
+    /// let formatted = input.display().span(&span, 16).to_string();
     ///
     /// assert_eq!(formatted, "[.. cc dd ee ff]");
     /// ```
-    pub fn span(mut self, span: &'i Input, width: usize) -> Self {
+    pub fn span(mut self, span: &Input<'i>, width: usize) -> Self {
         self.section = None;
         self.section_opt = SectionOpt::Span {
             width,
@@ -185,9 +185,7 @@ impl<'i> InputDisplay<'i> {
 
     /// Compute the sections of input to display.
     pub fn prepare(&mut self) {
-        let computed = self
-            .section_opt
-            .compute(self.input.as_dangerous(), self.format);
+        let computed = self.section_opt.compute(self.input, self.format);
         self.section = Some(computed);
     }
 

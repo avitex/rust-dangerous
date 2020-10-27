@@ -91,7 +91,7 @@ fn test_try_skip_while() {
 fn test_take() {
     assert_eq!(
         read_all!(b"hello", |r| { r.take(5) }).unwrap(),
-        &b"hello"[..]
+        b"hello"[..]
     );
 }
 
@@ -99,7 +99,7 @@ fn test_take() {
 fn test_take_remaining() {
     assert_eq!(
         read_all!(b"hello", |r| { Ok(r.take_remaining()) }).unwrap(),
-        &b"hello"[..]
+        b"hello"[..]
     );
 }
 
@@ -112,7 +112,7 @@ fn test_take_while() {
             Ok(v)
         })
         .unwrap(),
-        &b"hello"[..]
+        b"hello"[..]
     );
 }
 
@@ -125,7 +125,7 @@ fn test_try_take_while() {
             Ok(v)
         })
         .unwrap(),
-        &b"hello"[..]
+        b"hello"[..]
     );
 }
 
@@ -134,11 +134,11 @@ fn test_take_consumed() {
     assert_eq!(
         read_all!(b"hello", |r| {
             Ok(r.take_consumed(|r| {
-                r.take_remaining();
+                let _ = r.take_remaining();
             }))
         })
         .unwrap(),
-        &b"hello"[..]
+        b"hello"[..]
     );
 }
 
@@ -149,7 +149,7 @@ fn test_try_take_consumed() {
             r.try_take_consumed(|r| r.consume(b"hello"))
         })
         .unwrap(),
-        &b"hello"[..]
+        b"hello"[..]
     );
 }
 
@@ -181,7 +181,7 @@ fn test_peek_opt() {
 
 #[test]
 fn test_peek_eq() {
-    read_partial!(b"helloworld", |r| {
+    let _ = read_partial!(b"helloworld", |r| {
         assert!(r.peek_eq(b"helloworld"));
         assert!(r.peek_eq(b"hello"));
         assert!(!r.peek_eq(b"no"));
@@ -217,16 +217,4 @@ fn test_consume() {
             .to_retry_requirement(),
         None
     );
-}
-
-#[test]
-fn test_error() {
-    use dangerous::{Expected, Invalid, Reader};
-
-    read_all!("hello", |parent: &mut Reader<'_, Expected<'_>>| {
-        let mut child = parent.error::<Invalid>();
-        assert_eq!(child.consume(b"world"), Err(Invalid::fatal()));
-        Ok(())
-    })
-    .unwrap_err();
 }

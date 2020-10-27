@@ -1,4 +1,5 @@
 pub(crate) mod alt_iter;
+pub(crate) mod byte;
 pub(crate) mod utf8;
 
 use core::ops::Range;

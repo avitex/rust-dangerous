@@ -4,7 +4,7 @@ use crate::input::Input;
 
 use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue};
 
-/// Convenience trait requiring both [`FromContext`] and [`FromExpected`].
+/// Convenience trait requiring [`FromContext`], [`FromExpected`].
 pub trait Error<'i>: FromContext<'i> + FromExpected<'i> {}
 
 impl<'i, T> Error<'i> for T where T: FromContext<'i> + FromExpected<'i> {}
@@ -14,7 +14,7 @@ pub trait FromContext<'i> {
     /// Return `Self` with context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
-    fn from_context<C>(self, input: &'i Input, context: C) -> Self
+    fn from_context<C>(self, input: Input<'i>, context: C) -> Self
     where
         C: Context;
 }
@@ -47,13 +47,13 @@ pub trait Details<'i> {
     /// The error itself will have the details and the specific section of input
     /// that caused the error. This value simply allows us to see the bigger
     /// picture given granular errors in a large amount of input.
-    fn input(&self) -> &'i Input;
+    fn input(&self) -> Input<'i>;
 
     /// The specific section of input that caused an error.
-    fn span(&self) -> &'i Input;
+    fn span(&self) -> Input<'i>;
 
     /// The expected value, if applicable.
-    fn expected(&self) -> Option<&Input>;
+    fn expected(&self) -> Option<Input<'_>>;
 
     /// The description of what went wrong while processing the input.
     ///
@@ -73,15 +73,15 @@ impl<'i, T> Details<'i> for &T
 where
     T: Details<'i>,
 {
-    fn input(&self) -> &'i Input {
+    fn input(&self) -> Input<'i> {
         (**self).input()
     }
 
-    fn span(&self) -> &'i Input {
+    fn span(&self) -> Input<'i> {
         (**self).span()
     }
 
-    fn expected(&self) -> Option<&Input> {
+    fn expected(&self) -> Option<Input<'_>> {
         (**self).expected()
     }
 

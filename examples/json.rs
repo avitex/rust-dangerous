@@ -171,7 +171,7 @@ where
             r.try_verify("first byte is digit", |r| {
                 r.read_u8().map(|c| c.is_ascii_digit())
             })?;
-            r.take_while(|c| c.is_ascii_digit() || c == b'.');
+            r.skip_while(|c| c.is_ascii_digit() || c == b'.');
             Ok(())
         })?;
         num_str.read_all(|r| {

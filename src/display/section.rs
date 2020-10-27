@@ -588,7 +588,7 @@ mod tests {
         }) => {{
             let full = $input;
             let section = Section::$from($input, $display.len(), $format);
-            let input = InputDisplay::new(input(full))
+            let input = InputDisplay::new(&input(full))
                 .format($format)
                 .$input_section($display.len());
             assert_eq!(section.visible, $visible);
@@ -607,9 +607,9 @@ mod tests {
             let full = $input;
             let span = &full[$range];
             let section = Section::from_span(full, span, $display.len(), $format);
-            let input = InputDisplay::new(input(full))
+            let input = InputDisplay::new(&input(full))
                 .format($format)
-                .span(input(span), $display.len());
+                .span(&input(span), $display.len());
             assert_eq!(section.visible, $visible);
             assert_eq!($display, input.to_string());
         }};

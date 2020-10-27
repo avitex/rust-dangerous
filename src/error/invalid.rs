@@ -36,6 +36,7 @@ pub struct Invalid {
 
 impl Invalid {
     /// Create a fatal `Invalid` error.
+    #[inline(always)]
     pub fn fatal() -> Self {
         Self {
             retry_requirement: None,
@@ -56,19 +57,22 @@ impl fmt::Display for Invalid {
 }
 
 impl ToRetryRequirement for Invalid {
+    #[inline(always)]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         self.retry_requirement
     }
 }
 
 impl IntoFatal for Invalid {
+    #[inline(always)]
     fn into_fatal(self) -> Self {
         Self::fatal()
     }
 }
 
 impl<'i> FromContext<'i> for Invalid {
-    fn from_context<C>(self, _input: &'i Input, _context: C) -> Self
+    #[inline(always)]
+    fn from_context<C>(self, _input: Input<'i>, _context: C) -> Self
     where
         C: Context,
     {
@@ -80,30 +84,35 @@ impl<'i, S> From<Expected<'i, S>> for Invalid
 where
     S: ContextStack,
 {
+    #[inline(always)]
     fn from(err: Expected<'i, S>) -> Self {
         err.to_retry_requirement().into()
     }
 }
 
 impl<'i> From<ExpectedValue<'i>> for Invalid {
+    #[inline(always)]
     fn from(err: ExpectedValue<'i>) -> Self {
         err.to_retry_requirement().into()
     }
 }
 
 impl<'i> From<ExpectedLength<'i>> for Invalid {
+    #[inline(always)]
     fn from(err: ExpectedLength<'i>) -> Self {
         err.to_retry_requirement().into()
     }
 }
 
 impl<'i> From<ExpectedValid<'i>> for Invalid {
+    #[inline(always)]
     fn from(err: ExpectedValid<'i>) -> Self {
         err.to_retry_requirement().into()
     }
 }
 
 impl From<Option<RetryRequirement>> for Invalid {
+    #[inline(always)]
     fn from(retry_requirement: Option<RetryRequirement>) -> Self {
         Self { retry_requirement }
     }

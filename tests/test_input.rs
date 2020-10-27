@@ -63,23 +63,23 @@ fn test_is_within() {
     // Within
     let parent = input!(&bytes[16..32]);
     let child = input!(&bytes[20..24]);
-    assert!(child.is_within(parent));
-    assert!(parent.is_within(parent));
+    assert!(child.is_within(&parent));
+    assert!(parent.is_within(&parent));
 
     // Left out of bound
     let parent = input!(&bytes[16..32]);
     let child = input!(&bytes[15..24]);
-    assert!(!child.is_within(parent));
+    assert!(!child.is_within(&parent));
 
     // Right out of bound
     let parent = input!(&bytes[16..32]);
     let child = input!(&bytes[20..33]);
-    assert!(!child.is_within(parent));
+    assert!(!child.is_within(&parent));
 
     // Both out of bound
     let parent = input!(&bytes[16..32]);
     let child = input!(&bytes[15..33]);
-    assert!(!child.is_within(parent));
+    assert!(!child.is_within(&parent));
 }
 
 #[test]
