@@ -1,10 +1,10 @@
 use core::fmt;
 
-#[cfg(feature = "box-expected")]
+#[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
 use crate::display::{ByteCount, ErrorDisplay};
-use crate::input::{input, Input};
+use crate::input::Input;
 
 use super::{
     Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, FromContext, IntoFatal,
@@ -20,23 +20,16 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///
 /// - Enable the `full-context` feature (enabled by default), for full-context
 ///   stacks.
-/// - It is generally recommended for better performance to have the
-///   `box-expected` feature enabled (enabled by default) if the structures
-///   being returned from parsing are smaller than or equal to `~128 bytes`.
-///   This is because the `Expected` structure is `136 bytes` large on 64 bit
-///   systems and successful parses may be hindered by the time to move the
-///   `Result<T, Expected>` value. By boxing the internals of `Expected` the
+/// - It is generally recommended for better performance to box `Expected` if
+///   the structures being returned from parsing are smaller than or equal to
+///   `~128 bytes`. This is because the `Expected` structure is `168 - 192
+///   bytes` large on 64 bit systems and successful parses may be hindered by
+///   the time to move the `Result<T, Expected>` value. By boxing `Expected` the
 ///   size becomes only `8 bytes`. When in doubt, write a benchmark.
 ///
 /// See [`crate::error`] for additional documentation around the error system.
 pub struct Expected<'i, S = ExpectedContextStack> {
-    #[cfg(feature = "box-expected")]
-    inner: Box<ExpectedInner<'i, S>>,
-    #[cfg(not(feature = "box-expected"))]
-    inner: ExpectedInner<'i, S>,
-}
-
-struct ExpectedInner<'i, S> {
+    input: Input<'i>,
     stack: S,
     fatal: bool,
     kind: ExpectedKind<'i>,
@@ -65,24 +58,28 @@ impl<'i, S> Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
-    #[inline]
-    fn from_kind(kind: ExpectedKind<'i>) -> Self {
-        let context = match &kind {
-            ExpectedKind::Valid(err) => err.context(),
-            ExpectedKind::Value(err) => err.context(),
-            ExpectedKind::Length(err) => err.context(),
-        };
+    fn add_context<C>(&mut self, input: Input<'i>, context: C)
+    where
+        C: Context,
+    {
+        if self.input.is_within(&input) {
+            self.input = input
+        }
+        self.stack.push(context);
+    }
 
-        let inner = ExpectedInner {
+    fn from_kind(kind: ExpectedKind<'i>) -> Self {
+        let (input, context) = match &kind {
+            ExpectedKind::Valid(err) => (err.input(), err.context()),
+            ExpectedKind::Value(err) => (err.input(), err.context()),
+            ExpectedKind::Length(err) => (err.input(), err.context()),
+        };
+        Self {
             kind,
+            input,
             fatal: false,
             stack: S::from_root(context),
-        };
-
-        #[cfg(feature = "box-expected")]
-        let inner = Box::new(inner);
-
-        Self { inner }
+        }
     }
 }
 
@@ -90,31 +87,31 @@ impl<'i, S> Details<'i> for Expected<'i, S>
 where
     S: ContextStack,
 {
-    fn input(&self) -> &'i Input {
-        match &self.inner.kind {
+    fn input(&self) -> Input<'i> {
+        match &self.kind {
             ExpectedKind::Value(err) => err.input(),
             ExpectedKind::Valid(err) => err.input(),
             ExpectedKind::Length(err) => err.input(),
         }
     }
 
-    fn span(&self) -> &'i Input {
-        match &self.inner.kind {
+    fn span(&self) -> Input<'i> {
+        match &self.kind {
             ExpectedKind::Value(err) => err.found(),
             ExpectedKind::Valid(err) => err.span(),
             ExpectedKind::Length(err) => err.span(),
         }
     }
 
-    fn expected(&self) -> Option<&Input> {
-        match &self.inner.kind {
+    fn expected(&self) -> Option<Input<'_>> {
+        match &self.kind {
             ExpectedKind::Value(err) => Some(err.expected()),
             ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,
         }
     }
 
     fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => fmt::Display::fmt(err, f),
             ExpectedKind::Valid(err) => fmt::Display::fmt(err, f),
             ExpectedKind::Length(err) => fmt::Display::fmt(err, f),
@@ -122,13 +119,13 @@ where
     }
 
     fn context_stack(&self) -> &dyn ContextStack {
-        &self.inner.stack
+        &self.stack
     }
 }
 
 impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => err.to_retry_requirement(),
             ExpectedKind::Valid(err) => err.to_retry_requirement(),
             ExpectedKind::Length(err) => err.to_retry_requirement(),
@@ -136,10 +133,10 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     }
 
     fn is_fatal(&self) -> bool {
-        if self.inner.fatal {
+        if self.fatal {
             return true;
         }
-        match &self.inner.kind {
+        match &self.kind {
             ExpectedKind::Value(err) => err.is_fatal(),
             ExpectedKind::Valid(err) => err.is_fatal(),
             ExpectedKind::Length(err) => err.is_fatal(),
@@ -147,9 +144,28 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     }
 }
 
+#[cfg(feature = "alloc")]
+impl<'i, S> ToRetryRequirement for Box<Expected<'i, S>> {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
+        (**self).to_retry_requirement()
+    }
+
+    fn is_fatal(&self) -> bool {
+        (**self).is_fatal()
+    }
+}
+
 impl<'i, S> IntoFatal for Expected<'i, S> {
     fn into_fatal(mut self) -> Self {
-        self.inner.fatal = true;
+        self.fatal = true;
+        self
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'i, S> IntoFatal for Box<Expected<'i, S>> {
+    fn into_fatal(mut self) -> Self {
+        self.fatal = true;
         self
     }
 }
@@ -158,30 +174,42 @@ impl<'i, S> FromContext<'i> for Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
-    fn from_context<C>(mut self, input: &'i Input, context: C) -> Self
+    fn from_context<C>(mut self, input: Input<'i>, context: C) -> Self
     where
         C: Context,
     {
-        let current_input = match &mut self.inner.kind {
-            ExpectedKind::Value(err) => &mut err.input,
-            ExpectedKind::Valid(err) => &mut err.input,
-            ExpectedKind::Length(err) => &mut err.input,
-        };
-        if current_input.is_within(input) {
-            *current_input = input
-        }
-        self.inner.stack.push(context);
+        self.add_context(input, context);
         self
     }
 }
 
-impl<'i> fmt::Display for Expected<'i> {
+#[cfg(feature = "alloc")]
+impl<'i, S> FromContext<'i> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from_context<C>(mut self, input: Input<'i>, context: C) -> Self
+    where
+        C: Context,
+    {
+        self.add_context(input, context);
+        self
+    }
+}
+
+impl<'i, S> fmt::Display for Expected<'i, S>
+where
+    S: ContextStack,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).fmt(f)
     }
 }
 
-impl<'i> fmt::Debug for Expected<'i> {
+impl<'i, S> fmt::Debug for Expected<'i, S>
+where
+    S: ContextStack,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
     }
@@ -196,12 +224,32 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
+impl<'i, S> From<ExpectedLength<'i>> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from(expected: ExpectedLength<'i>) -> Box<Expected<'i, S>> {
+        Box::new(expected.into())
+    }
+}
+
 impl<'i, S> From<ExpectedValid<'i>> for Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
     fn from(err: ExpectedValid<'i>) -> Self {
         Self::from_kind(ExpectedKind::Valid(err))
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'i, S> From<ExpectedValid<'i>> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from(expected: ExpectedValid<'i>) -> Box<Expected<'i, S>> {
+        Box::new(expected.into())
     }
 }
 
@@ -214,56 +262,54 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
+impl<'i, S> From<ExpectedValue<'i>> for Box<Expected<'i, S>>
+where
+    S: ContextStackBuilder,
+{
+    fn from(expected: ExpectedValue<'i>) -> Box<Expected<'i, S>> {
+        Box::new(expected.into())
+    }
+}
+
 #[cfg(feature = "std")]
-impl<'i> std::error::Error for Expected<'i> {}
+impl<'i, S> std::error::Error for Expected<'i, S> where S: ContextStack {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
 
-#[derive(Debug, Clone)]
-#[allow(variant_size_differences)]
-pub(crate) enum Value<'a> {
-    Byte(u8),
-    Bytes(&'a [u8]),
-}
-
-impl<'i> Value<'i> {
-    pub(crate) fn as_input(&self) -> &Input {
-        match self {
-            Self::Byte(b) => Input::from_u8(b),
-            Self::Bytes(bytes) => input(bytes),
-        }
-    }
-}
-
 /// An error representing a failed exact value requirement of [`Input`].
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ExpectedValue<'i> {
-    pub(crate) input: &'i Input,
-    pub(crate) actual: &'i Input,
-    pub(crate) expected: Value<'i>,
+    pub(crate) input: Input<'i>,
+    pub(crate) actual: &'i [u8],
+    pub(crate) expected: &'i [u8],
     pub(crate) context: ExpectedContext,
 }
 
 impl<'i> ExpectedValue<'i> {
     /// The [`Input`] provided in the context when the error occurred.
-    pub fn input(&self) -> &'i Input {
-        self.input
+    #[inline(always)]
+    pub fn input(&self) -> Input<'i> {
+        self.input.clone()
     }
 
     /// The [`ExpectedContext`] around the error.
+    #[inline(always)]
     pub fn context(&self) -> ExpectedContext {
         self.context
     }
 
     /// The [`Input`] that was found.
-    pub fn found(&self) -> &'i Input {
-        self.actual
+    #[inline(always)]
+    pub fn found(&self) -> Input<'i> {
+        Input::new(self.actual, self.input.is_bound())
     }
 
     /// The [`Input`] value that was expected.
-    pub fn expected(&self) -> &Input {
-        self.expected.as_input()
+    #[inline(always)]
+    pub fn expected(&self) -> Input<'i> {
+        Input::new(self.expected, self.input.is_bound())
     }
 }
 
@@ -274,6 +320,7 @@ impl<'i> fmt::Display for ExpectedValue<'i> {
 }
 
 impl<'i> ToRetryRequirement for ExpectedValue<'i> {
+    #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         if self.is_fatal() {
             None
@@ -286,8 +333,9 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
 
     /// Returns `true` if the value could never match and `false` if the matching
     /// was incomplete.
+    #[inline]
     fn is_fatal(&self) -> bool {
-        !self.expected().has_prefix(self.found().as_dangerous())
+        self.input.is_bound() || !self.expected().has_prefix(self.found().as_dangerous())
     }
 }
 
@@ -295,29 +343,32 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
 // Expected length error
 
 /// An error representing a failed requirement for a length of [`Input`].
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ExpectedLength<'i> {
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
-    pub(crate) span: &'i Input,
-    pub(crate) input: &'i Input,
+    pub(crate) span: &'i [u8],
+    pub(crate) input: Input<'i>,
     pub(crate) context: ExpectedContext,
 }
 
 impl<'i> ExpectedLength<'i> {
     /// The [`Input`] provided in the context when the error occurred.
-    pub fn input(&self) -> &'i Input {
-        self.input
+    #[inline(always)]
+    pub fn input(&self) -> Input<'i> {
+        self.input.clone()
     }
 
     /// The [`ExpectedContext`] around the error.
+    #[inline(always)]
     pub fn context(&self) -> ExpectedContext {
         self.context
     }
 
     /// The specific part of the [`Input`] that did not meet the requirement.
-    pub fn span(&self) -> &'i Input {
-        self.span
+    #[inline(always)]
+    pub fn span(&self) -> Input<'i> {
+        Input::new(self.span, self.input.is_bound())
     }
 
     /// The minimum length that was expected in a context.
@@ -326,6 +377,7 @@ impl<'i> ExpectedLength<'i> {
     /// when this error occurred. If you wish to work out the requirement to
     /// continue processing input use
     /// [`ToRetryRequirement::to_retry_requirement()`].
+    #[inline(always)]
     pub fn min(&self) -> usize {
         self.min
     }
@@ -335,11 +387,13 @@ impl<'i> ExpectedLength<'i> {
     /// If max has a value, this signifies the [`Input`] exceeded it in some
     /// way. An example of this would be [`Input::read_all()`], where there was
     /// [`Input`] left over.
+    #[inline(always)]
     pub fn max(&self) -> Option<usize> {
         self.max
     }
 
     /// Returns `true` if an exact length was expected in a context.
+    #[inline]
     pub fn is_exact(&self) -> bool {
         Some(self.min) == self.max
     }
@@ -347,6 +401,7 @@ impl<'i> ExpectedLength<'i> {
     /// The exact length that was expected in a context, if applicable.
     ///
     /// Will return a value if `is_exact()` returns `true`.
+    #[inline]
     pub fn exact(&self) -> Option<usize> {
         if self.is_exact() {
             self.max
@@ -375,6 +430,7 @@ impl<'i> fmt::Display for ExpectedLength<'i> {
 }
 
 impl<'i> ToRetryRequirement for ExpectedLength<'i> {
+    #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         if self.is_fatal() {
             None
@@ -386,8 +442,9 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     }
 
     /// Returns `true` if `max()` has a value.
+    #[inline]
     fn is_fatal(&self) -> bool {
-        self.max.is_some()
+        self.input.is_bound() || self.max.is_some()
     }
 }
 
@@ -395,31 +452,35 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
 // Expected valid error
 
 /// An error representing a failed requirement for a valid [`Input`].
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ExpectedValid<'i> {
-    pub(crate) input: &'i Input,
-    pub(crate) span: &'i Input,
+    pub(crate) input: Input<'i>,
+    pub(crate) span: &'i [u8],
     pub(crate) context: ExpectedContext,
     pub(crate) retry_requirement: Option<RetryRequirement>,
 }
 
 impl<'i> ExpectedValid<'i> {
     /// The [`Input`] provided in the context when the error occurred.
-    pub fn input(&self) -> &'i Input {
-        self.input
+    #[inline(always)]
+    pub fn input(&self) -> Input<'i> {
+        self.input.clone()
     }
 
     /// The [`ExpectedContext`] around the error.
+    #[inline(always)]
     pub fn context(&self) -> ExpectedContext {
         self.context
     }
 
     /// The specific part of the [`Input`] that did not meet the requirement.
-    pub fn span(&self) -> &'i Input {
-        self.span
+    #[inline(always)]
+    pub fn span(&self) -> Input<'i> {
+        Input::new(self.span, self.input.is_bound())
     }
 
     /// A description of what was expected.
+    #[inline(always)]
     pub fn expected(&self) -> &'static str {
         self.context.expected
     }
@@ -432,8 +493,18 @@ impl<'i> fmt::Display for ExpectedValid<'i> {
 }
 
 impl<'i> ToRetryRequirement for ExpectedValid<'i> {
+    #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
-        self.retry_requirement
+        if self.is_fatal() {
+            None
+        } else {
+            self.retry_requirement
+        }
+    }
+
+    #[inline]
+    fn is_fatal(&self) -> bool {
+        self.input.is_bound() || self.retry_requirement.is_some()
     }
 }
 
@@ -442,14 +513,16 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(all(target_pointer_width = "64", feature = "box-expected"))]
+    #[cfg(all(target_pointer_width = "64", not(feature = "full-context")))]
     fn test_expected_size() {
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 8);
+        // Update the docs if this value changes.
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 168);
     }
 
     #[test]
-    #[cfg(all(target_pointer_width = "64", not(feature = "box-expected")))]
+    #[cfg(all(target_pointer_width = "64", feature = "full-context"))]
     fn test_expected_size() {
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 136);
+        // Update the docs if this value changes.
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 192);
     }
 }

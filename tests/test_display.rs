@@ -38,10 +38,10 @@ fn test_invalid_utf8() {
 
 #[test]
 fn test_invalid_span_does_nothing() {
-    let display = input!("hello").display().span(input!("world"), 16);
+    let display = input!("hello").display().span(&input!("world"), 16);
     assert_eq!(display.to_string(), "[68 65 6c 6c 6f]");
     assert_eq!(display.underline(true).to_string(), "                ");
-    let display = input!("hello").display().span(input!(""), 16);
+    let display = input!("hello").display().span(&input!(""), 16);
     assert_eq!(display.to_string(), "[68 65 6c 6c 6f]");
     assert_eq!(display.underline(true).to_string(), "                ");
 }

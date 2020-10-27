@@ -37,4 +37,3 @@ pub use self::retry::{IntoFatal, RetryRequirement, ToRetryRequirement};
 pub use self::traits::{Details, Error, FromContext, FromExpected};
 
 pub(crate) use self::context::{with_context, OperationContext};
-pub(crate) use self::expected::Value;

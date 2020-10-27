@@ -117,16 +117,16 @@ where
     {
         let input = self.error.input();
         let span = self.error.span();
-        let input_display = self.input_display(input);
-        let span_display = self.input_display(span);
+        let input_display = self.input_display(&input);
+        let span_display = self.input_display(&span);
         if let Some(expected_value) = self.error.expected() {
-            let expected_display = self.input_display(expected_value);
+            let expected_display = self.input_display(&expected_value);
             writeln!(w, "expected:")?;
             write_input(w, expected_display, false)?;
             writeln!(w, "in:")?;
         }
-        if span.is_within(input) {
-            write_input(w, input_display.span(span, self.input_max_width), true)
+        if span.is_within(&input) {
+            write_input(w, input_display.span(&span, self.input_max_width), true)
         } else {
             writeln!(
                 w,
@@ -173,13 +173,13 @@ where
         let input = self.error.input();
         let span = self.error.span();
         write!(w, "additional:\n  ")?;
-        if span.is_within(input) {
+        if span.is_within(&input) {
             let input_bounds = slice_ptr_range(input.as_dangerous());
             let span_bounds = slice_ptr_range(self.error.span().as_dangerous());
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
             match self.format {
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
-                    write!(w, "error line: {}, ", line_offset(input, span_offset))?;
+                    write!(w, "error line: {}, ", line_offset(&input, span_offset))?;
                 }
                 _ => (),
             }
@@ -205,7 +205,7 @@ where
         }
     }
 
-    fn input_display<'b>(&self, input: &'b Input) -> InputDisplay<'b> {
+    fn input_display<'b>(&self, input: &Input<'b>) -> InputDisplay<'b> {
         input.display().format(self.format)
     }
 }
@@ -229,12 +229,12 @@ where
 }
 
 #[cfg(feature = "bytecount")]
-fn line_offset(input: &Input, span_offset: usize) -> usize {
+fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
     bytecount::count(&input.as_dangerous()[..span_offset], b'\n') + 1
 }
 
 #[cfg(not(feature = "bytecount"))]
-fn line_offset(input: &Input, span_offset: usize) -> usize {
+fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
     input.as_dangerous()[..span_offset]
         .iter()
         .filter(|b| **b == b'\n')

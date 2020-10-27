@@ -29,8 +29,7 @@ dangerous = "0.2"
 a concern.  
 **\[2]** Zero dependencies when both `unicode` and `bytecount`
 features are disabled.  
-**\[3]** Zero heap-allocations when both `box-expected` and `full-context`
-features are disabled.
+**\[3]** Zero heap-allocations when the `full-context` feature is disabled.
 
 This library's intentions are to provide a simple interface for explicitly
 parsing untrusted data safely. `dangerous` really shines with parsing binary or

@@ -2,8 +2,8 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
-    OperationContext, ToRetryRequirement, Value,
+    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext, IntoFatal,
+    OperationContext, ToRetryRequirement,
 };
 use crate::input::Input;
 
@@ -11,8 +11,68 @@ use crate::input::Input;
 ///
 /// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`],
 /// [`Input::read_partial()`] or [`Input::read_infallible()`].
+///
+/// # Errors
+///
+/// Functions on `Reader` are designed to provide a panic free interface and if
+/// applicable, clearly define the type of error that can can be thown.
+///
+/// If want to verify input and optionally return a type from that verification,
+/// [`verify()`], [`try_verify()`], [`expect()`], [`try_expect()`] and
+/// [`try_expect_erased()`] is provided. These functions are the interface for
+/// creating errors based off what was expected.
+///
+/// [`try_expect_erased()`] is provided for reading a custom type that does not
+/// support a `&mut Reader<'i, E>` interface, for example a type implementing
+/// `FromStr`.
+///
+/// [`recover()`] and [`recover_if()`] are provided as an escape hatch when you
+/// wish to catch an error and try another branch.
+///
+/// [`context()`] and [`peek_context()`] are provided to add a [`Context`] to
+/// any error thrown inside their scope. This is useful for debugging.
+///
+/// # Peeking
+///
+/// Peeking should be used to find the correct path to consume. Values read from
+/// peeking should not be used for the resulting type.
+///
+/// ```
+/// use dangerous::Invalid;
+///
+/// let input = dangerous::input(b"true");
+/// let result: Result<_, Invalid> = input.read_all(|r| {
+///     // We use `peek_u8` here because we expect at least one byte.
+///     // If we wanted to handle the case when there is no more input left,
+///     // for example to provide a default, we would use `peek_u8_opt`.
+///     // This means we can handle a `RetryRequirement` if the `Reader` is
+///     // at the end of the input.s
+///     r.try_expect("boolean", |r| match r.peek_u8()? {
+///         b't' => r.consume(b"true").map(|()| Some(true)),
+///         b'f' => r.consume(b"false").map(|()| Some(false)),
+///         _ => Ok(None),
+///     })
+/// });
+/// assert!(matches!(result, Ok(true)));
+/// ```
+///
+/// [`Input`]: crate::input::Input
+/// [`Input::read_all()`]: crate::input::Input::read_all()
+/// [`Input::read_partial()`]: crate::input::Input::read_partial()
+/// [`Input::read_infallible()`]: crate::input::Input::read_infallible()
+/// [`context()`]: Reader::context()  
+/// [`peek_context()`]: Reader::peek_context()  
+/// [`verify()`]: Reader::verify()  
+/// [`try_verify()`]: Reader::try_verify()  
+/// [`expect()`]: Reader::expect()  
+/// [`try_expect()`]: Reader::try_expect()  
+/// [`try_expect_erased()`]: Reader::try_expect_erased()  
+/// [`no_retry()`]: Reader::no_retry()  
+/// [`recover()`]: Reader::recover()  
+/// [`recover_if()`]: Reader::recover_if()  
+/// [`RetryRequirement`]: crate::error::RetryRequirement  
 pub struct Reader<'i, E> {
-    input: &'i Input,
+    input: Input<'i>,
     error: PhantomData<E>,
 }
 
@@ -29,7 +89,7 @@ impl<'i, E> Reader<'i, E> {
         C: Context,
         F: FnOnce(&mut Self) -> Result<T, E>,
     {
-        with_context(self.input, context, || f(self))
+        with_context(self.input.clone(), context, || f(self))
     }
 
     /// Immutably use the `Reader` with a given context.
@@ -44,7 +104,7 @@ impl<'i, E> Reader<'i, E> {
         C: Context,
         F: FnOnce(&Self) -> Result<T, E>,
     {
-        with_context(self.input, context, || f(self))
+        with_context(self.input.clone(), context, || f(self))
     }
 
     /// Returns `true` if the `Reader` has no more input to consume.
@@ -63,9 +123,8 @@ impl<'i, E> Reader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        let (_, tail) = self.input.split_at(len, "skip")?;
-        self.input = tail;
-        Ok(())
+        self.try_advance(|input| input.split_at(len, "skip"))
+            .map(drop)
     }
 
     /// Skip a length of input while a predicate check remains true.
@@ -75,9 +134,7 @@ impl<'i, E> Reader<'i, E> {
     where
         F: FnMut(u8) -> bool,
     {
-        let (head, tail) = self.input.split_while(pred);
-        self.input = tail;
-        head.len()
+        self.advance(|input| input.split_while(pred)).len()
     }
 
     /// Try skip a length of input while a predicate check remains successful
@@ -93,9 +150,8 @@ impl<'i, E> Reader<'i, E> {
         E: FromContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
-        let (head, tail) = self.input.try_split_while(pred, "try skip while")?;
-        self.input = tail;
-        Ok(head.len())
+        self.try_advance(|input| input.try_split_while(pred, "try skip while"))
+            .map(|head| head.len())
     }
 
     /// Read a length of input.
@@ -103,30 +159,25 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns an error if the length requirement to read could not be met.
-    pub fn take(&mut self, len: usize) -> Result<&'i Input, E>
+    pub fn take(&mut self, len: usize) -> Result<Input<'i>, E>
     where
         E: From<ExpectedLength<'i>>,
     {
-        let (head, tail) = self.input.split_at(len, "take")?;
-        self.input = tail;
-        Ok(head)
+        self.try_advance(|input| input.split_at(len, "take"))
     }
 
     /// Read all of the remaining input.
-    pub fn take_remaining(&mut self) -> &'i Input {
-        let all = self.input;
-        self.input = all.end();
-        all
+    #[inline]
+    pub fn take_remaining(&mut self) -> Input<'i> {
+        self.advance(|input| (input.clone(), input.end()))
     }
 
     /// Read a length of input while a predicate check remains true.
-    pub fn take_while<F>(&mut self, pred: F) -> &'i Input
+    pub fn take_while<F>(&mut self, pred: F) -> Input<'i>
     where
         F: FnMut(u8) -> bool,
     {
-        let (head, tail) = self.input.split_while(pred);
-        self.input = tail;
-        head
+        self.advance(|input| input.split_while(pred))
     }
 
     /// Try read a length of input while a predicate check remains successful
@@ -135,25 +186,21 @@ impl<'i, E> Reader<'i, E> {
     /// # Errors
     ///
     /// Returns any error the provided function does.
-    pub fn try_take_while<F>(&mut self, pred: F) -> Result<&'i Input, E>
+    pub fn try_take_while<F>(&mut self, pred: F) -> Result<Input<'i>, E>
     where
         E: FromContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
-        let (head, tail) = self.input.try_split_while(pred, "try take while")?;
-        self.input = tail;
-        Ok(head)
+        self.try_advance(|input| input.try_split_while(pred, "try take while"))
     }
 
     /// Read a length of input that was successfully consumed from a sub-parse.
-    pub fn take_consumed<F>(&mut self, consumer: F) -> &'i Input
+    pub fn take_consumed<F>(&mut self, consumer: F) -> Input<'i>
     where
         E: FromContext<'i>,
         F: FnMut(&mut Self),
     {
-        let (head, tail) = self.input.split_consumed(consumer);
-        self.input = tail;
-        head
+        self.advance(|input| input.split_consumed(consumer))
     }
 
     /// Try read a length of input that was successfully consumed from a
@@ -171,53 +218,51 @@ impl<'i, E> Reader<'i, E> {
     ///     })
     /// }).unwrap();
     ///
-    /// assert_eq!(consumed, &b"abc"[..]);
+    /// assert_eq!(consumed, b"abc"[..]);
     /// ```
     ///
     /// # Errors
     ///
     /// Returns any error the provided function does.
-    pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<&'i Input, E>
+    pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<Input<'i>, E>
     where
         E: FromContext<'i>,
         F: FnMut(&mut Self) -> Result<(), E>,
     {
-        let (head, tail) = self
-            .input
-            .try_split_consumed(consumer, "try take consumed")?;
-        self.input = tail;
-        Ok(head)
+        self.try_advance(|input| input.try_split_consumed(consumer, "try take consumed"))
     }
 
     /// Peek a length of input.
     ///
+    /// The function lifetime is to prevent the peeked `Input` being used as a
+    /// value in a parsed structure. Peeked values should only be used in
+    /// choosing a correct parse path.
+    ///
     /// # Errors
     ///
     /// Returns an error if the length requirement to peek could not be met.
-    pub fn peek<F, T>(&self, len: usize, f: F) -> Result<T, E>
+    pub fn peek<'p>(&'p self, len: usize) -> Result<Input<'p>, E>
     where
         E: From<ExpectedLength<'i>>,
-        F: FnOnce(&Input) -> T,
     {
-        let (head, _) = self.input.split_at(len, "peek")?;
-        Ok(f(head))
+        match self.input.clone().split_at(len, "peek") {
+            Ok((head, _)) => Ok(head),
+            Err(err) => Err(err),
+        }
     }
 
-    /// Try peek a length of input.
+    /// Peek a length of input.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the length requirement to peek could not be met or
-    /// if the provided function does.
-    pub fn try_peek<F, T>(&self, len: usize, f: F) -> Result<T, E>
-    where
-        E: FromContext<'i>,
-        E: From<ExpectedLength<'i>>,
-        F: FnOnce(&'i Input) -> Result<T, E>,
-        T: 'static,
-    {
-        let (head, _) = self.input.split_at(len, "try peek")?;
-        with_context(self.input, OperationContext("try peek"), || f(head))
+    /// This is equivalent to `peek` but does not return an error. Don't use
+    /// this function if you want an error if there isn't enough input.
+    pub fn peek_opt(&self, len: usize) -> Option<Input<'_>> {
+        self.input.clone().split_at_opt(len).map(|(head, _)| head)
+    }
+
+    /// Returns `true` if `bytes` is next in the `Reader`.
+    #[inline]
+    pub fn peek_eq(&self, bytes: &[u8]) -> bool {
+        self.input.has_prefix(bytes)
     }
 
     /// Peek the next byte in the input without mutating the `Reader`.
@@ -230,13 +275,22 @@ impl<'i, E> Reader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.input.first("peek u8")
+        self.input.clone().first("peek u8")
     }
 
-    /// Returns `true` if `bytes` is next in the `Reader`.
+    /// Peek the next byte in the input without mutating the `Reader`.
+    ///
+    /// This is equivalent to `peek_u8` but does not return an error. Don't use
+    /// this function if you want an error if there isn't enough input.
     #[inline]
-    pub fn peek_eq(&self, bytes: &[u8]) -> bool {
-        self.input.has_prefix(bytes)
+    pub fn peek_u8_opt(&self) -> Option<u8> {
+        self.input.first_opt()
+    }
+
+    /// Returns `true` if `byte` is next in the `Reader`.
+    #[inline]
+    pub fn peek_u8_eq(&self, byte: u8) -> bool {
+        self.peek_eq(&[byte])
     }
 
     /// Consume expected bytes.
@@ -251,10 +305,8 @@ impl<'i, E> Reader<'i, E> {
     where
         E: From<ExpectedValue<'i>>,
     {
-        let prefix = Value::Bytes(bytes);
-        let tail = self.input.split_prefix::<E>(prefix, "consume")?;
-        self.input = tail;
-        Ok(())
+        self.try_advance(|input| input.split_prefix(bytes, "consume"))
+            .map(drop)
     }
 
     /// Consume an expected byte.
@@ -269,10 +321,8 @@ impl<'i, E> Reader<'i, E> {
     where
         E: From<ExpectedValue<'i>>,
     {
-        let prefix = Value::Byte(byte);
-        let tail = self.input.split_prefix::<E>(prefix, "consume u8")?;
-        self.input = tail;
-        Ok(())
+        self.try_advance(|input| input.split_prefix_u8(byte, "consume u8"))
+            .map(drop)
     }
 
     /// Read and verify a value without returning it.
@@ -286,19 +336,19 @@ impl<'i, E> Reader<'i, E> {
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        let ((), tail) = self.input.split_expect(
-            |r: &mut Self| {
-                if verifier(r) {
-                    Some(())
-                } else {
-                    None
-                }
-            },
-            expected,
-            "verify",
-        )?;
-        self.input = tail;
-        Ok(())
+        self.try_advance(|input| {
+            input.split_expect(
+                |r: &mut Self| {
+                    if verifier(r) {
+                        Some(())
+                    } else {
+                        None
+                    }
+                },
+                expected,
+                "verify",
+            )
+        })
     }
 
     /// Try read and verify a value without returning it.
@@ -312,19 +362,17 @@ impl<'i, E> Reader<'i, E> {
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        let ((), tail) = self.input.try_split_expect(
-            |r: &mut Self| {
-                if verifier(r)? {
-                    Ok(Some(()))
-                } else {
-                    Ok(None)
-                }
-            },
-            expected,
-            "try verify",
-        )?;
-        self.input = tail;
-        Ok(())
+        self.try_advance(|input| {
+            input.try_split_expect(
+                |r: &mut Self| match verifier(r) {
+                    Ok(true) => Ok(Some(())),
+                    Ok(false) => Ok(None),
+                    Err(err) => Err(err),
+                },
+                expected,
+                "try verify",
+            )
+        })
     }
 
     /// Expect a value to be read and returned as `Some(T)`.
@@ -338,9 +386,7 @@ impl<'i, E> Reader<'i, E> {
         E: FromContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
-        let (ok, tail) = self.input.split_expect(f, expected, "expect")?;
-        self.input = tail;
-        Ok(ok)
+        self.try_advance(|input| input.split_expect(f, expected, "expect"))
     }
 
     /// Expect a value to be read successfully and returned as `Some(O)`.
@@ -355,9 +401,7 @@ impl<'i, E> Reader<'i, E> {
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Self) -> Result<Option<T>, E>,
     {
-        let (ok, tail) = self.input.try_split_expect(f, expected, "try expect")?;
-        self.input = tail;
-        Ok(ok)
+        self.try_advance(|input| input.try_split_expect(f, expected, "try expect"))
     }
 
     /// Expect a value with any error's details erased except for an optional
@@ -404,11 +448,7 @@ impl<'i, E> Reader<'i, E> {
         F: FnOnce(&mut Self) -> Result<T, R>,
         R: ToRetryRequirement,
     {
-        let (ok, tail) = self
-            .input
-            .try_split_expect_erased(f, expected, "try expect erased")?;
-        self.input = tail;
-        Ok(ok)
+        self.try_advance(|input| input.try_split_expect_erased(f, expected, "try expect erased"))
     }
 
     /// Recovers from an error returning `Some(O)` if successful, or `None` if
@@ -420,11 +460,11 @@ impl<'i, E> Reader<'i, E> {
     where
         F: FnOnce(&mut Self) -> Result<T, E>,
     {
-        let complete = self.input;
+        let checkpoint = self.input.clone();
         match f(self) {
             Ok(ok) => Some(ok),
             Err(_) => {
-                self.input = complete;
+                self.input = checkpoint;
                 None
             }
         }
@@ -442,23 +482,67 @@ impl<'i, E> Reader<'i, E> {
     /// If an error occurs and the predicate returns `false` the error is not
     /// recovered, `Err(E)` is returned.
     #[inline]
-    pub fn try_recover<F, T, R>(&mut self, f: F, pred: R) -> Result<Option<T>, E>
+    pub fn recover_if<F, T, R>(&mut self, f: F, pred: R) -> Result<Option<T>, E>
     where
         E: FromContext<'i>,
         F: FnOnce(&mut Self) -> Result<T, E>,
         R: FnOnce(&E) -> bool,
     {
-        let complete = self.input;
+        let checkpoint = self.input.clone();
         match f(self) {
             Ok(ok) => Ok(Some(ok)),
             Err(err) => {
                 if pred(&err) {
-                    self.input = complete;
+                    self.input = checkpoint;
                     Ok(None)
                 } else {
-                    Err(err.from_context(complete, OperationContext("try recover")))
+                    Err(err.from_context(checkpoint, OperationContext("try recover")))
                 }
             }
+        }
+    }
+
+    /// Prevent errors producing a [`RetryRequirement`] within the provided
+    /// scope.
+    ///
+    /// Use this function when parsing `T` when it would always be a fatal error
+    /// to not have enough input to complete.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if provided function does and removes any
+    /// [`RetryRequirement`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Invalid;
+    ///
+    /// // Without `no_retry` this would throw `Invalid` with a
+    /// // `RetryRequirement` of 1.
+    /// let result = dangerous::input(b"abc\xC2").read_all(|r| {
+    ///     r.no_retry(|r| {
+    ///          r.take_remaining().to_dangerous_non_empty_str()
+    ///     })
+    /// });
+    ///
+    /// // We get a fatal `Invalid` with no `RetryRequirement`.
+    /// assert_eq!(result, Err(Invalid::fatal()));
+    /// ```
+    ///
+    /// [`RetryRequirement`]: crate::error::RetryRequirement
+    pub fn no_retry<F, T>(&mut self, f: F) -> Result<T, E>
+    where
+        E: FromContext<'i>,
+        E: IntoFatal,
+        F: FnOnce(&mut Self) -> Result<T, E>,
+    {
+        let checkpoint = self.input.clone();
+        match f(self) {
+            Ok(ok) => Ok(ok),
+            Err(err) => Err(err
+                .into_fatal()
+                .from_context(checkpoint, OperationContext("no retry"))),
         }
     }
 
@@ -472,9 +556,7 @@ impl<'i, E> Reader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        let (byte, tail) = self.input.split_first::<E>("read u8")?;
-        self.input = tail;
-        Ok(byte)
+        self.try_advance(|input| input.split_first("read u8"))
     }
 
     impl_read_num!(i8, le: read_i8_le, be: read_i8_be);
@@ -489,20 +571,35 @@ impl<'i, E> Reader<'i, E> {
     impl_read_num!(f32, le: read_f32_le, be: read_f32_be);
     impl_read_num!(f64, le: read_f64_le, be: read_f64_be);
 
-    /// Create a sub reader with a given error type.
-    #[inline]
-    pub fn error<T>(&mut self) -> Reader<'_, T> {
-        Reader {
-            input: self.input,
+    /// Create a `Reader` given `Input`.
+    pub(crate) fn new(input: Input<'i>) -> Self {
+        Self {
+            input,
             error: PhantomData,
         }
     }
 
-    /// Create a `Reader` given `Input`.
-    pub(crate) fn new(input: &'i Input) -> Self {
-        Self {
-            input,
-            error: PhantomData,
+    #[inline(always)]
+    fn advance<F, O>(&mut self, f: F) -> O
+    where
+        F: FnOnce(Input<'i>) -> (O, Input<'i>),
+    {
+        let (ok, next) = f(self.input.clone());
+        self.input = next;
+        ok
+    }
+
+    #[inline(always)]
+    fn try_advance<F, O>(&mut self, f: F) -> Result<O, E>
+    where
+        F: FnOnce(Input<'i>) -> Result<(O, Input<'i>), E>,
+    {
+        match f(self.input.clone()) {
+            Ok((ok, next)) => {
+                self.input = next;
+                Ok(ok)
+            }
+            Err(err) => Err(err),
         }
     }
 }

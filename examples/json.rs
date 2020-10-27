@@ -24,7 +24,7 @@ fn main() {
         .read_to_end(&mut input_data)
         .expect("read input");
     let input = dangerous::input(input_data.as_ref());
-    match input.read_all::<_, _, Expected>(read_value) {
+    match input.read_all::<_, _, Box<Expected>>(read_value) {
         Ok(json) => println!("{:#?}", json),
         Err(e) => eprintln!("{:#}", e),
     }
@@ -63,12 +63,12 @@ where
         let mut items = Vec::new();
         r.consume_u8(b'[')?;
         skip_whitespace(r);
-        if r.peek_u8()? != b']' {
+        if !r.peek_u8_eq(b']') {
             loop {
                 let val = read_value(r)?;
                 skip_whitespace(r);
                 items.push(val);
-                if !r.at_end() && r.peek_u8()? == b',' {
+                if !r.at_end() && r.peek_u8_eq(b',') {
                     r.skip(1)?;
                     continue;
                 } else {
@@ -91,7 +91,7 @@ where
         let mut items = Vec::new();
         r.consume_u8(b'{')?;
         skip_whitespace(r);
-        if r.peek_u8()? != b'}' {
+        if !r.peek_u8_eq(b'}') {
             loop {
                 let key = r.context("json object key", read_str)?;
                 skip_whitespace(r);
@@ -100,7 +100,7 @@ where
                 let val = read_value(r)?;
                 skip_whitespace(r);
                 items.push((key, val));
-                if !r.at_end() && r.peek_u8()? == b',' {
+                if !r.at_end() && r.peek_u8_eq(b',') {
                     r.skip(1)?;
                     continue;
                 } else {
@@ -171,7 +171,7 @@ where
             r.try_verify("first byte is digit", |r| {
                 r.read_u8().map(|c| c.is_ascii_digit())
             })?;
-            r.take_while(|c| c.is_ascii_digit() || c == b'.');
+            r.skip_while(|c| c.is_ascii_digit() || c == b'.');
             Ok(())
         })?;
         num_str.read_all(|r| {
@@ -185,4 +185,15 @@ where
 
 fn skip_whitespace<E>(r: &mut Reader<'_, E>) {
     r.skip_while(|c| c.is_ascii_whitespace());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn value_size() {
+        // If true, we box Expected!
+        assert!(core::mem::size_of::<Value<'_>>() < 128);
+    }
 }
