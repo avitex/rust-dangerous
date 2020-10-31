@@ -104,7 +104,7 @@ impl<'i> Input<'i> {
         E: From<ExpectedValue<'i>>,
     {
         let (maybe_prefix, tail) = self.clone().split_max(prefix.len());
-        if maybe_prefix == *prefix {
+        if maybe_prefix == prefix {
             Ok((maybe_prefix, tail))
         } else {
             Err(E::from(ExpectedValue {
@@ -129,6 +129,16 @@ impl<'i> Input<'i> {
         E: From<ExpectedValue<'i>>,
     {
         self.split_prefix(byte::to_slice(prefix), operation)
+    }
+
+    #[inline(always)]
+    pub(crate) fn split_prefix_opt(self, prefix: &[u8]) -> (Option<Input<'i>>, Input<'i>) {
+        let (maybe_prefix, tail) = self.clone().split_max(prefix.len());
+        if maybe_prefix == prefix {
+            (Some(maybe_prefix), tail)
+        } else {
+            (None, self)
+        }
     }
 
     /// Splits the input into the first byte and whatever remains.

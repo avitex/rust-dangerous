@@ -309,6 +309,19 @@ impl<'i, E> Reader<'i, E> {
             .map(drop)
     }
 
+    /// Consume optional bytes.
+    ///
+    /// Returns `true` if the bytes were consumed, `false` if not.
+    ///
+    /// Doesn't effect the internal state of the `Reader` if the bytes couldn't
+    /// be consumed.
+    pub fn consume_opt(&mut self, bytes: &[u8]) -> bool {
+        self.advance(|input| {
+            let (prefix, next) = input.split_prefix_opt(bytes);
+            (prefix.is_some(), next)
+        })
+    }
+
     /// Consume an expected byte.
     ///
     /// Doesn't effect the internal state of the `Reader` if the byte couldn't
@@ -323,6 +336,16 @@ impl<'i, E> Reader<'i, E> {
     {
         self.try_advance(|input| input.split_prefix_u8(byte, "consume u8"))
             .map(drop)
+    }
+
+    /// Consume an optional byte.
+    ///
+    /// Returns `true` if the byte was consumed, `false` if not.
+    ///
+    /// Doesn't effect the internal state of the `Reader` if the byte couldn't
+    /// be consumed.
+    pub fn consume_u8_opt(&mut self, byte: u8) -> bool {
+        self.consume_opt(&[byte])
     }
 
     /// Read and verify a value without returning it.
