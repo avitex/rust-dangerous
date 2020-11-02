@@ -67,7 +67,6 @@ use crate::input::Input;
 /// [`expect()`]: Reader::expect()  
 /// [`try_expect()`]: Reader::try_expect()  
 /// [`try_expect_erased()`]: Reader::try_expect_erased()  
-/// [`no_retry()`]: Reader::no_retry()  
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
 /// [`RetryRequirement`]: crate::error::RetryRequirement  

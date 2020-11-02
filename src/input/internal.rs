@@ -7,7 +7,7 @@ use crate::error::{
 use crate::reader::Reader;
 use crate::util::byte;
 
-use super::{input, Input};
+use super::Input;
 
 // All functions defined in internal are used within other functions that expose
 // public functionality.
@@ -45,12 +45,6 @@ impl<'i> Input<'i> {
         self.bound
     }
 
-    /// Returns an empty `Input` pointing the end of `self`.
-    #[inline(always)]
-    pub(crate) fn end(&self) -> Input<'i> {
-        input(&self.as_dangerous()[self.len()..])
-    }
-
     #[inline(always)]
     pub(crate) fn has_prefix(&self, prefix: &[u8]) -> bool {
         if self.len() >= prefix.len() {
@@ -60,6 +54,12 @@ impl<'i> Input<'i> {
         } else {
             false
         }
+    }
+
+    /// Returns an empty `Input` pointing the end of `self`.
+    #[inline(always)]
+    pub(crate) fn end(self) -> Input<'i> {
+        Input::new(&self.as_dangerous()[self.len()..], self.is_bound())
     }
 }
 
@@ -103,20 +103,24 @@ impl<'i> Input<'i> {
     where
         E: From<ExpectedValue<'i>>,
     {
-        let (maybe_prefix, tail) = self.clone().split_max(prefix.len());
-        if maybe_prefix == prefix {
-            Ok((maybe_prefix, tail))
+        let actual = if let Some((head, tail)) = self.clone().split_at_opt(prefix.len()) {
+            if head == prefix {
+                return Ok((head, tail));
+            } else {
+                head.as_dangerous()
+            }
         } else {
-            Err(E::from(ExpectedValue {
-                actual: maybe_prefix.as_dangerous(),
-                expected: prefix,
-                input: self,
-                context: ExpectedContext {
-                    operation,
-                    expected: "exact value",
-                },
-            }))
-        }
+            self.as_dangerous()
+        };
+        Err(E::from(ExpectedValue {
+            actual,
+            expected: prefix,
+            input: self,
+            context: ExpectedContext {
+                operation,
+                expected: "exact value",
+            },
+        }))
     }
 
     #[inline(always)]
@@ -133,12 +137,12 @@ impl<'i> Input<'i> {
 
     #[inline(always)]
     pub(crate) fn split_prefix_opt(self, prefix: &[u8]) -> (Option<Input<'i>>, Input<'i>) {
-        let (maybe_prefix, tail) = self.clone().split_max(prefix.len());
-        if maybe_prefix == prefix {
-            (Some(maybe_prefix), tail)
-        } else {
-            (None, self)
+        if let Some((head, tail)) = self.clone().split_at_opt(prefix.len()) {
+            if head == prefix {
+                return (Some(head), tail);
+            }
         }
+        (None, self)
     }
 
     /// Splits the input into the first byte and whatever remains.
@@ -154,17 +158,6 @@ impl<'i> Input<'i> {
         match self.split_at(1, operation) {
             Ok((head, tail)) => Ok((head.as_dangerous()[0], tail)),
             Err(err) => Err(err),
-        }
-    }
-
-    /// Splits the input into two at `mid`.
-    #[inline(always)]
-    pub(crate) fn split_at_opt(self, mid: usize) -> Option<(Input<'i>, Input<'i>)> {
-        if mid > self.len() {
-            None
-        } else {
-            let (head, tail) = self.as_dangerous().split_at(mid);
-            Some((Input::new(head, true), Input::new(tail, self.is_bound())))
         }
     }
 
@@ -196,6 +189,23 @@ impl<'i> Input<'i> {
         })
     }
 
+    /// Splits the input into two at `mid`.
+    #[inline(always)]
+    pub(crate) fn split_at_opt(self, mid: usize) -> Option<(Input<'i>, Input<'i>)> {
+        // Check if we have enough input to split at `mid`.
+        if mid > self.len() {
+            None
+        } else {
+            let (head, tail) = self.as_dangerous().split_at(mid);
+            // We split at a known length making the head input bound.
+            let head = Input::new(head, true);
+            // For the tail we derive the bound constraint from self.
+            let tail = Input::new(tail, self.is_bound());
+            // Return the split input parts.
+            Some((head, tail))
+        }
+    }
+
     #[inline(always)]
     pub(crate) fn split_consumed<F, E>(self, mut f: F) -> (Input<'i>, Input<'i>)
     where
@@ -204,10 +214,42 @@ impl<'i> Input<'i> {
     {
         let mut reader = Reader::new(self.clone());
         f(&mut reader);
-        let bytes = self.as_dangerous();
+        // We take the remaining input.
         let tail = reader.take_remaining();
-        let head = &bytes[..bytes.len() - tail.len()];
-        (Input::new(head, self.is_bound()), tail)
+        // For the head, we take what we consumed and derive the bound
+        // constraint from self.
+        // FIXME: is the fact this could be unbound a footgun?
+        let head = Input::new(
+            &self.as_dangerous()[..self.len() - tail.len()],
+            self.is_bound(),
+        );
+        // Return the split input parts.
+        (head, tail)
+    }
+
+    #[inline(always)]
+    pub(crate) fn try_split_consumed<F, E>(
+        self,
+        mut f: F,
+        operation: &'static str,
+    ) -> Result<(Input<'i>, Input<'i>), E>
+    where
+        E: FromContext<'i>,
+        F: FnMut(&mut Reader<'i, E>) -> Result<(), E>,
+    {
+        let mut reader = Reader::new(self.clone());
+        with_context(self.clone(), OperationContext(operation), || f(&mut reader))?;
+        // We take the remaining input.
+        let tail = reader.take_remaining();
+        // For the head, we take what we consumed and derive the bound
+        // constraint from self.
+        // FIXME: is the fact this could be unbound a footgun?
+        let head = Input::new(
+            &self.as_dangerous()[..self.len() - tail.len()],
+            self.is_bound(),
+        );
+        // Return the split input parts.
+        Ok((head, tail))
     }
 
     #[inline(always)]
@@ -306,49 +348,27 @@ impl<'i> Input<'i> {
         }
     }
 
-    #[inline(always)]
-    pub(crate) fn try_split_consumed<F, E>(
-        self,
-        mut f: F,
-        operation: &'static str,
-    ) -> Result<(Input<'i>, Input<'i>), E>
-    where
-        E: FromContext<'i>,
-        F: FnMut(&mut Reader<'i, E>) -> Result<(), E>,
-    {
-        let mut reader = Reader::new(self.clone());
-        with_context(self.clone(), OperationContext(operation), || f(&mut reader))?;
-        let tail = reader.take_remaining();
-        let head = &self.as_dangerous()[..self.len() - tail.len()];
-        Ok((Input::new(head, self.is_bound()), tail))
-    }
-
-    /// Splits the input into two at `max`.
-    #[inline(always)]
-    pub(crate) fn split_max(self, max: usize) -> (Input<'i>, Input<'i>) {
-        if max > self.len() {
-            (self.clone(), self.end())
-        } else {
-            let (head, tail) = self.as_dangerous().split_at(max);
-            (Input::new(head, true), Input::new(tail, self.is_bound()))
-        }
-    }
-
     /// Splits the input when the provided function returns `false`.
     #[inline(always)]
-    pub(crate) fn split_while<F>(self, mut f: F) -> (Input<'i>, Input<'i>)
+    pub(crate) fn split_while<F>(self, mut pred: F) -> (Input<'i>, Input<'i>)
     where
         F: FnMut(u8) -> bool,
     {
         let bytes = self.as_dangerous();
+        // For each byte, lets make sure it matches the predicate.
         for (i, byte) in bytes.iter().enumerate() {
-            let (head, tail) = bytes.split_at(i);
-            let should_continue = f(*byte);
-            if !should_continue {
-                return (
-                    Input::new(head, self.is_bound()),
-                    Input::new(tail, self.is_bound()),
-                );
+            // Check if the byte doesn't match the predicate.
+            if !pred(*byte) {
+                // Split the input up to, but not including the byte.
+                let (head, tail) = bytes.split_at(i);
+                // Because we hit the predicate it doesn't matter if we
+                // have more input, this will always return the same.
+                // This means we know the input has a bound.
+                let head = Input::new(head, true);
+                // For the tail we derive the bound constaint from self.
+                let tail = Input::new(tail, self.is_bound());
+                // Return the split input parts.
+                return (head, tail);
             }
         }
         (self.clone(), self.end())
@@ -366,15 +386,20 @@ impl<'i> Input<'i> {
         F: FnMut(u8) -> Result<bool, E>,
     {
         let bytes = self.as_dangerous();
+        // For each byte, lets make sure it matches the predicate.
         for (i, byte) in bytes.iter().enumerate() {
-            let (head, tail) = bytes.split_at(i);
-            let should_continue =
-                with_context(self.clone(), OperationContext(operation), || f(*byte))?;
-            if !should_continue {
-                return Ok((
-                    Input::new(head, self.is_bound()),
-                    Input::new(tail, self.is_bound()),
-                ));
+            // Check if the byte doesn't match the predicate.
+            if !with_context(self.clone(), OperationContext(operation), || f(*byte))? {
+                // Split the input up to, but not including the byte.
+                let (head, tail) = bytes.split_at(i);
+                // Because we hit the predicate it doesn't matter if we
+                // have more input, this will always return the same.
+                // This means we know the head input has a bound.
+                let head = Input::new(head, true);
+                // For the tail we derive the bound constaint from self.
+                let tail = Input::new(tail, self.is_bound());
+                // Return the split input parts.
+                return Ok((head, tail));
             }
         }
         Ok((self.clone(), self.end()))

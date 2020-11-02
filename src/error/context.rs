@@ -24,7 +24,7 @@ pub trait Context: Any + Debug {
     fn expected(&self) -> Option<&dyn fmt::Display>;
 
     /// Return a reference of self as [`Any`].
-    // FIXME: An ideal implementation wouldn't require this function and we
+    // FIXME: an ideal implementation wouldn't require this function and we
     // would just lean on the super trait requirement, but doesn't seem possible
     // today with trait objects.
     //
@@ -215,6 +215,8 @@ impl ContextStack for FullContextStack {
 ///////////////////////////////////////////////////////////////////////////////
 
 #[inline(always)]
+// FIXME: remove for false positive
+#[allow(clippy::needless_lifetimes)]
 pub(crate) fn with_context<'i, F, C, T, E>(input: Input<'i>, context: C, f: F) -> Result<T, E>
 where
     F: FnOnce() -> Result<T, E>,

@@ -83,6 +83,30 @@ impl<'i> Input<'i> {
         }
     }
 
+    /// Returns `self` as a bound `Input`.
+    ///
+    /// Bound input does not produce [`RetryRequirement`]s.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::{Invalid, ToRetryRequirement};
+    ///
+    /// let error: Invalid = dangerous::input(b"1234")
+    ///     .bound()
+    ///     .read_partial(|r| r.take(5))
+    ///     .unwrap_err();
+    ///
+    /// // If the input was not bound, this wouldn't be fatal.
+    /// assert!(error.is_fatal());
+    /// ```
+    ///
+    /// [`RetryRequirement`]: crate::error::RetryRequirement
+    #[cfg(not(feature = "no-input-bound"))]
+    pub fn bound(self) -> Self {
+        Input::new(self.as_dangerous(), true)
+    }
+
     /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
     /// within the `parent`. `None` is returned if `self` is not within in the
     /// `parent`.
