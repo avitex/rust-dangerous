@@ -45,19 +45,3 @@ fn test_streaming_usage_with_valid_requirement() {
         RetryRequirement::new(2)
     );
 }
-
-#[test]
-fn test_streaming_usage_with_valid_peek_requirement() {
-    use dangerous::error::{Invalid, RetryRequirement, ToRetryRequirement};
-
-    let input = dangerous::input(b"blah");
-    let result: Result<_, Invalid> = input.read_all(|r| {
-        r.skip(2)?;
-        r.take(4)
-    });
-
-    assert_eq!(
-        result.unwrap_err().to_retry_requirement(),
-        RetryRequirement::new(2)
-    );
-}
