@@ -45,7 +45,6 @@ pub(crate) fn char_len(b: u8) -> usize {
     UTF8_CHAR_LENGTH[b as usize] as usize
 }
 
-#[derive(Clone)]
 pub(crate) struct CharIter<'i> {
     forward: usize,
     backward: usize,
@@ -124,7 +123,13 @@ impl<'i> DoubleEndedIterator for CharIter<'i> {
     }
 }
 
-#[derive(Debug)]
+impl<'i> Clone for CharIter<'i> {
+    fn clone(&self) -> Self {
+        Self { ..*self }
+    }
+}
+
+#[cfg_attr(test, derive(Debug))]
 pub(crate) struct InvalidChar(());
 
 #[inline(always)]

@@ -7,7 +7,7 @@ use super::section::{Section, SectionOpt};
 const DEFAULT_SECTION_OPTION: SectionOpt<'static> = SectionOpt::HeadTail { width: 1024 };
 
 /// Preferred [`Input`] formats.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum PreferredFormat {
     /// Prefer displaying as a UTF-8 str.
     Str,
@@ -18,6 +18,18 @@ pub enum PreferredFormat {
     Bytes,
     /// Prefer displaying as bytes with valid ASCII graphic characters.
     BytesAscii,
+}
+
+impl fmt::Debug for PreferredFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Str => "Str",
+            Self::StrCjk => "StrCjk",
+            Self::Bytes => "Bytes",
+            Self::BytesAscii => "BytesAscii",
+        };
+        f.write_str(s)
+    }
 }
 
 /// Provides configurable [`Input`] formatting.
@@ -43,7 +55,6 @@ pub enum PreferredFormat {
 ///     .to_string();
 /// assert_eq!(formatted, "[68 65 .. 99 a5]");
 /// ```
-#[derive(Clone)]
 pub struct InputDisplay<'i> {
     input: &'i [u8],
     underline: bool,
@@ -218,5 +229,14 @@ impl<'i> fmt::Debug for InputDisplay<'i> {
 impl<'i> fmt::Display for InputDisplay<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.write(f)
+    }
+}
+
+impl<'i> Clone for InputDisplay<'i> {
+    fn clone(&self) -> Self {
+        Self {
+            section: self.section.clone(),
+            ..*self
+        }
     }
 }

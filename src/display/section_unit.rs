@@ -4,7 +4,7 @@ use crate::util::utf8::CharIter;
 
 use super::unit::{byte_display_width, char_display_width};
 
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone)]
 pub(super) struct SectionUnit {
     pub(super) len_utf8: usize,
     pub(super) display_cost: usize,
@@ -38,7 +38,6 @@ pub(super) trait SectionUnitIter:
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
 pub(super) struct ByteSectionUnitIter<'a> {
     iter: slice::Iter<'a, u8>,
     show_ascii: bool,
@@ -95,9 +94,17 @@ impl<'a> SectionUnitIter for ByteSectionUnitIter<'a> {
     }
 }
 
+impl<'a> Clone for ByteSectionUnitIter<'a> {
+    fn clone(&self) -> Self {
+        Self {
+            iter: self.iter.clone(),
+            show_ascii: self.show_ascii,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
 pub(super) struct CharSectionUnitIter<'a> {
     iter: CharIter<'a>,
     cjk: bool,
@@ -159,5 +166,14 @@ impl<'a> SectionUnitIter for CharSectionUnitIter<'a> {
 
     fn as_slice(&self) -> &[u8] {
         self.iter.as_slice()
+    }
+}
+
+impl<'a> Clone for CharSectionUnitIter<'a> {
+    fn clone(&self) -> Self {
+        Self {
+            iter: self.iter.clone(),
+            cjk: self.cjk,
+        }
     }
 }

@@ -9,7 +9,6 @@ use super::{InputDisplay, PreferredFormat, WithFormatter};
 const DEFAULT_MAX_WIDTH: usize = 80;
 
 /// Provides configurable [`error::Details`] formatting.
-#[derive(Clone)]
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
     banner: bool,
@@ -207,6 +206,12 @@ where
 
     fn input_display<'b>(&self, input: &Input<'b>) -> InputDisplay<'b> {
         input.display().format(self.format)
+    }
+}
+
+impl<'a, 'i, T> Clone for ErrorDisplay<'a, T> {
+    fn clone(&self) -> Self {
+        Self { ..*self }
     }
 }
 

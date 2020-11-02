@@ -8,7 +8,7 @@ use crate::display::ByteCount;
 /// Although the value allows you to estimate how much more input you need till
 /// you can continue processing the input, it is a very granular value and may
 /// result in a lot of wasted reprocessing of input if not handled correctly.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct RetryRequirement(NonZeroUsize);
 
 impl RetryRequirement {
@@ -45,6 +45,12 @@ impl RetryRequirement {
     /// Returns a `NonZeroUsize` wrapped variant of `continue_after`.
     pub fn continue_after_non_zero(self) -> NonZeroUsize {
         self.0
+    }
+}
+
+impl fmt::Debug for RetryRequirement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("RetryRequirement").field(&self.0).finish()
     }
 }
 

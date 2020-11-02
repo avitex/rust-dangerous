@@ -29,7 +29,7 @@ use super::{
 ///     "invalid input: needs 1 byte more to continue processing",
 /// );
 /// ```
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Invalid {
     retry_requirement: Option<RetryRequirement>,
 }
@@ -41,6 +41,14 @@ impl Invalid {
         Self {
             retry_requirement: None,
         }
+    }
+}
+
+impl fmt::Debug for Invalid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Invalid")
+            .field("retry_requirement", &self.retry_requirement)
+            .finish()
     }
 }
 

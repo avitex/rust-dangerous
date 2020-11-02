@@ -255,7 +255,6 @@ impl<'i, S> std::error::Error for Expected<'i, S> where S: ContextStack {}
 // Expected value error
 
 /// An error representing a failed exact value requirement of [`Input`].
-#[derive(Debug)]
 pub struct ExpectedValue<'i> {
     pub(crate) input: Input<'i>,
     pub(crate) actual: &'i [u8],
@@ -289,6 +288,17 @@ impl<'i> ExpectedValue<'i> {
     }
 }
 
+impl<'i> fmt::Debug for ExpectedValue<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExpectedValue")
+            .field("input", &self.input())
+            .field("actual", &self.found())
+            .field("expected", &self.expected())
+            .field("context", &self.context())
+            .finish()
+    }
+}
+
 impl<'i> fmt::Display for ExpectedValue<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("found a different value to the exact expected")
@@ -319,7 +329,6 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
 // Expected length error
 
 /// An error representing a failed requirement for a length of [`Input`].
-#[derive(Debug)]
 pub struct ExpectedLength<'i> {
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
@@ -387,6 +396,18 @@ impl<'i> ExpectedLength<'i> {
     }
 }
 
+impl<'i> fmt::Debug for ExpectedLength<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExpectedValue")
+            .field("min", &self.min())
+            .field("max", &self.max())
+            .field("input", &self.input())
+            .field("span", &self.span())
+            .field("context", &self.context())
+            .finish()
+    }
+}
+
 impl<'i> fmt::Display for ExpectedLength<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "found {} when ", ByteCount(self.span().len()))?;
@@ -428,7 +449,6 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
 // Expected valid error
 
 /// An error representing a failed requirement for a valid [`Input`].
-#[derive(Debug)]
 pub struct ExpectedValid<'i> {
     pub(crate) input: Input<'i>,
     pub(crate) span: &'i [u8],
@@ -459,6 +479,17 @@ impl<'i> ExpectedValid<'i> {
     #[inline(always)]
     pub fn expected(&self) -> &'static str {
         self.context.expected
+    }
+}
+
+impl<'i> fmt::Debug for ExpectedValid<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExpectedValue")
+            .field("input", &self.input())
+            .field("span", &self.span())
+            .field("context", &self.context())
+            .field("retry_requirement", &self.retry_requirement)
+            .finish()
     }
 }
 

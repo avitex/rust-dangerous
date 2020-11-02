@@ -88,7 +88,7 @@ impl Context for &'static str {
 // Expected context
 
 /// A sealed expected [`Context`].
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone)]
 pub struct ExpectedContext {
     pub(crate) operation: &'static str,
     pub(crate) expected: &'static str,
@@ -108,10 +108,19 @@ impl Context for ExpectedContext {
     }
 }
 
+impl Debug for ExpectedContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExpectedContext")
+            .field("operation", &self.operation)
+            .field("expected", &self.expected)
+            .finish()
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Operation context
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone)]
 pub(crate) struct OperationContext(pub(crate) &'static str);
 
 impl Context for OperationContext {
@@ -125,6 +134,12 @@ impl Context for OperationContext {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl Debug for OperationContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("OperationContext").field(&self.0).finish()
     }
 }
 
