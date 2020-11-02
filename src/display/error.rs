@@ -228,18 +228,9 @@ where
     }
 }
 
-#[cfg(feature = "bytecount")]
 fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
-    bytecount::count(&input.as_dangerous()[..span_offset], b'\n') + 1
-}
-
-#[cfg(not(feature = "bytecount"))]
-fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
-    input.as_dangerous()[..span_offset]
-        .iter()
-        .filter(|b| **b == b'\n')
-        .count()
-        + 1
+    let (before_span, _) = input.clone().split_at_opt(span_offset).unwrap();
+    before_span.count(b'\n') + 1
 }
 
 fn write_input<W>(w: &mut W, mut input: InputDisplay<'_>, underline: bool) -> fmt::Result

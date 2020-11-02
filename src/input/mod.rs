@@ -48,13 +48,13 @@ pub struct Input<'i> {
 impl<'i> Input<'i> {
     /// Returns the underlying byte slice length.
     #[inline(always)]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.as_dangerous().len()
     }
 
     /// Returns `true` if the underlying byte slice length is zero.
     #[inline(always)]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.as_dangerous().is_empty()
     }
 
@@ -62,6 +62,25 @@ impl<'i> Input<'i> {
     /// of `self` in the same section of memory with no bounds out of range.
     pub fn is_within(&self, parent: &Input<'_>) -> bool {
         is_sub_slice(parent.as_dangerous(), self.as_dangerous())
+    }
+
+    /// Returns the occurrences of `needle` within the underlying byte slice.
+    ///
+    /// It is recommended to enable the `bytecount` dependency when using this
+    /// function for better performance.
+    pub fn count(&self, needle: u8) -> usize {
+        #[cfg(feature = "bytecount")]
+        {
+            bytecount::count(self.as_dangerous(), needle)
+        }
+        #[cfg(not(feature = "bytecount"))]
+        {
+            self.as_dangerous()
+                .iter()
+                .copied()
+                .filter(|b| *b == needle)
+                .count()
+        }
     }
 
     /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
