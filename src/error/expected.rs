@@ -7,7 +7,7 @@ use crate::display::{ByteCount, ErrorDisplay};
 use crate::input::Input;
 
 use super::{
-    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, FromContext, IntoFatal,
+    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, FromContext,
     RetryRequirement, ToRetryRequirement,
 };
 
@@ -22,7 +22,7 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///   stacks.
 /// - It is generally recommended for better performance to box `Expected` if
 ///   the structures being returned from parsing are smaller than or equal to
-///   `~128 bytes`. This is because the `Expected` structure is `168 - 192
+///   `~128 bytes`. This is because the `Expected` structure is `160 - 184
 ///   bytes` large on 64 bit systems and successful parses may be hindered by
 ///   the time to move the `Result<T, Expected>` value. By boxing `Expected` the
 ///   size becomes only `8 bytes`. When in doubt, write a benchmark.
@@ -31,7 +31,6 @@ type ExpectedContextStack = crate::error::RootContextStack;
 pub struct Expected<'i, S = ExpectedContextStack> {
     input: Input<'i>,
     stack: S,
-    fatal: bool,
     kind: ExpectedKind<'i>,
 }
 
@@ -77,7 +76,6 @@ where
         Self {
             kind,
             input,
-            fatal: false,
             stack: S::from_root(context),
         }
     }
@@ -129,9 +127,6 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     }
 
     fn is_fatal(&self) -> bool {
-        if self.fatal {
-            return true;
-        }
         match &self.kind {
             ExpectedKind::Value(err) => err.is_fatal(),
             ExpectedKind::Valid(err) => err.is_fatal(),
@@ -148,21 +143,6 @@ impl<'i, S> ToRetryRequirement for Box<Expected<'i, S>> {
 
     fn is_fatal(&self) -> bool {
         (**self).is_fatal()
-    }
-}
-
-impl<'i, S> IntoFatal for Expected<'i, S> {
-    fn into_fatal(mut self) -> Self {
-        self.fatal = true;
-        self
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<'i, S> IntoFatal for Box<Expected<'i, S>> {
-    fn into_fatal(mut self) -> Self {
-        self.fatal = true;
-        self
     }
 }
 
@@ -512,13 +492,13 @@ mod tests {
     #[cfg(all(target_pointer_width = "64", not(feature = "full-context")))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 168);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 160);
     }
 
     #[test]
     #[cfg(all(target_pointer_width = "64", feature = "full-context"))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 192);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 184);
     }
 }

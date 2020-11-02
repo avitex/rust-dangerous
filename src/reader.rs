@@ -2,7 +2,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext, IntoFatal,
+    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
     OperationContext, ToRetryRequirement,
 };
 use crate::input::Input;
@@ -521,50 +521,6 @@ impl<'i, E> Reader<'i, E> {
                     Err(err.from_context(checkpoint, OperationContext("recover if")))
                 }
             }
-        }
-    }
-
-    /// Prevent errors producing a [`RetryRequirement`] within the provided
-    /// scope.
-    ///
-    /// Use this function when parsing `T` when it would always be a fatal error
-    /// to not have enough input to complete.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if provided function does and removes any
-    /// [`RetryRequirement`].
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use dangerous::Invalid;
-    ///
-    /// // Without `no_retry` this would throw `Invalid` with a
-    /// // `RetryRequirement` of 1.
-    /// let result = dangerous::input(b"abc\xC2").read_all(|r| {
-    ///     r.no_retry(|r| {
-    ///          r.take_remaining().to_dangerous_non_empty_str()
-    ///     })
-    /// });
-    ///
-    /// // We get a fatal `Invalid` with no `RetryRequirement`.
-    /// assert_eq!(result, Err(Invalid::fatal()));
-    /// ```
-    ///
-    /// [`RetryRequirement`]: crate::error::RetryRequirement
-    pub fn no_retry<F, T>(&mut self, f: F) -> Result<T, E>
-    where
-        E: FromContext<'i>,
-        E: IntoFatal,
-        F: FnOnce(&mut Self) -> Result<T, E>,
-    {
-        let checkpoint = self.input.clone();
-        match f(self) {
-            Ok(ok) => Ok(ok),
-            Err(err) => Err(err
-                .into_fatal()
-                .from_context(checkpoint, OperationContext("no retry"))),
         }
     }
 
