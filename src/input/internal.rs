@@ -132,7 +132,24 @@ impl<'i> Input<'i> {
     where
         E: From<ExpectedValue<'i>>,
     {
-        self.split_prefix(byte::to_slice(prefix), operation)
+        let actual = if let Some((head, tail)) = self.clone().split_at_opt(1) {
+            if head.as_dangerous()[0] == prefix {
+                return Ok((head, tail));
+            } else {
+                head.as_dangerous()
+            }
+        } else {
+            self.as_dangerous()
+        };
+        Err(E::from(ExpectedValue {
+            actual,
+            expected: byte::to_slice(prefix),
+            input: self,
+            context: ExpectedContext {
+                operation,
+                expected: "exact value",
+            },
+        }))
     }
 
     #[inline(always)]
