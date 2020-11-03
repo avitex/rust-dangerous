@@ -204,10 +204,10 @@ impl<'i> Input<'i> {
     }
 
     #[inline(always)]
-    pub(crate) fn split_consumed<F, E>(self, mut f: F) -> (Input<'i>, Input<'i>)
+    pub(crate) fn split_consumed<F, E>(self, f: F) -> (Input<'i>, Input<'i>)
     where
         E: FromContext<'i>,
-        F: FnMut(&mut Reader<'i, E>),
+        F: FnOnce(&mut Reader<'i, E>),
     {
         let mut reader = Reader::new(self.clone());
         f(&mut reader);
@@ -227,12 +227,12 @@ impl<'i> Input<'i> {
     #[inline(always)]
     pub(crate) fn try_split_consumed<F, E>(
         self,
-        mut f: F,
+        f: F,
         operation: &'static str,
     ) -> Result<(Input<'i>, Input<'i>), E>
     where
         E: FromContext<'i>,
-        F: FnMut(&mut Reader<'i, E>) -> Result<(), E>,
+        F: FnOnce(&mut Reader<'i, E>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self.clone());
         with_context(self.clone(), OperationContext(operation), || f(&mut reader))?;

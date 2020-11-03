@@ -197,7 +197,7 @@ impl<'i, E> Reader<'i, E> {
     pub fn take_consumed<F>(&mut self, consumer: F) -> Input<'i>
     where
         E: FromContext<'i>,
-        F: FnMut(&mut Self),
+        F: FnOnce(&mut Self),
     {
         self.advance(|input| input.split_consumed(consumer))
     }
@@ -226,7 +226,7 @@ impl<'i, E> Reader<'i, E> {
     pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<Input<'i>, E>
     where
         E: FromContext<'i>,
-        F: FnMut(&mut Self) -> Result<(), E>,
+        F: FnOnce(&mut Self) -> Result<(), E>,
     {
         self.try_advance(|input| input.try_split_consumed(consumer, "try take consumed"))
     }
