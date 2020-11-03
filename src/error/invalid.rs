@@ -10,8 +10,8 @@ use super::{
 /// `Invalid` contains no details around what went wrong other than a
 /// [`RetryRequirement`] if the error is not fatal.
 ///
-/// This is the most performant and simplistic catch-all error, but it doesn't
-/// provide any context to debug problems well.
+/// This is the most performant and simplistic catch-all **retryable** error,
+/// but it doesn't provide any context to debug problems well.
 ///
 /// See [`crate::error`] for additional documentation around the error system.
 ///

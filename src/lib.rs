@@ -53,6 +53,8 @@ mod util;
 pub mod display;
 pub mod error;
 
-pub use self::error::{Error, Expected, FromContext, FromExpected, Invalid, ToRetryRequirement};
+pub use self::error::{
+    Error, Expected, Fatal, FromContext, FromExpected, Invalid, ToRetryRequirement,
+};
 pub use self::input::{input, Input};
 pub use self::reader::Reader;
