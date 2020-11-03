@@ -7,7 +7,7 @@ use crate::error::{
 use crate::reader::Reader;
 use crate::util::{byte, slice};
 
-use super::Input;
+use super::{Flags, Input};
 
 // All functions defined in internal are used within other functions that expose
 // public functionality.
@@ -22,7 +22,23 @@ use super::Input;
 impl<'i> Input<'i> {
     #[inline(always)]
     pub(crate) const fn new(bytes: &'i [u8], bound: bool) -> Self {
-        Self { bytes, bound }
+        Self {
+            bytes,
+            flags: Flags::new(bound, false),
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) const fn new_str(s: &'i str, bound: bool) -> Self {
+        Self {
+            bytes: s.as_bytes(),
+            flags: Flags::new(bound, true),
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) const fn is_str(&self) -> bool {
+        self.flags.is_str()
     }
 
     #[inline(always)]
