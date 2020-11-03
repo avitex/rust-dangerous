@@ -68,28 +68,3 @@ pub trait Details<'i> {
     /// that occurred.
     fn context_stack(&self) -> &dyn ContextStack;
 }
-
-impl<'i, T> Details<'i> for &T
-where
-    T: Details<'i>,
-{
-    fn input(&self) -> Input<'i> {
-        (**self).input()
-    }
-
-    fn span(&self) -> Input<'i> {
-        (**self).span()
-    }
-
-    fn expected(&self) -> Option<Input<'_>> {
-        (**self).expected()
-    }
-
-    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).description(f)
-    }
-
-    fn context_stack(&self) -> &dyn ContextStack {
-        (**self).context_stack()
-    }
-}
