@@ -524,6 +524,53 @@ impl<'i, E> Reader<'i, E> {
         }
     }
 
+    /// Read with a different error type.
+    ///
+    /// Keep in mind using different errors types can increase your binary size,
+    /// use sparingly.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::{Error, Expected, Fatal, Reader};
+    ///
+    /// fn branch_a<'i, E>(r: &mut Reader<'i, E>) -> Result<u8, E>
+    /// where
+    ///     E: Error<'i>
+    /// {
+    ///     r.consume(b"hello").map(|()| 1)
+    /// }
+    ///
+    /// fn branch_b<'i, E>(r: &mut Reader<'i, E>) -> Result<u8, E>
+    /// where
+    ///     E: Error<'i>
+    /// {
+    ///     r.consume(b"world").map(|()| 2)
+    /// }
+    ///
+    /// let input = dangerous::input(b"world");
+    /// let result: Result<_, Expected> = input.read_all::<_, _, Expected>(|r| {
+    ///     r.expect("valid branch", |r| {
+    ///         r.error::<_, _, Fatal>(|r| {
+    ///             r.recover(branch_a).or_else(|| r.recover(branch_b))
+    ///         })
+    ///     })
+    /// });
+    ///
+    /// assert_eq!(result.unwrap(), 2);
+    /// ```
+    #[inline]
+    pub fn error<F, T, S>(&mut self, f: F) -> T
+    where
+        F: FnOnce(&mut Reader<'i, S>) -> T,
+    {
+        self.advance(|input| {
+            let mut sub = Reader::new(input);
+            let ok = f(&mut sub);
+            (ok, sub.input)
+        })
+    }
+
     /// Read a byte.
     ///
     /// # Errors
@@ -568,9 +615,9 @@ impl<'i, E> Reader<'i, E> {
     }
 
     #[inline(always)]
-    fn try_advance<F, O>(&mut self, f: F) -> Result<O, E>
+    fn try_advance<F, SE, O>(&mut self, f: F) -> Result<O, SE>
     where
-        F: FnOnce(Input<'i>) -> Result<(O, Input<'i>), E>,
+        F: FnOnce(Input<'i>) -> Result<(O, Input<'i>), SE>,
     {
         match f(self.input.clone()) {
             Ok((ok, next)) => {
