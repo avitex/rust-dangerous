@@ -58,6 +58,14 @@ impl<'i> Input<'i> {
         self.as_dangerous().is_empty()
     }
 
+    /// Returns `true` if the underlying byte slice is bound.
+    ///
+    /// See [`Input::bound()`] for more documentation.
+    #[inline(always)]
+    pub const fn is_bound(&self) -> bool {
+        self.bound
+    }
+
     /// Returns `true` if the underlying byte slice for `parent` contains that
     /// of `self` in the same section of memory with no bounds out of range.
     pub fn is_within(&self, parent: &Input<'_>) -> bool {

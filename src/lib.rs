@@ -15,15 +15,6 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![deny(
-    clippy::pedantic,
-    // Exceptions: Byte slice to `Input` cast, str cast for section
-    unsafe_code,
-    // Exception: Derived implementations
-    unused_qualifications,
-    // Exception: `error::Value`
-    variant_size_differences,
-)]
 #![forbid(
     rust_2018_idioms,
     anonymous_parameters,
@@ -36,6 +27,11 @@
     unused_results,
     warnings
 )]
+// Exceptions: Derived implementations
+// FIXME: remove once https://github.com/rust-lang/rust/issues/71898 is fixed
+#![deny(unused_qualifications)]
+// Exceptions: See below allow.
+#![deny(clippy::pedantic)]
 #![allow(
     clippy::inline_always,
     clippy::single_match_else,

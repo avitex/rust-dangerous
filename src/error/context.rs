@@ -230,8 +230,6 @@ impl ContextStack for FullContextStack {
 ///////////////////////////////////////////////////////////////////////////////
 
 #[inline(always)]
-// FIXME: remove for false positive
-#[allow(clippy::needless_lifetimes)]
 pub(crate) fn with_context<'i, F, C, T, E>(input: Input<'i>, context: C, f: F) -> Result<T, E>
 where
     F: FnOnce() -> Result<T, E>,

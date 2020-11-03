@@ -33,7 +33,6 @@ fn is_cont_byte(byte: u8) -> bool {
     (byte & !CONT_MASK) == TAG_CONT_U8
 }
 
-#[allow(unsafe_code)]
 pub(crate) unsafe fn from_unchecked(bytes: &[u8]) -> &str {
     debug_assert!(str::from_utf8(bytes).is_ok());
     str::from_utf8_unchecked(bytes)

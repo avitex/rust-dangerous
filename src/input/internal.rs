@@ -35,14 +35,8 @@ impl<'i> Input<'i> {
     #[inline(always)]
     #[allow(clippy::unused_self)]
     #[cfg(feature = "no-input-bound")]
-    pub(crate) fn is_bound(&self) -> bool {
+    pub(crate) const fn is_bound(&self) -> bool {
         false
-    }
-
-    #[inline(always)]
-    #[cfg(not(feature = "no-input-bound"))]
-    pub(crate) fn is_bound(&self) -> bool {
-        self.bound
     }
 
     #[inline(always)]

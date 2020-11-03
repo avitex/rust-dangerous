@@ -244,7 +244,6 @@ fn init_width(width: usize) -> usize {
     }
 }
 
-#[allow(unsafe_code)]
 fn take_str_span(bytes: &[u8], span_offset: usize, width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_span(iter, span_offset, width, false) {
@@ -275,7 +274,6 @@ fn take_bytes_span(
     }
 }
 
-#[allow(unsafe_code)]
 fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_head(iter, width, false) {
@@ -301,7 +299,6 @@ fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
     }
 }
 
-#[allow(unsafe_code)]
 fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_tail(iter, width, false) {
@@ -329,7 +326,6 @@ fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
     }
 }
 
-#[allow(unsafe_code)]
 fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_head_tail(iter, width, false, STR_HEAD_TAIL_HAS_MORE_COST) {
