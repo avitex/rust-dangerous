@@ -21,8 +21,6 @@ alloc = []
 unicode = ["unicode-width"]
 # Enables full context backtraces.
 full-context = ["alloc"]
-# Disables input bound check for retry.
-no-input-bound = []
 
 [dependencies]
 bytecount = { version = "0.6", optional = true }

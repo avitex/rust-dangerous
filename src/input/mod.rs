@@ -41,7 +41,6 @@ pub const fn input(bytes: &[u8]) -> Input<'_> {
 #[must_use = "input must be consumed"]
 pub struct Input<'i> {
     bytes: &'i [u8],
-    #[cfg(not(feature = "no-input-bound"))]
     bound: bool,
 }
 
@@ -110,7 +109,6 @@ impl<'i> Input<'i> {
     /// ```
     ///
     /// [`RetryRequirement`]: crate::error::RetryRequirement
-    #[cfg(not(feature = "no-input-bound"))]
     pub fn bound(self) -> Self {
         Input::new(self.as_dangerous(), true)
     }
@@ -396,7 +394,6 @@ impl<'i> Clone for Input<'i> {
     fn clone(&self) -> Self {
         Self {
             bytes: self.bytes,
-            #[cfg(not(feature = "no-input-bound"))]
             bound: self.bound,
         }
     }

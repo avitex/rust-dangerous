@@ -21,22 +21,8 @@ use super::Input;
 
 impl<'i> Input<'i> {
     #[inline(always)]
-    #[cfg(not(feature = "no-input-bound"))]
     pub(crate) const fn new(bytes: &'i [u8], bound: bool) -> Self {
         Self { bytes, bound }
-    }
-
-    #[inline(always)]
-    #[cfg(feature = "no-input-bound")]
-    pub(crate) const fn new(bytes: &'i [u8], _bound: bool) -> Self {
-        Self { bytes }
-    }
-
-    #[inline(always)]
-    #[allow(clippy::unused_self)]
-    #[cfg(feature = "no-input-bound")]
-    pub(crate) const fn is_bound(&self) -> bool {
-        false
     }
 
     #[inline(always)]
