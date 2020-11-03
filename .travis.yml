@@ -9,7 +9,10 @@ matrix:
     - rust: nightly
 cache: cargo
 before_script:
-  - '[ "$TRAVIS_RUST_VERSION" = stable ] && rustup component add rustfmt'
+  - |
+    if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+      rustup component add rustfmt
+    fi
   - cargo install cargo-tarpaulin
   - cargo install cargo-update
   - cargo install-update --all
@@ -18,7 +21,10 @@ script:
   - cargo build
   - cargo test
   - cargo test --no-default-features
-  - '[ "$TRAVIS_RUST_VERSION" = stable ] && cargo fmt -- --check'
+  - |
+    if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+      cargo fmt -- --check
+    fi
 after_success: |
   # This requires a -Z flag for Doctests, which is current unstable
   if [[ "$TRAVIS_RUST_VERSION" == nightly ]]; then
