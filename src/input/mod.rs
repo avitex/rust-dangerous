@@ -1,3 +1,4 @@
+mod flags;
 mod internal;
 
 use core::convert::Infallible;
@@ -8,6 +9,8 @@ use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
 use crate::util::{slice, utf8};
+
+use self::flags::Flags;
 
 /// Creates a new `Input` from a byte slice.
 ///
@@ -41,7 +44,7 @@ pub const fn input(bytes: &[u8]) -> Input<'_> {
 #[must_use = "input must be consumed"]
 pub struct Input<'i> {
     bytes: &'i [u8],
-    bound: bool,
+    flags: Flags,
 }
 
 impl<'i> Input<'i> {
@@ -62,7 +65,7 @@ impl<'i> Input<'i> {
     /// See [`Input::bound()`] for more documentation.
     #[inline(always)]
     pub const fn is_bound(&self) -> bool {
-        self.bound
+        self.flags.is_bound()
     }
 
     /// Returns `true` if the underlying byte slice for `parent` contains that
@@ -269,40 +272,44 @@ impl<'i> Input<'i> {
         E: From<ExpectedLength<'i>>,
     {
         let bytes = self.as_dangerous();
-        match str::from_utf8(bytes) {
-            Ok(s) => Ok(s),
-            Err(utf8_err) => match utf8_err.error_len() {
-                None => {
-                    let invalid = &bytes[utf8_err.valid_up_to()..];
-                    // SAFETY: For an error to occur there must be a cause (at
-                    // least one byte in an invalid codepoint) so it is safe to
-                    // get without checking bounds.
-                    let first_invalid = unsafe { slice::first_unchecked(invalid) };
-                    Err(E::from(ExpectedLength {
-                        min: utf8::char_len(first_invalid),
-                        max: None,
-                        span: invalid,
-                        input: self.clone(),
-                        context: ExpectedContext {
-                            operation: "convert input to str",
-                            expected: "complete utf-8 code point",
-                        },
-                    }))
-                }
-                Some(error_len) => {
-                    let error_start = utf8_err.valid_up_to();
-                    let error_end = error_start + error_len;
-                    Err(E::from(ExpectedValid {
-                        span: &bytes[error_start..error_end],
-                        input: self.clone(),
-                        context: ExpectedContext {
-                            operation: "convert input to str",
-                            expected: "utf-8 code point",
-                        },
-                        retry_requirement: None,
-                    }))
-                }
-            },
+        if self.is_str() {
+            unsafe { Ok(utf8::from_unchecked(bytes)) }
+        } else {
+            match str::from_utf8(bytes) {
+                Ok(s) => Ok(s),
+                Err(utf8_err) => match utf8_err.error_len() {
+                    None => {
+                        let invalid = &bytes[utf8_err.valid_up_to()..];
+                        // SAFETY: For an error to occur there must be a cause (at
+                        // least one byte in an invalid codepoint) so it is safe to
+                        // get without checking bounds.
+                        let first_invalid = unsafe { slice::first_unchecked(invalid) };
+                        Err(E::from(ExpectedLength {
+                            min: utf8::char_len(first_invalid),
+                            max: None,
+                            span: invalid,
+                            input: self.clone(),
+                            context: ExpectedContext {
+                                operation: "convert input to str",
+                                expected: "complete utf-8 code point",
+                            },
+                        }))
+                    }
+                    Some(error_len) => {
+                        let error_start = utf8_err.valid_up_to();
+                        let error_end = error_start + error_len;
+                        Err(E::from(ExpectedValid {
+                            span: &bytes[error_start..error_end],
+                            input: self.clone(),
+                            context: ExpectedContext {
+                                operation: "convert input to str",
+                                expected: "utf-8 code point",
+                            },
+                            retry_requirement: None,
+                        }))
+                    }
+                },
+            }
         }
     }
 
@@ -380,14 +387,23 @@ impl<'i> PartialEq<Input<'i>> for [u8] {
 
 impl<'i> fmt::Debug for Input<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let display = InputDisplay::from_formatter(self, f);
+        let display = if self.is_str() {
+            InputDisplay::from_formatter(self, f).str_hint(true)
+        } else {
+            InputDisplay::from_formatter(self, f)
+        };
         f.debug_tuple("Input").field(&display).finish()
     }
 }
 
 impl<'i> fmt::Display for Input<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        InputDisplay::from_formatter(self, f).fmt(f)
+        let display = if self.is_str() {
+            InputDisplay::from_formatter(self, f).str_hint(true)
+        } else {
+            InputDisplay::from_formatter(self, f)
+        };
+        display.fmt(f)
     }
 }
 
@@ -399,7 +415,7 @@ impl<'i> Clone for Input<'i> {
     fn clone(&self) -> Self {
         Self {
             bytes: self.bytes,
-            bound: self.bound,
+            flags: self.flags,
         }
     }
 }
