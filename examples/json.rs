@@ -4,19 +4,9 @@
 //! ```
 //! echo '{ "hello": "bob" }' | cargo run --example json
 //! ```
-
-use dangerous::{Error, Expected, Invalid, Reader};
 use std::io::{self, Read};
 
-#[derive(Debug)]
-enum Value<'a> {
-    Null,
-    Bool(bool),
-    Str(&'a str),
-    Number(f64),
-    Array(Vec<Value<'a>>),
-    Object(Vec<(&'a str, Value<'a>)>),
-}
+use dangerous::{Error, Expected, Invalid, Reader};
 
 fn main() {
     let mut input_data = Vec::new();
@@ -28,6 +18,16 @@ fn main() {
         Ok(json) => println!("{:#?}", json),
         Err(e) => eprintln!("{:#}", e),
     }
+}
+
+#[derive(Debug)]
+enum Value<'a> {
+    Null,
+    Bool(bool),
+    Str(&'a str),
+    Number(f64),
+    Array(Vec<Value<'a>>),
+    Object(Vec<(&'a str, Value<'a>)>),
 }
 
 fn read_value<'i, E>(r: &mut Reader<'i, E>) -> Result<Value<'i>, E>

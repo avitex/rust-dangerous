@@ -1,16 +1,23 @@
-//! A basic rather tolerant ini parser, which most certainly does not obey to the standard
-use dangerous::{Error, Expected, Reader};
+//! This example demonstrates a basic but rather tolerant ini parser, which most
+//! certainly does not obey to the standard.
+//!
+//! ```
+//! echo 'hello = world' | cargo run --example ini
+//! ```
 use std::io::{self, Read};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+use dangerous::{Error, Expected, Reader};
+
+fn main() {
     let mut input_data = Vec::new();
-    io::stdin().read_to_end(&mut input_data)?;
+    io::stdin()
+        .read_to_end(&mut input_data)
+        .expect("read input");
     let input = dangerous::input(input_data.as_ref());
     match input.read_all::<_, _, Expected>(read_ini) {
         Ok(ini) => println!("{:#?}", ini),
         Err(e) => eprintln!("{:#}", e),
     };
-    Ok(())
 }
 
 #[derive(Debug, PartialEq, Eq)]
