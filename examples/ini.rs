@@ -184,8 +184,8 @@ type = manual
 
     #[test]
     fn section_without_values() {
-        let section = dangerous::input(SECTION_WITHOUT_VALUES)
-            .read_all::<_, _, Expected>(read_section)
+        let section: Result<_, Expected> = dangerous::input(SECTION_WITHOUT_VALUES)
+            .read_all(read_section)
             .expect("success");
         assert_eq!(
             section,

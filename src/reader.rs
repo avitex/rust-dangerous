@@ -210,14 +210,14 @@ impl<'i, E> Reader<'i, E> {
     /// ```
     /// use dangerous::Invalid;
     ///
-    /// let consumed = dangerous::input(b"abc").read_all::<_, _, Invalid>(|r| {
+    /// let result: Result<_, Invalid> = dangerous::input(b"abc").read_all(|r| {
     ///     r.try_take_consumed(|r| {
     ///         r.skip(1)?;
     ///         r.consume(b"bc")
     ///     })
-    /// }).unwrap();
+    /// });
     ///
-    /// assert_eq!(consumed, b"abc"[..]);
+    /// assert_eq!(result.unwrap(), b"abc"[..]);
     /// ```
     ///
     /// # Errors
@@ -549,9 +549,9 @@ impl<'i, E> Reader<'i, E> {
     /// }
     ///
     /// let input = dangerous::input(b"world");
-    /// let result: Result<_, Expected> = input.read_all::<_, _, Expected>(|r| {
+    /// let result: Result<_, Expected> = input.read_all(|r| {
     ///     r.expect("valid branch", |r| {
-    ///         r.error::<_, _, Fatal>(|r| {
+    ///         r.error(|r: &mut Reader<Fatal>| {
     ///             r.recover(branch_a).or_else(|| r.recover(branch_b))
     ///         })
     ///     })
