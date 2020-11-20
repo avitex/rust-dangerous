@@ -1,7 +1,5 @@
 use core::fmt;
 
-use crate::util::slice_ptr_range;
-
 use super::unit::{byte_display_width, byte_display_write, char_display_width, char_display_write};
 
 pub(super) struct InputWriter<'a, W>
@@ -210,61 +208,61 @@ where
 }
 
 fn has_more_before(bytes: &[u8], full: &[u8]) -> bool {
-    let section_bounds = slice_ptr_range(bytes);
-    let full_bounds = slice_ptr_range(full);
+    let section_bounds = bytes.as_ptr_range();
+    let full_bounds = full.as_ptr_range();
     section_bounds.start > full_bounds.start
 }
 
 fn has_more_after(bytes: &[u8], full: &[u8]) -> bool {
-    let section_bounds = slice_ptr_range(bytes);
-    let full_bounds = slice_ptr_range(full);
+    let section_bounds = bytes.as_ptr_range();
+    let full_bounds = full.as_ptr_range();
     section_bounds.end < full_bounds.end
 }
 
 fn is_span_start_within_section(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
-        let section_bounds = slice_ptr_range(bytes);
-        let span_bounds = slice_ptr_range(span);
+        let section_bounds = bytes.as_ptr_range();
+        let span_bounds = span.as_ptr_range();
         section_bounds.start <= span_bounds.start && section_bounds.end > span_bounds.start
     })
 }
 
 fn is_section_start_within_span(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
-        let section_bounds = slice_ptr_range(bytes);
-        let span_bounds = slice_ptr_range(span);
+        let section_bounds = bytes.as_ptr_range();
+        let span_bounds = span.as_ptr_range();
         section_bounds.start >= span_bounds.start && section_bounds.start < span_bounds.end
     })
 }
 
 fn is_span_overlapping_end(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
-        let section_bounds = slice_ptr_range(bytes);
-        let span_bounds = slice_ptr_range(span);
+        let section_bounds = bytes.as_ptr_range();
+        let span_bounds = span.as_ptr_range();
         section_bounds.end < span_bounds.end
     })
 }
 
 fn is_span_overlapping_start(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
-        let section_bounds = slice_ptr_range(bytes);
-        let span_bounds = slice_ptr_range(span);
+        let section_bounds = bytes.as_ptr_range();
+        let span_bounds = span.as_ptr_range();
         section_bounds.start > span_bounds.start
     })
 }
 
 fn is_span_pointing_to_start(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
-        let section_bounds = slice_ptr_range(bytes);
-        let span_bounds = slice_ptr_range(span);
+        let section_bounds = bytes.as_ptr_range();
+        let span_bounds = span.as_ptr_range();
         span.is_empty() && section_bounds.start == span_bounds.start
     })
 }
 
 fn is_span_pointing_to_end(bytes: &[u8], span: Option<&[u8]>) -> bool {
     span.map_or(false, |span| {
-        let section_bounds = slice_ptr_range(bytes);
-        let span_bounds = slice_ptr_range(span);
+        let section_bounds = bytes.as_ptr_range();
+        let span_bounds = span.as_ptr_range();
         span.is_empty() && section_bounds.end == span_bounds.end
     })
 }

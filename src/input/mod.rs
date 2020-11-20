@@ -7,7 +7,7 @@ use core::{fmt, str};
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
-use crate::util::{is_sub_slice, slice_ptr_range, utf8};
+use crate::util::{is_sub_slice, utf8};
 
 /// Creates a new `Input` from a byte slice.
 ///
@@ -128,8 +128,8 @@ impl<'i> Input<'i> {
     /// ```
     pub fn span_of(&self, parent: &Input<'_>) -> Option<Range<usize>> {
         if self.is_within(parent) {
-            let parent_bounds = slice_ptr_range(parent.as_dangerous());
-            let sub_bounds = slice_ptr_range(self.as_dangerous());
+            let parent_bounds = parent.as_dangerous().as_ptr_range();
+            let sub_bounds = self.as_dangerous().as_ptr_range();
             let start_offset = sub_bounds.start as usize - parent_bounds.start as usize;
             let end_offset = sub_bounds.end as usize - parent_bounds.start as usize;
             Some(start_offset..end_offset)

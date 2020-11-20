@@ -8,7 +8,7 @@
 use core::{fmt, str};
 
 use crate::util::alt_iter::{Alternate, AlternatingIter};
-use crate::util::{is_sub_slice, slice_ptr_range, utf8};
+use crate::util::{is_sub_slice, utf8};
 
 use super::input::PreferredFormat;
 use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
@@ -151,8 +151,8 @@ impl<'a> Section<'a> {
             return Self::from_head_tail(full, width, format);
         }
         let width = init_width(width);
-        let full_bounds = slice_ptr_range(full);
-        let span_bounds = slice_ptr_range(span);
+        let full_bounds = full.as_ptr_range();
+        let span_bounds = span.as_ptr_range();
         let span_offset = span_bounds.start as usize - full_bounds.start as usize;
         if span.is_empty() {
             if full_bounds.start == span_bounds.start {

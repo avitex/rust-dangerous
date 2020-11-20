@@ -2,7 +2,6 @@ use core::fmt::{self, Write};
 
 use crate::error::{self, Context};
 use crate::input::Input;
-use crate::util::slice_ptr_range;
 
 use super::{InputDisplay, PreferredFormat, WithFormatter};
 
@@ -173,8 +172,8 @@ where
         let span = self.error.span();
         write!(w, "additional:\n  ")?;
         if span.is_within(&input) {
-            let input_bounds = slice_ptr_range(input.as_dangerous());
-            let span_bounds = slice_ptr_range(self.error.span().as_dangerous());
+            let input_bounds = input.as_dangerous().as_ptr_range();
+            let span_bounds = self.error.span().as_dangerous().as_ptr_range();
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
             match self.format {
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
