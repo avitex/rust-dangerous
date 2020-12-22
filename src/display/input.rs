@@ -76,7 +76,7 @@ impl<'i> InputDisplay<'i> {
         }
     }
 
-    /// Derive an `InputDisplay` from a [`fmt::Formatter`] with defaults.
+    /// Derive an `InputDisplay` from a [`fmt::FormatterBase`] with defaults.
     ///
     /// - Precision (eg. `{:.16}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.

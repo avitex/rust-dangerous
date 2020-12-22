@@ -10,12 +10,13 @@ mod writer;
 pub(crate) mod fmt;
 
 pub use self::error::ErrorDisplay;
+pub use self::fmt::{DebugBase, DisplayBase, FormatterBase};
 pub use self::input::{InputDisplay, PreferredFormat};
 
 pub(crate) struct ByteCount(pub(crate) usize);
 
-impl fmt::DisplayBase for ByteCount {
-    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+impl DisplayBase for ByteCount {
+    fn fmt(&self, f: &mut dyn FormatterBase) -> fmt::Result {
         match self.0 {
             0 => f.write_str("no bytes"),
             1 => f.write_str("1 byte"),

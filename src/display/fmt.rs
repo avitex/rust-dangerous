@@ -2,30 +2,6 @@ use core::fmt::{Debug, Display, Formatter};
 
 pub(crate) use core::fmt::{Error, Result, Write};
 
-pub(crate) struct Writer<'a, T: ?Sized>(&'a mut T);
-
-impl<'a, T: ?Sized> Writer<'a, T>
-where
-    T: FormatterBase,
-{
-    pub fn new(f: &'a mut T) -> Self {
-        Self(f)
-    }
-}
-
-impl<'a, T: ?Sized> Write for Writer<'a, T>
-where
-    T: FormatterBase,
-{
-    fn write_str(&mut self, s: &str) -> Result {
-        self.0.write_str(s)
-    }
-
-    fn write_char(&mut self, c: char) -> Result {
-        self.0.write_char(c)
-    }
-}
-
 pub trait FormatterBase {
     fn as_dyn_mut(&mut self) -> &mut dyn FormatterBase;
 
@@ -112,6 +88,8 @@ impl<'a> FormatterBase for Formatter<'a> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 pub trait DebugBase {
     fn fmt(&self, f: &mut dyn FormatterBase) -> Result;
 }
@@ -155,6 +133,9 @@ where
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+///
 pub trait DisplayBase {
     fn fmt(&self, f: &mut dyn FormatterBase) -> Result;
 }
@@ -177,5 +158,31 @@ impl DisplayBase for str {
 impl DisplayBase for usize {
     fn fmt(&self, f: &mut dyn FormatterBase) -> Result {
         f.write_usize(*self)
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+pub(crate) struct Writer<'a, T: ?Sized>(&'a mut T);
+
+impl<'a, T: ?Sized> Writer<'a, T>
+where
+    T: FormatterBase,
+{
+    pub fn new(f: &'a mut T) -> Self {
+        Self(f)
+    }
+}
+
+impl<'a, T: ?Sized> Write for Writer<'a, T>
+where
+    T: FormatterBase,
+{
+    fn write_str(&mut self, s: &str) -> Result {
+        self.0.write_str(s)
+    }
+
+    fn write_char(&mut self, c: char) -> Result {
+        self.0.write_char(c)
     }
 }

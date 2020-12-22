@@ -29,7 +29,7 @@ where
         }
     }
 
-    /// Derive an `ErrorDisplay` from a [`fmt::Formatter`] with defaults.
+    /// Derive an `ErrorDisplay` from a [`fmt::FormatterBase`] with defaults.
     pub fn from_formatter<F>(error: &'a T, f: &F) -> Self
     where
         F: fmt::FormatterBase + ?Sized,
@@ -85,7 +85,7 @@ where
         F: fmt::FormatterBase + ?Sized,
     {
         f.write_str("error attempting to ")?;
-        f.write_display(&self.error.context_stack().root().operation())?;
+        f.write_str(self.error.context_stack().root().operation())?;
         f.write_str(": ")?;
         self.error.description(f.as_dyn_mut())?;
         f.write_char('\n')
@@ -238,11 +238,11 @@ where
 {
     input.prepare();
     f.write_str("> ")?;
-    fmt::DisplayBase::fmt(&input, f.as_dyn_mut())?;
+    f.write_display(&input)?;
     f.write_char('\n')?;
     if underline {
         f.write_str("  ")?;
-        fmt::DisplayBase::fmt(&input.underline(true), f.as_dyn_mut())?;
+        f.write_display(&input.underline(true))?;
         f.write_char('\n')?;
     }
     Ok(())

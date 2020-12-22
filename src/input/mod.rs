@@ -35,8 +35,8 @@ pub const fn input(bytes: &[u8]) -> Input<'_> {
 ///
 /// # Formatting
 ///
-/// `Input` implements both [`fmt::Debug`] and [`fmt::Display`] with support for
-/// pretty printing. See [`InputDisplay`] for formatting options.
+/// `Input` implements both [`core::fmt::Debug`] and [`core::fmt::Display`] with
+/// support for pretty printing. See [`InputDisplay`] for formatting options.
 ///
 /// [`dangerous::input()`]: crate::input()
 #[must_use = "input must be consumed"]
