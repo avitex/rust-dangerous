@@ -2,8 +2,9 @@ mod internal;
 
 use core::convert::Infallible;
 use core::ops::Range;
-use core::{fmt, str};
+use core::str;
 
+use crate::display::fmt;
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
@@ -373,18 +374,22 @@ impl<'i> PartialEq<Input<'i>> for [u8] {
 ///////////////////////////////////////////////////////////////////////////////
 // Formatting
 
-impl<'i> fmt::Debug for Input<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<'i> fmt::DebugBase for Input<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         let display = InputDisplay::from_formatter(self, f);
-        f.debug_tuple("Input").field(&display).finish()
+        f.debug_tuple("Input", &[&display])
     }
 }
 
-impl<'i> fmt::Display for Input<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+forward_fmt!(impl<'i> Debug for Input<'i>);
+
+impl<'i> fmt::DisplayBase for Input<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         InputDisplay::from_formatter(self, f).fmt(f)
     }
 }
+
+forward_fmt!(impl<'i> Display for Input<'i>);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Clone

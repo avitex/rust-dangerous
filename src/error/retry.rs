@@ -1,7 +1,6 @@
-use core::fmt;
 use core::num::NonZeroUsize;
 
-use crate::display::ByteCount;
+use crate::display::{fmt, ByteCount};
 
 /// An indicator of how many bytes are required to continue processing input.
 ///
@@ -48,17 +47,22 @@ impl RetryRequirement {
     }
 }
 
-impl fmt::Debug for RetryRequirement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("RetryRequirement").field(&self.0).finish()
+impl fmt::DebugBase for RetryRequirement {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_tuple("RetryRequirement", &[&self.0])
     }
 }
 
-impl fmt::Display for RetryRequirement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} more", ByteCount(self.continue_after()))
+forward_fmt!(impl Debug for RetryRequirement);
+
+impl fmt::DisplayBase for RetryRequirement {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        ByteCount(self.continue_after()).fmt(f)?;
+        f.write_str(" more")
     }
 }
+
+forward_fmt!(impl Display for RetryRequirement);
 
 /// Implemented for errors that return a [`RetryRequirement`].
 pub trait ToRetryRequirement {

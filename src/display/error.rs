@@ -1,9 +1,7 @@
-use core::fmt::{self, Write};
-
-use crate::error::{self, Context};
+use crate::error::{self, Context, Details as ErrorDetails};
 use crate::input::Input;
 
-use super::{InputDisplay, PreferredFormat, WithFormatter};
+use super::{fmt, InputDisplay, PreferredFormat};
 
 const DEFAULT_MAX_WIDTH: usize = 80;
 
@@ -32,7 +30,10 @@ where
     }
 
     /// Derive an `ErrorDisplay` from a [`fmt::Formatter`] with defaults.
-    pub fn from_formatter(error: &'a T, f: &fmt::Formatter<'_>) -> Self {
+    pub fn from_formatter<F>(error: &'a T, f: &F) -> Self
+    where
+        F: fmt::FormatterBase + ?Sized,
+    {
         Self::new(error).str_hint(f.alternate())
     }
 
@@ -69,49 +70,30 @@ where
         self
     }
 
-    /// Writes the [`error::Details`] to a writer with the chosen format.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`core::fmt::Error`] if failed to write.
-    pub fn write<W>(&self, mut w: W) -> fmt::Result
+    fn write_sections<F>(&self, f: &mut F) -> fmt::Result
     where
-        W: Write,
+        F: fmt::FormatterBase + ?Sized,
     {
-        if self.banner {
-            w.write_str("\n-- INPUT ERROR ---------------------------------------------\n")?;
-            self.write_sections(&mut w)?;
-            w.write_str("\n------------------------------------------------------------\n")
-        } else {
-            self.write_sections(&mut w)
-        }
+        self.write_description(f)?;
+        self.write_inputs(f)?;
+        self.write_additional(f)?;
+        self.write_context_backtrace(f)
     }
 
-    fn write_sections<W>(&self, w: &mut W) -> fmt::Result
+    fn write_description<F>(&self, f: &mut F) -> fmt::Result
     where
-        W: Write,
+        F: fmt::FormatterBase + ?Sized,
     {
-        self.write_description(w)?;
-        self.write_inputs(w)?;
-        self.write_additional(w)?;
-        self.write_context_backtrace(w)
+        f.write_str("error attempting to ")?;
+        f.write_display(&self.error.context_stack().root().operation())?;
+        f.write_str(": ")?;
+        self.error.description(f.as_dyn_mut())?;
+        f.write_char('\n')
     }
 
-    fn write_description<W>(&self, w: &mut W) -> fmt::Result
+    fn write_inputs<F>(&self, f: &mut F) -> fmt::Result
     where
-        W: Write,
-    {
-        writeln!(
-            w,
-            "error attempting to {}: {}",
-            self.error.context_stack().root().operation(),
-            WithFormatter(|f| self.error.description(f)),
-        )
-    }
-
-    fn write_inputs<W>(&self, w: &mut W) -> fmt::Result
-    where
-        W: Write,
+        F: fmt::FormatterBase + ?Sized,
     {
         let input = self.error.input();
         let span = self.error.span();
@@ -119,43 +101,49 @@ where
         let span_display = self.input_display(&span);
         if let Some(expected_value) = self.error.expected() {
             let expected_display = self.input_display(&expected_value);
-            writeln!(w, "expected:")?;
-            write_input(w, expected_display, false)?;
-            writeln!(w, "in:")?;
+            f.write_str("expected:\n")?;
+            write_input(f, expected_display, false)?;
+            f.write_str("in:\n")?;
         }
         if span.is_within(&input) {
-            write_input(w, input_display.span(&span, self.input_max_width), true)
+            write_input(f, input_display.span(&span, self.input_max_width), true)
         } else {
-            writeln!(
-                w,
-                concat!(
-                    "note: error span is not within the error input indicating the\n",
-                    "      concrete error being used has a bug. Consider raising an\n",
-                    "      issue with the maintainer!",
-                )
-            )?;
-            writeln!(w, "span: ")?;
-            write_input(w, span_display, false)?;
-            writeln!(w, "input: ")?;
-            write_input(w, input_display, false)
+            f.write_str(concat!(
+                "note: error span is not within the error input indicating the\n",
+                "      concrete error being used has a bug. Consider raising an\n",
+                "      issue with the maintainer!\n",
+            ))?;
+            f.write_str("span: \n")?;
+            write_input(f, span_display, false)?;
+            f.write_str("input: \n")?;
+            write_input(f, input_display, false)
         }
     }
 
-    fn write_context_backtrace<W>(&self, w: &mut W) -> fmt::Result
+    fn write_context_backtrace<F>(&self, f: &mut F) -> fmt::Result
     where
-        W: Write,
+        F: fmt::FormatterBase + ?Sized,
     {
-        write!(w, "backtrace:")?;
+        f.write_str("backtrace:")?;
         let write_success = self.error.context_stack().walk(&mut |i, c| {
-            if write!(w, "\n  {}. `{}`", i, c.operation()).is_err() {
-                return false;
-            }
-            if let Some(expected) = c.expected() {
-                if write!(w, " (expected {})", expected).is_err() {
-                    return false;
+            fn write_context<F: fmt::FormatterBase + ?Sized>(
+                f: &mut F,
+                i: usize,
+                c: &dyn Context,
+            ) -> fmt::Result {
+                f.write_str("\n ")?;
+                f.write_usize(i)?;
+                f.write_str(". `")?;
+                f.write_str(c.operation())?;
+                f.write_char('`')?;
+                if let Some(expected) = c.expected() {
+                    f.write_str(" (expected ")?;
+                    f.write_display(expected)?;
+                    f.write_char(')')?;
                 }
+                Ok(())
             }
-            true
+            write_context(f, i, c).is_ok()
         });
         if write_success {
             Ok(())
@@ -164,43 +152,40 @@ where
         }
     }
 
-    fn write_additional<W>(&self, w: &mut W) -> fmt::Result
+    fn write_additional<F>(&self, f: &mut F) -> fmt::Result
     where
-        W: Write,
+        F: fmt::FormatterBase + ?Sized,
     {
         let input = self.error.input();
         let span = self.error.span();
-        write!(w, "additional:\n  ")?;
+        f.write_str("additional:\n  ")?;
         if span.is_within(&input) {
             let input_bounds = input.as_dangerous().as_ptr_range();
             let span_bounds = self.error.span().as_dangerous().as_ptr_range();
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
             match self.format {
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
-                    write!(w, "error line: {}, ", line_offset(&input, span_offset))?;
+                    f.write_str("error line: ")?;
+                    f.write_usize(line_offset(&input, span_offset))?;
+                    f.write_str(", ")?;
                 }
                 _ => (),
             }
-            writeln!(
-                w,
-                "error offset: {}, input length: {}",
-                span_offset,
-                input.len()
-            )
+            f.write_str("error offset: ")?;
+            f.write_usize(span_offset)?;
+            f.write_str(", input length: ")?;
+            f.write_usize(input.len())?;
         } else {
-            writeln!(
-                w,
-                "span ptr: {:?}, span length: {}",
-                span.as_dangerous().as_ptr(),
-                span.len(),
-            )?;
-            writeln!(
-                w,
-                "input ptr: {:?}, input length: {}",
-                input.as_dangerous().as_ptr(),
-                input.len(),
-            )
+            f.write_str("span ptr: ")?;
+            f.write_usize(span.as_dangerous().as_ptr() as usize)?;
+            f.write_str(", span length: ")?;
+            f.write_usize(span.len())?;
+            f.write_str("input ptr: ")?;
+            f.write_usize(input.as_dangerous().as_ptr() as usize)?;
+            f.write_str(", input length: ")?;
+            f.write_usize(input.len())?;
         }
+        f.write_char('\n')
     }
 
     fn input_display<'b>(&self, input: &Input<'b>) -> InputDisplay<'b> {
@@ -214,37 +199,51 @@ impl<'a, 'i, T> Clone for ErrorDisplay<'a, T> {
     }
 }
 
-impl<'a, 'i, T> fmt::Debug for ErrorDisplay<'a, T>
+impl<'a, 'i, T> fmt::DisplayBase for ErrorDisplay<'a, T>
 where
     T: error::Details<'i>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.write(f)
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        if self.banner {
+            f.write_str("\n-- INPUT ERROR ---------------------------------------------\n")?;
+            self.write_sections(f)?;
+            f.write_str("\n------------------------------------------------------------\n")
+        } else {
+            self.write_sections(f)
+        }
     }
 }
 
-impl<'a, 'i, T> fmt::Display for ErrorDisplay<'a, T>
+forward_fmt!(impl<'a, 'i, T> Display for ErrorDisplay<'a, T> where T: ErrorDetails<'i>);
+
+impl<'a, 'i, T> fmt::DebugBase for ErrorDisplay<'a, T>
 where
     T: error::Details<'i>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.write(f)
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        fmt::DisplayBase::fmt(self, f)
     }
 }
+
+forward_fmt!(impl<'a, 'i, T> Debug for ErrorDisplay<'a, T> where T: ErrorDetails<'i>);
 
 fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
     let (before_span, _) = input.clone().split_at_opt(span_offset).unwrap();
     before_span.count(b'\n') + 1
 }
 
-fn write_input<W>(w: &mut W, mut input: InputDisplay<'_>, underline: bool) -> fmt::Result
+fn write_input<F>(f: &mut F, mut input: InputDisplay<'_>, underline: bool) -> fmt::Result
 where
-    W: Write,
+    F: fmt::FormatterBase + ?Sized,
 {
     input.prepare();
-    writeln!(w, "> {}", input)?;
+    f.write_str("> ")?;
+    fmt::DisplayBase::fmt(&input, f.as_dyn_mut())?;
+    f.write_char('\n')?;
     if underline {
-        writeln!(w, "  {}", input.underline(true))?;
+        f.write_str("  ")?;
+        fmt::DisplayBase::fmt(&input.underline(true), f.as_dyn_mut())?;
+        f.write_char('\n')?;
     }
     Ok(())
 }

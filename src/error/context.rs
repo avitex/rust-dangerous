@@ -1,6 +1,6 @@
 use core::any::Any;
-use core::fmt::{self, Debug};
 
+use crate::display::fmt::{self, DebugBase};
 use crate::input::Input;
 
 use super::FromContext;
@@ -9,7 +9,7 @@ use super::FromContext;
 use alloc::{boxed::Box, vec::Vec};
 
 /// The base context surrounding an error.
-pub trait Context: Any + Debug {
+pub trait Context: Any + DebugBase {
     /// The operation that was attempted when an error occurred.
     ///
     /// It should described in a simple manner what is trying to be achieved and
@@ -20,8 +20,8 @@ pub trait Context: Any + Debug {
     /// ```
     fn operation(&self) -> &'static str;
 
-    /// Returns a [`fmt::Display`] formattable value of what was expected.
-    fn expected(&self) -> Option<&dyn fmt::Display>;
+    /// Returns a [`fmt::DisplayBase`] formattable value of what was expected.
+    fn expected(&self) -> Option<&dyn fmt::DisplayBase>;
 
     /// Return a reference of self as [`Any`].
     // FIXME: an ideal implementation wouldn't require this function and we
@@ -75,7 +75,7 @@ impl Context for &'static str {
         "read"
     }
 
-    fn expected(&self) -> Option<&dyn fmt::Display> {
+    fn expected(&self) -> Option<&dyn fmt::DisplayBase> {
         Some(self)
     }
 
@@ -99,7 +99,7 @@ impl Context for ExpectedContext {
         self.operation
     }
 
-    fn expected(&self) -> Option<&dyn fmt::Display> {
+    fn expected(&self) -> Option<&dyn fmt::DisplayBase> {
         Some(&self.expected)
     }
 
@@ -108,14 +108,16 @@ impl Context for ExpectedContext {
     }
 }
 
-impl Debug for ExpectedContext {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExpectedContext")
-            .field("operation", &self.operation)
-            .field("expected", &self.expected)
-            .finish()
+impl DebugBase for ExpectedContext {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_struct(
+            "ExpectedContext",
+            &[("operation", &self.operation), ("expected", &self.expected)],
+        )
     }
 }
+
+forward_fmt!(impl Debug for ExpectedContext);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Operation context
@@ -128,7 +130,7 @@ impl Context for OperationContext {
         self.0
     }
 
-    fn expected(&self) -> Option<&dyn fmt::Display> {
+    fn expected(&self) -> Option<&dyn fmt::DisplayBase> {
         None
     }
 
@@ -137,11 +139,13 @@ impl Context for OperationContext {
     }
 }
 
-impl Debug for OperationContext {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("OperationContext").field(&self.0).finish()
+impl DebugBase for OperationContext {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_tuple("OperationContext", &[&self.0])
     }
 }
+
+forward_fmt!(impl Debug for OperationContext);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Root context stack

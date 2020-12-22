@@ -1,7 +1,7 @@
 #[cfg(feature = "unicode")]
 use unicode_width::UnicodeWidthChar;
 
-use core::fmt::{self, Write};
+use super::fmt::{self, Write};
 
 pub(super) fn byte_display_width(b: u8, show_ascii: bool) -> usize {
     if show_ascii {
@@ -28,10 +28,10 @@ pub(super) fn byte_display_write<W: Write>(b: u8, show_ascii: bool, w: &mut W) -
                 w.write_char(b as char)?;
                 w.write_char('\'')
             }
-            b => write!(w, "{:0>2x}", b),
+            b => write_hex_byte(w, b),
         }
     } else {
-        write!(w, "{:0>2x}", b)
+        write_hex_byte(w, b)
     }
 }
 
@@ -45,6 +45,18 @@ pub(super) fn char_display_write<W: Write>(c: char, w: &mut W) -> fmt::Result {
         w.write_char(c)?;
     }
     Ok(())
+}
+
+fn write_hex_byte<W: Write>(w: &mut W, b: u8) -> fmt::Result {
+    fn digit(b: u8) -> u8 {
+        match b {
+            x @ 0..=9 => b'0' + x,
+            x @ 10..=15 => b'a' + (x - 10),
+            _ => unreachable!(),
+        }
+    }
+    w.write_char(digit(b >> 4) as char)?;
+    w.write_char(digit(b & 0x0F) as char)
 }
 
 #[cfg(feature = "unicode")]

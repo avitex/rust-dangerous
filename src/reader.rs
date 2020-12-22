@@ -1,6 +1,6 @@
-use core::fmt;
 use core::marker::PhantomData;
 
+use crate::display::fmt;
 use crate::error::{
     with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
     OperationContext, ToRetryRequirement,
@@ -629,10 +629,10 @@ impl<'i, E> Reader<'i, E> {
     }
 }
 
-impl<'i, E> fmt::Debug for Reader<'i, E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Reader")
-            .field("input", &self.input)
-            .finish()
+impl<'i, E> fmt::DebugBase for Reader<'i, E> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_struct("Reader", &[("input", &self.input)])
     }
 }
+
+forward_fmt!(impl<'i, E> Debug for Reader<'i, E>);

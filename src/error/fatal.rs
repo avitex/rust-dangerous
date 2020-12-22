@@ -1,5 +1,4 @@
-use core::fmt;
-
+use crate::display::fmt;
 use crate::input::Input;
 
 use super::{
@@ -32,17 +31,21 @@ use super::{
 #[derive(PartialEq)]
 pub struct Fatal;
 
-impl fmt::Debug for Fatal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Fatal").finish()
+impl fmt::DebugBase for Fatal {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_tuple("Fatal", &[])
     }
 }
 
-impl fmt::Display for Fatal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+forward_fmt!(impl Debug for Fatal);
+
+impl fmt::DisplayBase for Fatal {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         f.write_str("invalid input")
     }
 }
+
+forward_fmt!(impl Display for Fatal);
 
 impl<'i> FromContext<'i> for Fatal {
     fn from_context<C>(self, _input: Input<'i>, _context: C) -> Self

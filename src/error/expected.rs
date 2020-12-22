@@ -1,9 +1,7 @@
-use core::fmt;
-
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
-use crate::display::{ByteCount, ErrorDisplay};
+use crate::display::{fmt, ByteCount, ErrorDisplay};
 use crate::input::Input;
 
 use super::{
@@ -104,11 +102,11 @@ where
         }
     }
 
-    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn description(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         match &self.kind {
-            ExpectedKind::Value(err) => fmt::Display::fmt(err, f),
-            ExpectedKind::Valid(err) => fmt::Display::fmt(err, f),
-            ExpectedKind::Length(err) => fmt::Display::fmt(err, f),
+            ExpectedKind::Value(err) => fmt::DisplayBase::fmt(err, f),
+            ExpectedKind::Valid(err) => fmt::DisplayBase::fmt(err, f),
+            ExpectedKind::Length(err) => fmt::DisplayBase::fmt(err, f),
         }
     }
 
@@ -173,23 +171,27 @@ where
     }
 }
 
-impl<'i, S> fmt::Display for Expected<'i, S>
+impl<'i, S> fmt::DisplayBase for Expected<'i, S>
 where
     S: ContextStack,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).fmt(f)
     }
 }
 
-impl<'i, S> fmt::Debug for Expected<'i, S>
+forward_fmt!(impl<'i, S> Display for Expected<'i, S> where S: ContextStack);
+
+impl<'i, S> fmt::DebugBase for Expected<'i, S>
 where
     S: ContextStack,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
     }
 }
+
+forward_fmt!(impl<'i, S> Debug for Expected<'i, S> where S: ContextStack);
 
 impl<'i, S> From<ExpectedLength<'i>> for Expected<'i, S>
 where
@@ -288,22 +290,29 @@ impl<'i> ExpectedValue<'i> {
     }
 }
 
-impl<'i> fmt::Debug for ExpectedValue<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExpectedValue")
-            .field("input", &self.input())
-            .field("actual", &self.found())
-            .field("expected", &self.expected())
-            .field("context", &self.context())
-            .finish()
+impl<'i> fmt::DebugBase for ExpectedValue<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_struct(
+            "ExpectedValue",
+            &[
+                ("input", &self.input()),
+                ("actual", &self.found()),
+                ("expected", &self.expected()),
+                ("context", &self.context()),
+            ],
+        )
     }
 }
 
-impl<'i> fmt::Display for ExpectedValue<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+forward_fmt!(impl<'i> Debug for ExpectedValue<'i>);
+
+impl<'i> fmt::DisplayBase for ExpectedValue<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         f.write_str("found a different value to the exact expected")
     }
 }
+
+forward_fmt!(impl<'i> Display for ExpectedValue<'i>);
 
 impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     #[inline]
@@ -396,35 +405,53 @@ impl<'i> ExpectedLength<'i> {
     }
 }
 
-impl<'i> fmt::Debug for ExpectedLength<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExpectedValue")
-            .field("min", &self.min())
-            .field("max", &self.max())
-            .field("input", &self.input())
-            .field("span", &self.span())
-            .field("context", &self.context())
-            .finish()
+impl<'i> fmt::DebugBase for ExpectedLength<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_struct(
+            "ExpectedValue",
+            &[
+                ("min", &self.min()),
+                ("max", &self.max()),
+                ("input", &self.input()),
+                ("span", &self.span()),
+                ("context", &self.context()),
+            ],
+        )
     }
 }
 
-impl<'i> fmt::Display for ExpectedLength<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "found {} when ", ByteCount(self.span().len()))?;
+forward_fmt!(impl<'i> Debug for ExpectedLength<'i>);
+
+impl<'i> fmt::DisplayBase for ExpectedLength<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.write_str("found ")?;
+        ByteCount(self.span().len()).fmt(f)?;
+        f.write_str(" when ")?;
         match (self.min(), self.max()) {
-            (0, Some(max)) => write!(f, "at most {}", ByteCount(max)),
-            (min, None) => write!(f, "at least {}", ByteCount(min)),
-            (min, Some(max)) if min == max => write!(f, "exactly {}", ByteCount(min)),
-            (min, Some(max)) => write!(
-                f,
-                "at least {} and at most {}",
-                ByteCount(min),
-                ByteCount(max)
-            ),
+            (0, Some(max)) => {
+                f.write_str("at most ")?;
+                ByteCount(max).fmt(f)
+            }
+            (min, None) => {
+                f.write_str("at least ")?;
+                ByteCount(min).fmt(f)
+            }
+            (min, Some(max)) if min == max => {
+                f.write_str("exactly ")?;
+                ByteCount(min).fmt(f)
+            }
+            (min, Some(max)) => {
+                f.write_str("at least ")?;
+                ByteCount(min).fmt(f)?;
+                f.write_str(" and at most ")?;
+                ByteCount(max).fmt(f)
+            }
         }?;
-        write!(f, " was expected")
+        f.write_str(" was expected")
     }
 }
+
+forward_fmt!(impl<'i> Display for ExpectedLength<'i>);
 
 impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     #[inline]
@@ -482,22 +509,30 @@ impl<'i> ExpectedValid<'i> {
     }
 }
 
-impl<'i> fmt::Debug for ExpectedValid<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExpectedValue")
-            .field("input", &self.input())
-            .field("span", &self.span())
-            .field("context", &self.context())
-            .field("retry_requirement", &self.retry_requirement)
-            .finish()
+impl<'i> fmt::DebugBase for ExpectedValid<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.debug_struct(
+            "ExpectedValue",
+            &[
+                ("input", &self.input()),
+                ("span", &self.span()),
+                ("context", &self.context()),
+                ("retry_requirement", &self.retry_requirement),
+            ],
+        )
     }
 }
 
-impl<'i> fmt::Display for ExpectedValid<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expected {}", self.context.expected)
+forward_fmt!(impl<'i> Debug for ExpectedValid<'i>);
+
+impl<'i> fmt::DisplayBase for ExpectedValid<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        f.write_str("expected ")?;
+        f.write_str(self.context.expected)
     }
 }
+
+forward_fmt!(impl<'i> Display for ExpectedValid<'i>);
 
 impl<'i> ToRetryRequirement for ExpectedValid<'i> {
     #[inline]

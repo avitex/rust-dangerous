@@ -1,5 +1,4 @@
-use core::fmt;
-
+use super::fmt;
 use super::unit::{byte_display_width, byte_display_write, char_display_width, char_display_write};
 
 pub(super) struct InputWriter<'a, W>

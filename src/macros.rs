@@ -81,3 +81,34 @@ macro_rules! split_arr {
         $input.split_arr_8($expected)
     };
 }
+
+macro_rules! forward_fmt {
+    (impl Debug for $name:ident) => {
+        impl core::fmt::Debug for $name {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                crate::display::fmt::DebugBase::fmt(self, f)
+            }
+        }
+    };
+    (impl Display for $name:ident) => {
+        impl core::fmt::Display for $name {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                crate::display::fmt::DisplayBase::fmt(self, f)
+            }
+        }
+    };
+    (impl<$($impl_generics:tt),+> Debug for $name:ident<$($ty_generics:tt),+> $(where $bname:tt:$bvalue:tt$(<$($b_generics:tt),+>)?)?) => {
+        impl<$($impl_generics),+> core::fmt::Debug for $name<$($ty_generics),+> $(where $bname:$bvalue$(<$($b_generics),+>)?)? {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                crate::display::fmt::DebugBase::fmt(self, f)
+            }
+        }
+    };
+    (impl<$($impl_generics:tt),+> Display for $name:ident<$($ty_generics:tt),+> $(where $bname:tt:$bvalue:tt$(<$($b_generics:tt),+>)?)?) => {
+        impl<$($impl_generics),+> core::fmt::Display for $name<$($ty_generics),+> $(where $bname:$bvalue$(<$($b_generics),+>)?)? {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                crate::display::fmt::DisplayBase::fmt(self, f)
+            }
+        }
+    };
+}

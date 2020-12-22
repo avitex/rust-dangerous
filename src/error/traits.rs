@@ -1,5 +1,4 @@
-use core::fmt;
-
+use crate::display::fmt;
 use crate::input::Input;
 
 use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue};
@@ -62,7 +61,7 @@ pub trait Details<'i> {
     /// # Errors
     ///
     /// Returns a [`fmt::Error`] if failed to write to the formatter.
-    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn description(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result;
 
     /// The walkable [`ContextStack`] to the original context around the error
     /// that occurred.

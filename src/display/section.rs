@@ -5,11 +5,12 @@
 // | head-tail | `"a" .. "a"` | `[97 .. 97]` | `['a' .. 'a']` |
 // | span      | `.. "a" ..`  | `[.. 97 ..]` | `[.. 'a' ..]`  |
 
-use core::{fmt, str};
+use core::str;
 
 use crate::util::alt_iter::{Alternate, AlternatingIter};
 use crate::util::{is_sub_slice, utf8};
 
+use super::fmt;
 use super::input::PreferredFormat;
 use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
 use super::writer::InputWriter;

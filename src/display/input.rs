@@ -1,7 +1,6 @@
-use core::fmt::{self, Write};
-
 use crate::input::Input;
 
+use super::fmt::{self, Write};
 use super::section::{Section, SectionOpt};
 
 const DEFAULT_SECTION_OPTION: SectionOpt<'static> = SectionOpt::HeadTail { width: 1024 };
@@ -20,8 +19,8 @@ pub enum PreferredFormat {
     BytesAscii,
 }
 
-impl fmt::Debug for PreferredFormat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl fmt::DebugBase for PreferredFormat {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
         let s = match self {
             Self::Str => "Str",
             Self::StrCjk => "StrCjk",
@@ -31,6 +30,8 @@ impl fmt::Debug for PreferredFormat {
         f.write_str(s)
     }
 }
+
+forward_fmt!(impl Debug for PreferredFormat);
 
 /// Provides configurable [`Input`] formatting.
 ///
@@ -79,7 +80,10 @@ impl<'i> InputDisplay<'i> {
     ///
     /// - Precision (eg. `{:.16}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
-    pub fn from_formatter(input: &Input<'i>, f: &fmt::Formatter<'_>) -> Self {
+    pub fn from_formatter<F>(input: &Input<'i>, f: &F) -> Self
+    where
+        F: fmt::FormatterBase + ?Sized,
+    {
         let format = Self::new(input).str_hint(f.alternate());
         match f.precision() {
             Some(width) => format.head_tail(width),
@@ -220,17 +224,21 @@ impl<'i> InputDisplay<'i> {
     }
 }
 
-impl<'i> fmt::Debug for InputDisplay<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.write(f)
+impl<'i> fmt::DisplayBase for InputDisplay<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        self.write(fmt::Writer::new(f))
     }
 }
 
-impl<'i> fmt::Display for InputDisplay<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.write(f)
+forward_fmt!(impl<'i> Display for InputDisplay<'i>);
+
+impl<'i> fmt::DebugBase for InputDisplay<'i> {
+    fn fmt(&self, f: &mut dyn fmt::FormatterBase) -> fmt::Result {
+        fmt::DisplayBase::fmt(self, f)
     }
 }
+
+forward_fmt!(impl<'i> Debug for InputDisplay<'i>);
 
 impl<'i> Clone for InputDisplay<'i> {
     fn clone(&self) -> Self {
