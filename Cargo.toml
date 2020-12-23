@@ -25,7 +25,7 @@ unicode = ["unicode-width"]
 full-context = ["alloc"]
 
 [dependencies]
-zc = { git = "https://github.com/avitex/rust-zc", default-features = false, optional = true }
+zc = { version = "0.2", optional = true, default-features = false }
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
