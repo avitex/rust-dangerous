@@ -729,3 +729,6 @@ impl<'i, E> fmt::Debug for Reader<'i, E> {
             .finish()
     }
 }
+
+#[cfg(feature = "zc")]
+unsafe impl<'i, E> zc::NoInteriorMut for Reader<'i, E> {}

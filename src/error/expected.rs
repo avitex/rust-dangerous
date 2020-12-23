@@ -251,6 +251,9 @@ where
 #[cfg(feature = "std")]
 impl<'i, S> std::error::Error for Expected<'i, S> where S: ContextStack {}
 
+#[cfg(feature = "zc")]
+unsafe impl<'i, S> zc::NoInteriorMut for Expected<'i, S> where S: zc::NoInteriorMut {}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Expected value error
 
@@ -332,6 +335,9 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
         self.input.is_bound() || !self.expected().has_prefix(self.found().as_dangerous())
     }
 }
+
+#[cfg(feature = "zc")]
+unsafe impl<'i> zc::NoInteriorMut for ExpectedValue<'i> {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected length error
@@ -476,6 +482,9 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     }
 }
 
+#[cfg(feature = "zc")]
+unsafe impl<'i> zc::NoInteriorMut for ExpectedLength<'i> {}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Expected valid error
 
@@ -555,6 +564,9 @@ impl<'i> ToRetryRequirement for ExpectedValid<'i> {
         self.input.is_bound() || self.retry_requirement.is_some()
     }
 }
+
+#[cfg(feature = "zc")]
+unsafe impl<'i> zc::NoInteriorMut for ExpectedValid<'i> {}
 
 #[cfg(test)]
 mod tests {

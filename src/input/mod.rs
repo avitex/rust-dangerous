@@ -414,3 +414,9 @@ impl<'i> Clone for Input<'i> {
         }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Zc
+
+#[cfg(feature = "zc")]
+unsafe impl<'i> zc::NoInteriorMut for Input<'i> {}

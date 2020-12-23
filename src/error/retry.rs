@@ -72,6 +72,9 @@ impl fmt::Display for RetryRequirement {
     }
 }
 
+#[cfg(feature = "zc")]
+unsafe impl zc::NoInteriorMut for RetryRequirement {}
+
 /// Implemented for errors that return a [`RetryRequirement`].
 pub trait ToRetryRequirement {
     /// Returns the requirement, if applicable, to retry processing the `Input`.
