@@ -132,6 +132,9 @@ impl fmt::Debug for ExpectedContext {
     }
 }
 
+#[cfg(feature = "zc")]
+unsafe impl zc::NoInteriorMut for ExpectedContext {}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Operation context
 
@@ -161,6 +164,9 @@ impl fmt::Debug for OperationContext {
         f.debug_tuple("OperationContext").field(&self.0).finish()
     }
 }
+
+#[cfg(feature = "zc")]
+unsafe impl zc::NoInteriorMut for OperationContext {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Root context stack
@@ -195,6 +201,9 @@ impl ContextStack for RootContextStack {
         f(1, &self.context)
     }
 }
+
+#[cfg(feature = "zc")]
+unsafe impl zc::NoInteriorMut for RootContextStack {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Full context stack
@@ -245,6 +254,9 @@ impl ContextStack for FullContextStack {
         f(i, &self.root)
     }
 }
+
+#[cfg(feature = "zc")]
+unsafe impl zc::NoInteriorMut for FullContextStack {}
 
 ///////////////////////////////////////////////////////////////////////////////
 

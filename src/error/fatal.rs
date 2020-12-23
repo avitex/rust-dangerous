@@ -86,3 +86,6 @@ impl<'i> From<ExpectedValid<'i>> for Fatal {
         Self
     }
 }
+
+#[cfg(feature = "zc")]
+unsafe impl zc::NoInteriorMut for Fatal {}
