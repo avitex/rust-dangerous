@@ -29,6 +29,9 @@ zc = { version = "0.2", optional = true, default-features = false }
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
+[dev-dependencies]
+zc = "0.2"
+
 [[example]]
 name = "json"
 required-features = ["std"]
@@ -36,6 +39,10 @@ required-features = ["std"]
 [[example]]
 name = "streaming"
 required-features = ["std"]
+
+[[example]]
+name = "zerocopy"
+required-features = ["zc"]
 
 [package.metadata.docs.rs]
 all-features = true
