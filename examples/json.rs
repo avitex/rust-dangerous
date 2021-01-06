@@ -192,7 +192,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn value_size() {
+    fn test_value_size() {
         // If true, we box Expected!
         assert!(core::mem::size_of::<Value<'_>>() < 128);
     }

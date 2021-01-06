@@ -160,33 +160,34 @@ fn skip_whitespace_or_comment<E>(r: &mut Reader<'_, E>, to_where: ConsumeTo) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    static GLOBALS_WITHOUT_SECTIONS: &[u8] = br#"
+
+    const GLOBALS_WITHOUT_SECTIONS: &[u8] = b"
             ; comment before
           hello = value
           a = b  ; comment
           ; comment after
-        "#;
+    ";
 
-    static SECTION_WITHOUT_VALUES: &[u8] = br#"
+    const SECTION_WITHOUT_VALUES: &[u8] = b"
             ; comment before
             [ section name ]
           ; comment after
-        "#;
+    ";
 
-    static INI: &[u8] = br#"language=rust ; awesome
+    const INI: &[u8] = b"language=rust ; awesome
 
 [ section ]
 name = dangerous ;
 type = manual
 
 [empty section]
-"#;
+";
 
     #[test]
-    fn section_without_values() {
-        let section: Result<_, Expected> = dangerous::input(SECTION_WITHOUT_VALUES)
-            .read_all(read_section)
-            .expect("success");
+    fn test_section_without_values() {
+        let section = dangerous::input(SECTION_WITHOUT_VALUES)
+            .read_all::<_, _, Expected>(read_section)
+            .unwrap();
         assert_eq!(
             section,
             Section {
@@ -197,12 +198,12 @@ type = manual
     }
 
     #[test]
-    fn complete_ini_file() {
-        let ini = dangerous::input(INI)
+    fn test_complete_ini() {
+        let document = dangerous::input(INI)
             .read_all::<_, _, Expected>(read_ini)
-            .expect("success");
+            .unwrap();
         assert_eq!(
-            ini,
+            document,
             Document {
                 globals: vec![Pair {
                     name: "language",
@@ -232,10 +233,10 @@ type = manual
     }
 
     #[test]
-    fn global_values_with_comments() {
+    fn test_global_values_with_comments() {
         let values = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
             .read_all::<_, _, Expected>(read_zero_or_more_properties_until_section)
-            .expect("success");
+            .unwrap();
         assert_eq!(
             values,
             vec![
@@ -252,12 +253,12 @@ type = manual
     }
 
     #[test]
-    fn document_without_sections() {
-        let ini = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
+    fn test_document_without_sections() {
+        let document = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
             .read_all::<_, _, Expected>(read_ini)
-            .expect("success");
+            .unwrap();
         assert_eq!(
-            ini,
+            document,
             Document {
                 globals: vec![
                     Pair {
@@ -278,12 +279,12 @@ type = manual
     fn empty_input() {
         let ini = dangerous::input(b"")
             .read_all::<_, _, Expected>(read_ini)
-            .expect("success");
+            .unwrap();
         assert_eq!(ini, Document::default());
 
         let ini = dangerous::input(b"  \n ; empty ")
             .read_all::<_, _, Expected>(read_ini)
-            .expect("success");
+            .unwrap();
         assert_eq!(ini, Document::default())
     }
 }

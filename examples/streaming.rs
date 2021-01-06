@@ -151,7 +151,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn message_size() {
+    fn test_message_size() {
         // If true, we box Expected!
         assert!(core::mem::size_of::<Message<'_>>() < 128);
     }
