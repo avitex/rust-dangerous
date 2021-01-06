@@ -27,17 +27,6 @@ full-context = ["alloc"]
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
-[dev-dependencies]
-criterion = "0.3"
-
-[[bench]]
-name = "reader"
-harness = false
-
-[[bench]]
-name = "context"
-harness = false
-
 [[example]]
 name = "json"
 required-features = ["std"]

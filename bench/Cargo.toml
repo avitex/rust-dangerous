@@ -1,0 +1,23 @@
+[package]
+name = "dangerous-bench"
+version = "0.0.0"
+edition = "2018"
+publish = false
+
+[[bench]]
+name = "reader"
+harness = false
+
+[[bench]]
+name = "context"
+harness = false
+
+[dependencies]
+criterion = { version = "0.3", features = ["real_blackbox"] }
+
+[dependencies.dangerous]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
