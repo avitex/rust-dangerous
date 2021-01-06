@@ -10,7 +10,7 @@ homepage = "https://github.com/avitex/rust-dangerous"
 repository = "https://github.com/avitex/rust-dangerous"
 license = "MIT"
 readme = "README.md"
-include = ["src/**/*", "tests/**/*", "benches/**/*", "examples/**/*", "README.md", "LICENSE", "Cargo.toml"]
+include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "Cargo.toml"]
 
 [features]
 default = ["full-context", "bytecount", "unicode"]
