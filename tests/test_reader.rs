@@ -130,6 +130,46 @@ fn test_try_take_while() {
 }
 
 #[test]
+fn test_take_str_while() {
+    assert_eq!(
+        read_all!(b"hello!", |r| {
+            let v = r.take_str_while(|c| c.is_ascii_alphabetic())?;
+            r.skip(1)?;
+            Ok(v)
+        })
+        .unwrap(),
+        b"hello"[..]
+    );
+    // Length 1
+    assert_eq!(
+        read_all!(&[0b0111_1111], |r| r.take_str_while(|_| true)).unwrap(),
+        input!(&[0b0111_1111])
+    );
+    // Length 2
+    let err = read_all!(&[0b1101_1111], |r| r.take_str_while(|_| true)).unwrap_err();
+    assert_eq!(err.to_retry_requirement(), RetryRequirement::new(1));
+    // Length 3
+    let err = read_all!(&[0b1110_1111], |r| r.take_str_while(|_| true)).unwrap_err();
+    assert_eq!(err.to_retry_requirement(), RetryRequirement::new(2));
+    // Invalid
+    let err = read_all!(&[0b1111_0111], |r| r.take_str_while(|_| true)).unwrap_err();
+    assert_eq!(err.to_retry_requirement(), None);
+}
+
+#[test]
+fn test_try_take_str_while() {
+    assert_eq!(
+        read_all!(b"hello!", |r| {
+            let v = r.try_take_str_while(|c| Ok(c.is_ascii_alphabetic()))?;
+            r.skip(1)?;
+            Ok(v)
+        })
+        .unwrap(),
+        b"hello"[..]
+    );
+}
+
+#[test]
 fn test_take_consumed() {
     assert_eq!(
         read_all!(b"hello", |r| {

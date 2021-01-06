@@ -271,13 +271,10 @@ impl<'i> Input<'i> {
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8
-    /// and [`ExpectedLength`] if a UTF-8 code point was cut short. This is
-    /// useful when parsing potentially incomplete buffers.
+    /// Returns [`ExpectedValid`] if the the input has invalid UTF-8.
     pub fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
     where
         E: From<ExpectedValid<'i>>,
-        E: From<ExpectedLength<'i>>,
     {
         let bytes = self.as_dangerous();
         if self.is_str() {
@@ -285,38 +282,25 @@ impl<'i> Input<'i> {
         } else {
             match str::from_utf8(bytes) {
                 Ok(s) => Ok(s),
-                Err(utf8_err) => match utf8_err.error_len() {
-                    None => {
-                        let invalid = &bytes[utf8_err.valid_up_to()..];
-                        // SAFETY: For an error to occur there must be a cause (at
-                        // least one byte in an invalid codepoint) so it is safe to
-                        // get without checking bounds.
-                        let first_invalid = unsafe { slice::first_unchecked(invalid) };
-                        Err(E::from(ExpectedLength {
-                            min: utf8::char_len(first_invalid),
-                            max: None,
-                            span: invalid,
-                            input: self.clone(),
-                            context: ExpectedContext {
-                                operation: "convert input to str",
-                                expected: "complete utf-8 code point",
-                            },
-                        }))
-                    }
-                    Some(error_len) => {
-                        let error_start = utf8_err.valid_up_to();
-                        let error_end = error_start + error_len;
-                        Err(E::from(ExpectedValid {
-                            span: &bytes[error_start..error_end],
-                            input: self.clone(),
-                            context: ExpectedContext {
-                                operation: "convert input to str",
-                                expected: "utf-8 code point",
-                            },
-                            retry_requirement: None,
-                        }))
-                    }
-                },
+                Err(utf8_err) => {
+                    let valid_up_to = utf8_err.valid_up_to();
+                    let span = match utf8_err.error_len() {
+                        Some(error_len) => {
+                            let error_end = valid_up_to + error_len;
+                            &bytes[valid_up_to..error_end]
+                        }
+                        None => &bytes[valid_up_to..],
+                    };
+                    Err(E::from(ExpectedValid {
+                        span,
+                        input: self.clone(),
+                        context: ExpectedContext {
+                            operation: "convert input to str",
+                            expected: "utf-8 code point",
+                        },
+                        retry_requirement: None,
+                    }))
+                }
             }
         }
     }

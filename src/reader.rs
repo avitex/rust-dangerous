@@ -172,6 +172,17 @@ impl<'i, E> Reader<'i, E> {
         self.advance(|input| (input.clone(), input.end()))
     }
 
+    /// Read all of the remaining string input.
+    #[inline]
+    pub fn take_remaining_str(&mut self) -> Result<Input<'i>, E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_str_while(|_| true, "take remaining str"))
+    }
+
     /// Read a length of input while a predicate check remains true.
     pub fn take_while<F>(&mut self, pred: F) -> Input<'i>
     where
@@ -192,6 +203,39 @@ impl<'i, E> Reader<'i, E> {
         F: FnMut(u8) -> Result<bool, E>,
     {
         self.try_advance(|input| input.try_split_while(pred, "try take while"))
+    }
+
+    /// Read a length of string input while a predicate check remains true.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8
+    /// and [`ExpectedLength`] if a UTF-8 code point was cut short.
+    pub fn take_str_while<F>(&mut self, pred: F) -> Result<Input<'i>, E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+        F: FnMut(char) -> bool,
+    {
+        self.try_advance(|input| input.split_str_while(pred, "take str while"))
+    }
+
+    /// Try read a length of string input while a predicate check remains true.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function does, [`ExpectedValid`] if the
+    /// the input could never be valid UTF-8 and [`ExpectedLength`] if a UTF-8
+    /// code point was cut short.
+    pub fn try_take_str_while<F>(&mut self, pred: F) -> Result<Input<'i>, E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+        F: FnMut(char) -> Result<bool, E>,
+    {
+        self.try_advance(|input| input.try_split_str_while(pred, "try take str while"))
     }
 
     /// Read a length of input that was successfully consumed from a sub-parse.

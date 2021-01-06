@@ -92,12 +92,12 @@ fn test_to_dangerous_str_expected_length() {
     let err = input!(&[0b1101_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.to_retry_requirement(), RetryRequirement::new(1));
+    assert_eq!(err.to_retry_requirement(), None);
     // Length 3
     let err = input!(&[0b1110_1111])
         .to_dangerous_str::<Expected>()
         .unwrap_err();
-    assert_eq!(err.to_retry_requirement(), RetryRequirement::new(2));
+    assert_eq!(err.to_retry_requirement(), None);
     // Invalid
     let err = input!(&[0b1111_0111])
         .to_dangerous_str::<Expected>()
