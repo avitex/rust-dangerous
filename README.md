@@ -103,12 +103,6 @@ backtrace:
   4. `convert input to str` (expected utf-8 code point)
 ```
 
-## Safety
-
-This library has a instance of `unsafe` required for wrapping a byte slice into
-the `Input` DST and multiple instances required for `str::from_utf8_unchecked`
-used in the display section module.
-
 ## Inspiration
 
 This project was originally inspired by [untrusted](https://github.com/briansmith/untrusted).

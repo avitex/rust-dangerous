@@ -5,7 +5,7 @@ use crate::error::{
     OperationContext, ToRetryRequirement,
 };
 use crate::reader::Reader;
-use crate::util::byte;
+use crate::util::{byte, slice};
 
 use super::Input;
 
@@ -27,19 +27,13 @@ impl<'i> Input<'i> {
 
     #[inline(always)]
     pub(crate) fn has_prefix(&self, prefix: &[u8]) -> bool {
-        if self.len() >= prefix.len() {
-            let bytes = self.as_dangerous();
-            let (head, _) = bytes.split_at(prefix.len());
-            prefix == head
-        } else {
-            false
-        }
+        self.as_dangerous().starts_with(prefix)
     }
 
     /// Returns an empty `Input` pointing the end of `self`.
     #[inline(always)]
     pub(crate) fn end(self) -> Input<'i> {
-        Input::new(&self.as_dangerous()[self.len()..], self.is_bound())
+        Input::new(slice::end(self.as_dangerous()), self.is_bound())
     }
 }
 
@@ -112,14 +106,10 @@ impl<'i> Input<'i> {
     where
         E: From<ExpectedValue<'i>>,
     {
-        let actual = if let Some((head, tail)) = self.clone().split_at_opt(1) {
-            if head.as_dangerous()[0] == prefix {
-                return Ok((head, tail));
-            } else {
-                head.as_dangerous()
-            }
-        } else {
-            self.as_dangerous()
+        let actual = match self.clone().split_at_opt(1) {
+            Some((head, tail)) if head.has_prefix(&[prefix]) => return Ok((head, tail)),
+            Some((head, _)) => head.as_dangerous(),
+            None => self.as_dangerous(),
         };
         Err(E::from(ExpectedValue {
             actual,
@@ -189,18 +179,14 @@ impl<'i> Input<'i> {
     /// Splits the input into two at `mid`.
     #[inline(always)]
     pub(crate) fn split_at_opt(self, mid: usize) -> Option<(Input<'i>, Input<'i>)> {
-        // Check if we have enough input to split at `mid`.
-        if mid > self.len() {
-            None
-        } else {
-            let (head, tail) = self.as_dangerous().split_at(mid);
+        slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
             // We split at a known length making the head input bound.
             let head = Input::new(head, true);
             // For the tail we derive the bound constraint from self.
             let tail = Input::new(tail, self.is_bound());
             // Return the split input parts.
-            Some((head, tail))
-        }
+            (head, tail)
+        })
     }
 
     #[inline(always)]
@@ -357,7 +343,8 @@ impl<'i> Input<'i> {
             // Check if the byte doesn't match the predicate.
             if !pred(*byte) {
                 // Split the input up to, but not including the byte.
-                let (head, tail) = bytes.split_at(i);
+                // SAFETY: `i` is always a valid index for bytes, derived from the enumerate iterator.
+                let (head, tail) = unsafe { slice::split_at_unchecked(bytes, i) };
                 // Because we hit the predicate it doesn't matter if we
                 // have more input, this will always return the same.
                 // This means we know the input has a bound.
@@ -388,7 +375,8 @@ impl<'i> Input<'i> {
             // Check if the byte doesn't match the predicate.
             if !with_context(self.clone(), OperationContext(operation), || f(*byte))? {
                 // Split the input up to, but not including the byte.
-                let (head, tail) = bytes.split_at(i);
+                // SAFETY: `i` is always a valid index for bytes, derived from the enumerate iterator.
+                let (head, tail) = unsafe { slice::split_at_unchecked(bytes, i) };
                 // Because we hit the predicate it doesn't matter if we
                 // have more input, this will always return the same.
                 // This means we know the head input has a bound.

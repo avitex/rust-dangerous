@@ -7,7 +7,7 @@ use core::{fmt, str};
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
 use crate::reader::Reader;
-use crate::util::{is_sub_slice, utf8};
+use crate::util::{slice, utf8};
 
 /// Creates a new `Input` from a byte slice.
 ///
@@ -68,7 +68,7 @@ impl<'i> Input<'i> {
     /// Returns `true` if the underlying byte slice for `parent` contains that
     /// of `self` in the same section of memory with no bounds out of range.
     pub fn is_within(&self, parent: &Input<'_>) -> bool {
-        is_sub_slice(parent.as_dangerous(), self.as_dangerous())
+        slice::is_sub_slice(parent.as_dangerous(), self.as_dangerous())
     }
 
     /// Returns the occurrences of `needle` within the underlying byte slice.
@@ -267,13 +267,18 @@ impl<'i> Input<'i> {
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        match str::from_utf8(self.as_dangerous()) {
+        let bytes = self.as_dangerous();
+        match str::from_utf8(bytes) {
             Ok(s) => Ok(s),
             Err(utf8_err) => match utf8_err.error_len() {
                 None => {
-                    let invalid = &self.as_dangerous()[utf8_err.valid_up_to()..];
+                    let invalid = &bytes[utf8_err.valid_up_to()..];
+                    // SAFETY: For an error to occur there must be a cause (at
+                    // least one byte in an invalid codepoint) so it is safe to
+                    // get without checking bounds.
+                    let first_invalid = unsafe { slice::first_unchecked(invalid) };
                     Err(E::from(ExpectedLength {
-                        min: utf8::char_len(invalid[0]),
+                        min: utf8::char_len(first_invalid),
                         max: None,
                         span: invalid,
                         input: self.clone(),
@@ -284,7 +289,6 @@ impl<'i> Input<'i> {
                     }))
                 }
                 Some(error_len) => {
-                    let bytes = self.as_dangerous();
                     let error_start = utf8_err.valid_up_to();
                     let error_end = error_start + error_len;
                     Err(E::from(ExpectedValid {

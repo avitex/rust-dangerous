@@ -8,7 +8,7 @@
 use core::{fmt, str};
 
 use crate::util::alt_iter::{Alternate, AlternatingIter};
-use crate::util::{is_sub_slice, utf8};
+use crate::util::{slice, utf8};
 
 use super::input::PreferredFormat;
 use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
@@ -147,7 +147,7 @@ impl<'a> Section<'a> {
         width: usize,
         format: PreferredFormat,
     ) -> Self {
-        if !is_sub_slice(full, span) {
+        if !slice::is_sub_slice(full, span) {
             return Self::from_head_tail(full, width, format);
         }
         let width = init_width(width);
@@ -247,7 +247,7 @@ fn init_width(width: usize) -> usize {
 fn take_str_span(bytes: &[u8], span_offset: usize, width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_span(iter, span_offset, width, false) {
-        // Safety: all chars are checked from the char iterator
+        // SAFETY: all chars are checked from the char iterator
         let s = unsafe { utf8::from_unchecked(&bytes[start..end]) };
         if cjk {
             Visible::StrCjk(s)
@@ -277,7 +277,7 @@ fn take_bytes_span(
 fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_head(iter, width, false) {
-        // Safety: all chars are checked from the char iterator
+        // SAFETY: all chars are checked from the char iterator
         let s = unsafe { utf8::from_unchecked(&bytes[..len]) };
         if cjk {
             Visible::StrCjk(s)
@@ -303,7 +303,7 @@ fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_tail(iter, width, false) {
         let offset = bytes.len() - len;
-        // Safety: all chars are checked from the char iterator
+        // SAFETY: all chars are checked from the char iterator
         let s = unsafe { utf8::from_unchecked(&bytes[offset..]) };
         if cjk {
             Visible::StrCjk(s)
@@ -329,7 +329,7 @@ fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
 fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
     let iter = CharSectionUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_head_tail(iter, width, false, STR_HEAD_TAIL_HAS_MORE_COST) {
-        // Safety: all chars are checked from the char iterator
+        // SAFETY: all chars are checked from the char iterator
         unsafe {
             if start == end {
                 let s = utf8::from_unchecked(&bytes[..]);
