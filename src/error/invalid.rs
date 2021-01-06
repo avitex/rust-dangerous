@@ -1,5 +1,4 @@
-use core::fmt;
-
+use crate::fmt;
 use crate::input::Input;
 
 use super::{
@@ -53,15 +52,21 @@ impl fmt::Debug for Invalid {
     }
 }
 
-impl fmt::Display for Invalid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("invalid input")?;
+impl fmt::DisplayBase for Invalid {
+    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        w.write_str("invalid input")?;
         if let Some(retry_requirement) = self.retry_requirement {
-            f.write_str(": needs ")?;
-            retry_requirement.fmt(f)?;
-            f.write_str(" to continue processing")?;
+            w.write_str(": needs ")?;
+            fmt::DisplayBase::fmt(&retry_requirement, w)?;
+            w.write_str(" to continue processing")?;
         }
         Ok(())
+    }
+}
+
+impl fmt::Display for Invalid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::DisplayBase::fmt(self, f)
     }
 }
 

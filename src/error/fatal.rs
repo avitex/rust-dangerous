@@ -1,5 +1,4 @@
-use core::fmt;
-
+use crate::fmt;
 use crate::input::Input;
 
 use super::{
@@ -39,9 +38,15 @@ impl fmt::Debug for Fatal {
     }
 }
 
+impl fmt::DisplayBase for Fatal {
+    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        w.write_str("invalid input")
+    }
+}
+
 impl fmt::Display for Fatal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("invalid input")
+        fmt::DisplayBase::fmt(self, f)
     }
 }
 

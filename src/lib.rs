@@ -65,3 +65,8 @@ pub use self::error::{
 };
 pub use self::input::{input, Input};
 pub use self::reader::Reader;
+
+pub(crate) mod fmt {
+    pub(crate) use crate::display::{DisplayBase, Write};
+    pub(crate) use core::fmt::{Debug, Display, Error, Formatter, Result};
+}
