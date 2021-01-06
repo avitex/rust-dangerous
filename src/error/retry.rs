@@ -1,7 +1,7 @@
-use core::fmt;
 use core::num::NonZeroUsize;
 
-use crate::display::ByteCount;
+use crate::display::byte_count;
+use crate::fmt;
 
 /// An indicator of how many bytes are required to continue processing input.
 ///
@@ -59,9 +59,16 @@ impl fmt::Debug for RetryRequirement {
     }
 }
 
+impl fmt::DisplayBase for RetryRequirement {
+    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        byte_count(w, self.continue_after())?;
+        w.write_str(" more")
+    }
+}
+
 impl fmt::Display for RetryRequirement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} more", ByteCount(self.continue_after()))
+        fmt::DisplayBase::fmt(self, f)
     }
 }
 

@@ -1,9 +1,8 @@
-use core::fmt;
-
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
-use crate::display::{ByteCount, ErrorDisplay};
+use crate::display::{byte_count, ErrorDisplay};
+use crate::fmt;
 use crate::input::Input;
 
 use super::{
@@ -105,11 +104,11 @@ where
         }
     }
 
-    fn description(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn description(&self, f: &mut dyn fmt::Write) -> fmt::Result {
         match &self.kind {
-            ExpectedKind::Value(err) => fmt::Display::fmt(err, f),
-            ExpectedKind::Valid(err) => fmt::Display::fmt(err, f),
-            ExpectedKind::Length(err) => fmt::Display::fmt(err, f),
+            ExpectedKind::Value(err) => fmt::DisplayBase::fmt(err, f),
+            ExpectedKind::Valid(err) => fmt::DisplayBase::fmt(err, f),
+            ExpectedKind::Length(err) => fmt::DisplayBase::fmt(err, f),
         }
     }
 
@@ -174,21 +173,21 @@ where
     }
 }
 
-impl<'i, S> fmt::Display for Expected<'i, S>
-where
-    S: ContextStack,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ErrorDisplay::from_formatter(self, f).fmt(f)
-    }
-}
-
 impl<'i, S> fmt::Debug for Expected<'i, S>
 where
     S: ContextStack,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
+    }
+}
+
+impl<'i, S> fmt::Display for Expected<'i, S>
+where
+    S: ContextStack,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ErrorDisplay::from_formatter(self, f).fmt(f)
     }
 }
 
@@ -302,9 +301,15 @@ impl<'i> fmt::Debug for ExpectedValue<'i> {
     }
 }
 
+impl<'i> fmt::DisplayBase for ExpectedValue<'i> {
+    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        w.write_str("found a different value to the exact expected")
+    }
+}
+
 impl<'i> fmt::Display for ExpectedValue<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("found a different value to the exact expected")
+        fmt::DisplayBase::fmt(self, f)
     }
 }
 
@@ -417,21 +422,38 @@ impl<'i> fmt::Debug for ExpectedLength<'i> {
     }
 }
 
+impl<'i> fmt::DisplayBase for ExpectedLength<'i> {
+    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        w.write_str("found ")?;
+        byte_count(w, self.span().len())?;
+        w.write_str(" when ")?;
+        match (self.min(), self.max()) {
+            (0, Some(max)) => {
+                w.write_str("at most ")?;
+                byte_count(w, max)
+            }
+            (min, None) => {
+                w.write_str("at least ")?;
+                byte_count(w, min)
+            }
+            (min, Some(max)) if min == max => {
+                w.write_str("exactly ")?;
+                byte_count(w, min)
+            }
+            (min, Some(max)) => {
+                w.write_str("at least ")?;
+                byte_count(w, min)?;
+                w.write_str(" and at most ")?;
+                byte_count(w, max)
+            }
+        }?;
+        w.write_str(" was expected")
+    }
+}
+
 impl<'i> fmt::Display for ExpectedLength<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "found {} when ", ByteCount(self.span().len()))?;
-        match (self.min(), self.max()) {
-            (0, Some(max)) => write!(f, "at most {}", ByteCount(max)),
-            (min, None) => write!(f, "at least {}", ByteCount(min)),
-            (min, Some(max)) if min == max => write!(f, "exactly {}", ByteCount(min)),
-            (min, Some(max)) => write!(
-                f,
-                "at least {} and at most {}",
-                ByteCount(min),
-                ByteCount(max)
-            ),
-        }?;
-        write!(f, " was expected")
+        fmt::DisplayBase::fmt(self, f)
     }
 }
 
@@ -505,9 +527,16 @@ impl<'i> fmt::Debug for ExpectedValid<'i> {
     }
 }
 
+impl<'i> fmt::DisplayBase for ExpectedValid<'i> {
+    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        w.write_str("expected ")?;
+        w.write_str(self.context.expected)
+    }
+}
+
 impl<'i> fmt::Display for ExpectedValid<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expected {}", self.context.expected)
+        fmt::DisplayBase::fmt(self, f)
     }
 }
 

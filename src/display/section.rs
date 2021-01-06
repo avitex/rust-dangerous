@@ -5,14 +5,14 @@
 // | head-tail | `"a" .. "a"` | `[97 .. 97]` | `['a' .. 'a']` |
 // | span      | `.. "a" ..`  | `[.. 97 ..]` | `[.. 'a' ..]`  |
 
-use core::{fmt, str};
+use core::str;
 
+use crate::fmt::{self, Write};
 use crate::util::alt_iter::{Alternate, AlternatingIter};
 use crate::util::{slice, unwrap_ok_unchecked, utf8};
 
-use super::input::PreferredFormat;
+use super::input::{InputWriter, PreferredFormat};
 use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
-use super::writer::InputWriter;
 
 const MIN_WIDTH: usize = 16;
 const SPACE_COST: usize = 1;
@@ -207,10 +207,7 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(super) fn write<W>(&self, w: W, underline: bool) -> fmt::Result
-    where
-        W: fmt::Write,
-    {
+    pub(super) fn write<W: Write + ?Sized>(&self, w: &mut W, underline: bool) -> fmt::Result {
         let mut writer = InputWriter::new(w, self.full, self.span, underline);
         match self.visible {
             Visible::Bytes(bytes) => writer.write_bytes_side(bytes, false),

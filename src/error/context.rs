@@ -1,6 +1,6 @@
 use core::any::Any;
-use core::fmt::{self, Debug};
 
+use crate::fmt;
 use crate::input::Input;
 
 use super::WithContext;
@@ -9,7 +9,7 @@ use super::WithContext;
 use alloc::{boxed::Box, vec::Vec};
 
 /// The base context surrounding an error.
-pub trait Context: Any + Debug {
+pub trait Context: Any {
     /// The operation that was attempted when an error occurred.
     ///
     /// It should described in a simple manner what is trying to be achieved and
@@ -20,8 +20,15 @@ pub trait Context: Any + Debug {
     /// ```
     fn operation(&self) -> &'static str;
 
-    /// Returns a [`fmt::Display`] formattable value of what was expected.
-    fn expected(&self) -> Option<&dyn fmt::Display>;
+    /// Returns `true` if there is an expected value.
+    fn has_expected(&self) -> bool;
+
+    /// The expected value.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`fmt::Error`] if failed to write to the formatter.
+    fn expected(&self, w: &mut dyn fmt::Write) -> fmt::Result;
 
     /// Return a reference of self as [`Any`].
     // FIXME: an ideal implementation wouldn't require this function and we
@@ -75,8 +82,12 @@ impl Context for &'static str {
         "read"
     }
 
-    fn expected(&self) -> Option<&dyn fmt::Display> {
-        Some(self)
+    fn has_expected(&self) -> bool {
+        true
+    }
+
+    fn expected(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        w.write_str(self)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -99,8 +110,12 @@ impl Context for ExpectedContext {
         self.operation
     }
 
-    fn expected(&self) -> Option<&dyn fmt::Display> {
-        Some(&self.expected)
+    fn has_expected(&self) -> bool {
+        true
+    }
+
+    fn expected(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        w.write_str(self.expected)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -108,7 +123,7 @@ impl Context for ExpectedContext {
     }
 }
 
-impl Debug for ExpectedContext {
+impl fmt::Debug for ExpectedContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExpectedContext")
             .field("operation", &self.operation)
@@ -128,8 +143,12 @@ impl Context for OperationContext {
         self.0
     }
 
-    fn expected(&self) -> Option<&dyn fmt::Display> {
-        None
+    fn has_expected(&self) -> bool {
+        false
+    }
+
+    fn expected(&self, _: &mut dyn fmt::Write) -> fmt::Result {
+        Err(fmt::Error)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -137,7 +156,7 @@ impl Context for OperationContext {
     }
 }
 
-impl Debug for OperationContext {
+impl fmt::Debug for OperationContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("OperationContext").field(&self.0).finish()
     }

@@ -1,7 +1,7 @@
 #[cfg(feature = "unicode")]
 use unicode_width::UnicodeWidthChar;
 
-use core::fmt::{self, Write};
+use crate::fmt::{self, Write};
 
 pub(super) fn byte_display_width(b: u8, show_ascii: bool) -> usize {
     if show_ascii {
@@ -15,7 +15,11 @@ pub(super) fn byte_display_width(b: u8, show_ascii: bool) -> usize {
     }
 }
 
-pub(super) fn byte_display_write<W: Write>(b: u8, show_ascii: bool, w: &mut W) -> fmt::Result {
+pub(super) fn byte_display_write<W: Write + ?Sized>(
+    b: u8,
+    show_ascii: bool,
+    w: &mut W,
+) -> fmt::Result {
     if show_ascii {
         match b {
             b'\"' => w.write_str("'\\\"'"),
@@ -28,10 +32,10 @@ pub(super) fn byte_display_write<W: Write>(b: u8, show_ascii: bool, w: &mut W) -
                 w.write_char(b as char)?;
                 w.write_char('\'')
             }
-            b => write!(w, "{:0>2x}", b),
+            b => w.write_hex(b),
         }
     } else {
-        write!(w, "{:0>2x}", b)
+        w.write_hex(b)
     }
 }
 
@@ -40,7 +44,7 @@ pub(super) fn char_display_width(c: char, cjk: bool) -> usize {
         .fold(0, |acc, c| acc + unicode_width(c, cjk))
 }
 
-pub(super) fn char_display_write<W: Write>(c: char, w: &mut W) -> fmt::Result {
+pub(super) fn char_display_write<W: Write + ?Sized>(c: char, w: &mut W) -> fmt::Result {
     for c in c.escape_debug() {
         w.write_char(c)?;
     }

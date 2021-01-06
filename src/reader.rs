@@ -1,10 +1,10 @@
-use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
     with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, OperationContext,
     ToRetryRequirement, WithContext,
 };
+use crate::fmt;
 use crate::input::Input;
 
 /// A `Reader` is created from and consumes an [`Input`].
