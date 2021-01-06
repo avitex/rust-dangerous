@@ -8,7 +8,7 @@
 use core::{fmt, str};
 
 use crate::util::alt_iter::{Alternate, AlternatingIter};
-use crate::util::{slice, utf8};
+use crate::util::{slice, unwrap_ok_unchecked, utf8};
 
 use super::input::PreferredFormat;
 use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
@@ -266,7 +266,12 @@ fn take_bytes_span(
     show_ascii: bool,
 ) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let (start, end) = take_span(iter, span_offset, width, true).unwrap();
+
+    let result = take_span(iter, span_offset, width, true);
+    // SAFETY: byte iterators never return an error, so it is impossible to have
+    // one bubble up here.
+    let (start, end) = unsafe { unwrap_ok_unchecked(result) };
+
     if show_ascii {
         Visible::BytesAscii(&bytes[start..end])
     } else {
@@ -291,7 +296,10 @@ fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 
 fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let (len, _) = take_head(iter, width, true).unwrap();
+    let result = take_head(iter, width, true);
+    // SAFETY: byte iterators never return an error, so it is impossible to have
+    // one bubble up here.
+    let (len, _) = unsafe { unwrap_ok_unchecked(result) };
     if show_ascii {
         Visible::BytesAscii(&bytes[..len])
     } else {
@@ -317,7 +325,10 @@ fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 
 fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let (len, _) = take_tail(iter, width, true).unwrap();
+    let result = take_tail(iter, width, true);
+    // SAFETY: byte iterators never return an error, so it is impossible to have
+    // one bubble up here.
+    let (len, _) = unsafe { unwrap_ok_unchecked(result) };
     let offset = bytes.len() - len;
     if show_ascii {
         Visible::BytesAscii(&bytes[offset..])
@@ -354,7 +365,10 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 
 fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let (start, end) = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST).unwrap();
+    let result = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST);
+    // SAFETY: byte iterators never return an error, so it is impossible to have
+    // one bubble up here.
+    let (start, end) = unsafe { unwrap_ok_unchecked(result) };
     if start == end {
         if show_ascii {
             Visible::BytesAscii(&bytes[..])

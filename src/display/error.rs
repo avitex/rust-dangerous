@@ -233,8 +233,12 @@ where
 }
 
 fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
-    let (before_span, _) = input.clone().split_at_opt(span_offset).unwrap();
-    before_span.count(b'\n') + 1
+    match input.clone().split_at_opt(span_offset) {
+        Some((before_span, _)) => before_span.count(b'\n') + 1,
+        // Will never be reached in practical usage but we handle to avoid
+        // unwrapping.
+        None => 0,
+    }
 }
 
 fn write_input<W>(w: &mut W, mut input: InputDisplay<'_>, underline: bool) -> fmt::Result

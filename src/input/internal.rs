@@ -391,7 +391,7 @@ impl<'i> Input<'i> {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // FIXME: use https://github.com/rust-lang/rust/pull/79135 once stable in 1.50
+    // FIXME: use https://github.com/rust-lang/rust/pull/79135 once stable in 1.51
 
     #[inline(always)]
     pub(crate) fn split_arr_1<E>(self, operation: &'static str) -> Result<([u8; 1], Input<'i>), E>

@@ -14,6 +14,7 @@ pub(crate) fn end<T>(slice: &[T]) -> &[T] {
 
 #[inline(always)]
 pub(crate) unsafe fn first_unchecked<T: Copy>(slice: &[T]) -> T {
+    debug_assert!(!slice.is_empty());
     *slice.get_unchecked(0)
 }
 
@@ -29,6 +30,7 @@ pub(crate) fn split_at_opt<T>(slice: &[T], mid: usize) -> Option<(&[T], &[T])> {
 
 #[inline(always)]
 pub(crate) unsafe fn split_at_unchecked<T>(slice: &[T], mid: usize) -> (&[T], &[T]) {
-    // SAFETY: Caller has to check that `0 <= mid <= self.len()`
+    debug_assert!(mid <= slice.len());
+    // SAFETY: Caller has to check that `0 <= mid <= slice.len()`
     (slice.get_unchecked(..mid), slice.get_unchecked(mid..))
 }
