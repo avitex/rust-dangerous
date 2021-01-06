@@ -112,6 +112,24 @@ impl<'i, E> Reader<'i, E> {
         self.input.is_empty()
     }
 
+    /// Returns the length of input `Reader` has left to consume.
+    ///
+    /// Note that this may not be the total length left in a streaming context;
+    /// consider checking [`Reader::is_bound()`] to validate if there is no more
+    /// input if required.
+    #[inline]
+    pub fn remaining(&self) -> usize {
+        self.input.len()
+    }
+
+    /// Returns `true` if the `Reader`'s input is bound.
+    ///
+    /// See [`Input::bound()`] for more documentation.
+    #[inline]
+    pub fn is_bound(&self) -> bool {
+        self.input.is_bound()
+    }
+
     /// Skip `len` number of bytes.
     ///
     /// # Errors

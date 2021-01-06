@@ -92,7 +92,8 @@ impl<'i> Input<'i> {
 
     /// Returns `self` as a bound `Input`.
     ///
-    /// Bound input does not produce [`RetryRequirement`]s.
+    /// Bound `Input` carries the guarantee that it will not be extended in
+    /// future passes and as a result will not produce [`RetryRequirement`]s.
     ///
     /// # Example
     ///
