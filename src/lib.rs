@@ -24,12 +24,14 @@
     unstable_features,
     unused_extern_crates,
     unused_import_braces,
-    unused_results,
-    warnings
+    unused_results
 )]
 // Exceptions: Derived implementations
 // FIXME: remove once https://github.com/rust-lang/rust/issues/71898 is fixed
 #![deny(unused_qualifications)]
+// Exceptions: Try operator
+// FIXME: remove once https://github.com/rust-lang/rust/issues/76053 is fixed
+#![deny(clippy::warnings)]
 // Exceptions: See below allow.
 #![deny(clippy::pedantic)]
 #![allow(
