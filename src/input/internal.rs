@@ -5,7 +5,7 @@ use crate::error::{
     ToRetryRequirement, WithContext,
 };
 use crate::reader::Reader;
-use crate::util::{byte, slice};
+use crate::util::{byte, slice, utf8};
 
 use super::{Flags, Input};
 
@@ -397,6 +397,93 @@ impl<'i> Input<'i> {
             }
         }
         Ok((self.clone(), self.end()))
+    }
+
+    #[inline(always)]
+    pub(crate) fn split_str_while<F, E>(
+        self,
+        mut f: F,
+        operation: &'static str,
+    ) -> Result<(Input<'i>, Input<'i>), E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+        F: FnMut(char) -> bool,
+    {
+        self.try_split_str_while(|c| Ok(f(c)), operation)
+    }
+
+    #[inline(always)]
+    pub(crate) fn try_split_str_while<F, E>(
+        self,
+        mut f: F,
+        operation: &'static str,
+    ) -> Result<(Input<'i>, Input<'i>), E>
+    where
+        E: FromContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+        F: FnMut(char) -> Result<bool, E>,
+    {
+        let bytes = self.as_dangerous();
+        let mut chars = utf8::CharIter::new(bytes);
+        let mut consumed = chars.forward();
+        // For each char, lets make sure it matches the predicate.
+        while let Some(result) = chars.next() {
+            match result {
+                Ok(c) => {
+                    // Check if the char doesn't match the predicate.
+                    if with_context(self.clone(), OperationContext(operation), || f(c))? {
+                        consumed = chars.forward();
+                    } else {
+                        let consumed_bytes = consumed.as_bytes();
+                        // Because we hit the predicate it doesn't matter if we
+                        // have more input, this will always return the same.
+                        // This means we know the head input has a bound.
+                        let head = Input::new(consumed_bytes, true);
+                        // For the tail we derive the bound constaint from self.
+                        let tail = Input::new(&bytes[consumed_bytes.len()..], self.is_bound());
+                        // Return the split input parts.
+                        return Ok((head, tail));
+                    }
+                }
+                Err(utf8_err) => match utf8_err.error_len() {
+                    None => {
+                        let valid_up_to = consumed.as_bytes().len();
+                        let invalid = &bytes[valid_up_to..];
+                        // SAFETY: For an error to occur there must be a cause (at
+                        // least one byte in an invalid codepoint) so it is safe to
+                        // get without checking bounds.
+                        let first_invalid = unsafe { slice::first_unchecked(invalid) };
+                        return Err(E::from(ExpectedLength {
+                            min: utf8::char_len(first_invalid),
+                            max: None,
+                            span: invalid,
+                            input: self.clone(),
+                            context: ExpectedContext {
+                                operation,
+                                expected: "complete utf-8 code point",
+                            },
+                        }));
+                    }
+                    Some(error_len) => {
+                        let valid_up_to = consumed.as_bytes().len();
+                        let error_end = valid_up_to + error_len;
+                        return Err(E::from(ExpectedValid {
+                            span: &bytes[valid_up_to..error_end],
+                            input: self.clone(),
+                            context: ExpectedContext {
+                                operation,
+                                expected: "utf-8 code point",
+                            },
+                            retry_requirement: None,
+                        }));
+                    }
+                },
+            }
+        }
+        Ok((Input::new(consumed.as_bytes(), self.is_bound()), self.end()))
     }
 
     ///////////////////////////////////////////////////////////////////////////

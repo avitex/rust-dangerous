@@ -63,6 +63,11 @@ impl<'i> CharIter<'i> {
         &self.bytes[self.forward..self.backward]
     }
 
+    pub(crate) fn forward(&self) -> &'i str {
+        // SAFETY: bytes before this forward increasing index is valid UTF-8.
+        unsafe { str::from_utf8_unchecked(&self.bytes[..self.forward]) }
+    }
+
     fn head(&self) -> &'i [u8] {
         &self.bytes[self.forward..]
     }
@@ -80,16 +85,20 @@ impl<'i> Iterator for CharIter<'i> {
         if self.forward == self.backward {
             None
         } else {
-            let result = first_codepoint(self.head()).and_then(|c| {
-                let forward = self.forward.saturating_add(c.len_utf8());
-                if forward > self.backward {
-                    self.forward = self.backward;
-                    Err(InvalidChar(()))
-                } else {
-                    self.forward = forward;
-                    Ok(c)
+            let result = match first_codepoint(self.head()) {
+                Ok(c) => {
+                    let forward = self.forward.saturating_add(c.len_utf8());
+                    // If the parsing of the character goes over the reader's
+                    // backward bound raise an error.
+                    if forward > self.backward {
+                        Err(InvalidChar(None))
+                    } else {
+                        self.forward = forward;
+                        Ok(c)
+                    }
                 }
-            });
+                Err(error_len) => Err(InvalidChar(error_len)),
+            };
             Some(result)
         }
     }
@@ -107,16 +116,20 @@ impl<'i> DoubleEndedIterator for CharIter<'i> {
         if self.forward == self.backward {
             None
         } else {
-            let result = last_codepoint(self.tail()).and_then(|c| {
-                let backward = self.backward.saturating_sub(c.len_utf8());
-                if backward < self.forward {
-                    self.backward = self.forward;
-                    Err(InvalidChar(()))
-                } else {
-                    self.backward = backward;
-                    Ok(c)
+            let result = match last_codepoint(self.tail()) {
+                Ok(c) => {
+                    let backward = self.backward.saturating_sub(c.len_utf8());
+                    // If the parsing of the character goes over the reader's
+                    // forward bound raise an error.
+                    if backward < self.forward {
+                        Err(InvalidChar(None))
+                    } else {
+                        self.backward = backward;
+                        Ok(c)
+                    }
                 }
-            });
+                Err(error_len) => Err(InvalidChar(error_len)),
+            };
             Some(result)
         }
     }
@@ -129,23 +142,29 @@ impl<'i> Clone for CharIter<'i> {
 }
 
 #[cfg_attr(test, derive(Debug))]
-pub(crate) struct InvalidChar(());
+pub(crate) struct InvalidChar(Option<usize>);
+
+impl InvalidChar {
+    pub(crate) fn error_len(&self) -> Option<usize> {
+        self.0
+    }
+}
 
 #[inline(always)]
-fn first_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
+fn first_codepoint(bytes: &[u8]) -> Result<char, Option<usize>> {
     if let Some(first_byte) = bytes.first() {
         let len = char_len(*first_byte);
         if bytes.len() >= len {
             return parse_char(&bytes[..len]);
         }
     }
-    Err(InvalidChar(()))
+    Err(None)
 }
 
 #[inline(always)]
-fn last_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
+fn last_codepoint(bytes: &[u8]) -> Result<char, Option<usize>> {
     if bytes.is_empty() {
-        return Err(InvalidChar(()));
+        return Err(None);
     }
     for (i, byte) in (1..=4).zip(bytes.iter().rev().copied()) {
         if !is_cont_byte(byte) && char_len(byte) == i {
@@ -153,17 +172,18 @@ fn last_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
             return parse_char(&bytes[last_index..]);
         }
     }
-    Err(InvalidChar(()))
+    Err(None)
 }
 
 #[inline(always)]
-fn parse_char(bytes: &[u8]) -> Result<char, InvalidChar> {
-    if let Ok(s) = str::from_utf8(bytes) {
-        if let Some(c) = s.chars().next() {
-            return Ok(c);
-        }
+fn parse_char(bytes: &[u8]) -> Result<char, Option<usize>> {
+    match str::from_utf8(bytes) {
+        Ok(s) => match s.chars().next() {
+            Some(c) => Ok(c),
+            None => Err(None),
+        },
+        Err(e) => Err(e.error_len()),
     }
-    Err(InvalidChar(()))
 }
 
 #[cfg(test)]
