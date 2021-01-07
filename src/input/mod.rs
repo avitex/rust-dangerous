@@ -281,6 +281,7 @@ impl<'i> Input<'i> {
     {
         let bytes = self.as_dangerous();
         if self.is_str() {
+            // SAFETY: `is_str` guarantees that the bytes are valid UTF-8.
             unsafe { Ok(utf8::from_unchecked(bytes)) }
         } else {
             match str::from_utf8(bytes) {
