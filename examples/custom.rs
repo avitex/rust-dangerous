@@ -15,7 +15,8 @@ where
 {
     r.try_expect_erased("ipv4 addr", |r| {
         r.take_remaining()
-            .to_dangerous_str()
-            .and_then(|s| s.parse().map_err(|_| Invalid::fatal()))
+            .to_dangerous_str::<Invalid>()?
+            .parse()
+            .map_err(|_| Invalid::fatal())
     })
 }

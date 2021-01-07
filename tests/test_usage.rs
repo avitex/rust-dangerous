@@ -45,3 +45,20 @@ fn test_streaming_usage_with_valid_requirement() {
         RetryRequirement::new(2)
     );
 }
+
+#[test]
+fn test_footgun_with_input_non_empty_retry() {
+    use dangerous::error::Invalid;
+
+    let input = dangerous::input(b"blah");
+    let result: Result<_, Invalid> = input.read_all(|r| {
+        let consumed = r.try_take_consumed(|r| {
+            // We take a exact length of input
+            r.skip(0)
+        })?;
+        // This produces a `RetryRequirement` when it should be fatal?
+        consumed.to_dangerous_non_empty()
+    });
+
+    assert_eq!(result, Err(Invalid::fatal()));
+}
