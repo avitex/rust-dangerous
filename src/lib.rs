@@ -16,28 +16,27 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![forbid(
-    rust_2018_idioms,
-    anonymous_parameters,
+    rustdoc,
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
+    rust_2018_idioms,
     unstable_features,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_results
+    future_incompatible
 )]
-// Exceptions: Derived implementations
-// FIXME: remove once https://github.com/rust-lang/rust/issues/71898 is fixed
-#![deny(unused_qualifications)]
-// Exceptions: Try operator
-// FIXME: remove once https://github.com/rust-lang/rust/issues/76053 is fixed
-#![deny(clippy::warnings)]
-// Exceptions: See below allow.
-#![deny(clippy::pedantic)]
+#![deny(
+    unused,
+    clippy::all,
+    clippy::correctness,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    clippy::cargo
+)]
 #![allow(
     clippy::inline_always,
-    clippy::single_match_else,
-    clippy::must_use_candidate,
+    clippy::option_if_let_else,
     clippy::module_name_repetitions,
     clippy::type_repetition_in_bounds
 )]
@@ -56,7 +55,7 @@ pub mod display;
 pub mod error;
 
 pub use self::error::{
-    Error, Expected, Fatal, FromContext, FromExpected, Invalid, ToRetryRequirement,
+    Error, Expected, Fatal, FromExpected, Invalid, ToRetryRequirement, WithContext,
 };
 pub use self::input::{input, Input};
 pub use self::reader::Reader;

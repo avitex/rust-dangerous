@@ -8,6 +8,7 @@ use super::{InputDisplay, PreferredFormat, WithFormatter};
 const DEFAULT_MAX_WIDTH: usize = 80;
 
 /// Provides configurable [`error::Details`] formatting.
+#[must_use = "error displays must be written"]
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
     banner: bool,
@@ -241,11 +242,11 @@ fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
     }
 }
 
-fn write_input<W>(w: &mut W, mut input: InputDisplay<'_>, underline: bool) -> fmt::Result
+fn write_input<W>(w: &mut W, input: InputDisplay<'_>, underline: bool) -> fmt::Result
 where
     W: Write,
 {
-    input.prepare();
+    let input = input.prepare();
     writeln!(w, "> {}", input)?;
     if underline {
         writeln!(w, "  {}", input.underline(true))?;

@@ -3,8 +3,8 @@ use core::fmt;
 use crate::input::Input;
 
 use super::{
-    Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext, RetryRequirement,
-    ToRetryRequirement,
+    Context, ExpectedLength, ExpectedValid, ExpectedValue, RetryRequirement, ToRetryRequirement,
+    WithContext,
 };
 
 /// `Fatal` contains no details around what went wrong and cannot be retried.
@@ -30,6 +30,7 @@ use super::{
 /// );
 /// ```
 #[derive(PartialEq)]
+#[must_use = "error must be handled"]
 pub struct Fatal;
 
 impl fmt::Debug for Fatal {
@@ -44,8 +45,8 @@ impl fmt::Display for Fatal {
     }
 }
 
-impl<'i> FromContext<'i> for Fatal {
-    fn from_context<C>(self, _input: Input<'i>, _context: C) -> Self
+impl<'i> WithContext<'i> for Fatal {
+    fn with_context<C>(self, _input: Input<'i>, _context: C) -> Self
     where
         C: Context,
     {

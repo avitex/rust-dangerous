@@ -7,8 +7,8 @@ use crate::display::{ByteCount, ErrorDisplay};
 use crate::input::Input;
 
 use super::{
-    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, FromContext,
-    RetryRequirement, ToRetryRequirement,
+    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, RetryRequirement,
+    ToRetryRequirement, WithContext,
 };
 
 #[cfg(feature = "full-context")]
@@ -28,6 +28,7 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///   size becomes only `8 bytes`. When in doubt, write a benchmark.
 ///
 /// See [`crate::error`] for additional documentation around the error system.
+#[must_use = "error must be handled"]
 pub struct Expected<'i, S = ExpectedContextStack> {
     input: Input<'i>,
     stack: S,
@@ -146,11 +147,11 @@ impl<'i, S> ToRetryRequirement for Box<Expected<'i, S>> {
     }
 }
 
-impl<'i, S> FromContext<'i> for Expected<'i, S>
+impl<'i, S> WithContext<'i> for Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
-    fn from_context<C>(mut self, input: Input<'i>, context: C) -> Self
+    fn with_context<C>(mut self, input: Input<'i>, context: C) -> Self
     where
         C: Context,
     {
@@ -160,11 +161,11 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<'i, S> FromContext<'i> for Box<Expected<'i, S>>
+impl<'i, S> WithContext<'i> for Box<Expected<'i, S>>
 where
     S: ContextStackBuilder,
 {
-    fn from_context<C>(mut self, input: Input<'i>, context: C) -> Self
+    fn with_context<C>(mut self, input: Input<'i>, context: C) -> Self
     where
         C: Context,
     {
@@ -255,6 +256,7 @@ impl<'i, S> std::error::Error for Expected<'i, S> where S: ContextStack {}
 // Expected value error
 
 /// An error representing a failed exact value requirement of [`Input`].
+#[must_use = "error must be handled"]
 pub struct ExpectedValue<'i> {
     pub(crate) input: Input<'i>,
     pub(crate) actual: &'i [u8],
@@ -271,6 +273,7 @@ impl<'i> ExpectedValue<'i> {
 
     /// The [`ExpectedContext`] around the error.
     #[inline(always)]
+    #[must_use]
     pub fn context(&self) -> ExpectedContext {
         self.context
     }
@@ -329,6 +332,7 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
 // Expected length error
 
 /// An error representing a failed requirement for a length of [`Input`].
+#[must_use = "error must be handled"]
 pub struct ExpectedLength<'i> {
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
@@ -346,6 +350,7 @@ impl<'i> ExpectedLength<'i> {
 
     /// The [`ExpectedContext`] around the error.
     #[inline(always)]
+    #[must_use]
     pub fn context(&self) -> ExpectedContext {
         self.context
     }
@@ -363,6 +368,7 @@ impl<'i> ExpectedLength<'i> {
     /// continue processing input use
     /// [`ToRetryRequirement::to_retry_requirement()`].
     #[inline(always)]
+    #[must_use]
     pub fn min(&self) -> usize {
         self.min
     }
@@ -373,12 +379,14 @@ impl<'i> ExpectedLength<'i> {
     /// way. An example of this would be [`Input::read_all()`], where there was
     /// [`Input`] left over.
     #[inline(always)]
+    #[must_use]
     pub fn max(&self) -> Option<usize> {
         self.max
     }
 
     /// Returns `true` if an exact length was expected in a context.
     #[inline]
+    #[must_use]
     pub fn is_exact(&self) -> bool {
         Some(self.min) == self.max
     }
@@ -387,6 +395,7 @@ impl<'i> ExpectedLength<'i> {
     ///
     /// Will return a value if `is_exact()` returns `true`.
     #[inline]
+    #[must_use]
     pub fn exact(&self) -> Option<usize> {
         if self.is_exact() {
             self.max
@@ -449,6 +458,7 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
 // Expected valid error
 
 /// An error representing a failed requirement for a valid [`Input`].
+#[must_use = "error must be handled"]
 pub struct ExpectedValid<'i> {
     pub(crate) input: Input<'i>,
     pub(crate) span: &'i [u8],
@@ -465,6 +475,7 @@ impl<'i> ExpectedValid<'i> {
 
     /// The [`ExpectedContext`] around the error.
     #[inline(always)]
+    #[must_use]
     pub fn context(&self) -> ExpectedContext {
         self.context
     }
@@ -477,6 +488,7 @@ impl<'i> ExpectedValid<'i> {
 
     /// A description of what was expected.
     #[inline(always)]
+    #[must_use]
     pub fn expected(&self) -> &'static str {
         self.context.expected
     }

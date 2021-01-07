@@ -8,7 +8,7 @@
 //!   [`FullContextStack`], [`RootContextStack`] if not.
 //! - If you require more verbosity, consider creating custom [`Context`]s
 //!   before jumping to custom errors. If you do require a custom error,
-//!   implementing it is easy enough. Just implement [`FromContext`] and
+//!   implementing it is easy enough. Just implement [`WithContext`] and
 //!   [`From`] for [`ExpectedValue`], [`ExpectedLength`] and [`ExpectedValid`]
 //!   and you'll be on your merry way. Additionally implement [`Details`] to
 //!   support lovely error printing and [`ToRetryRequirement`] for streaming
@@ -36,6 +36,6 @@ pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue}
 pub use self::fatal::Fatal;
 pub use self::invalid::Invalid;
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
-pub use self::traits::{Details, Error, FromContext, FromExpected};
+pub use self::traits::{Details, Error, FromExpected, WithContext};
 
 pub(crate) use self::context::{with_context, OperationContext};

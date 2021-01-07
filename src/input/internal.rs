@@ -1,8 +1,8 @@
 use core::convert::TryInto;
 
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
-    OperationContext, ToRetryRequirement,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, OperationContext,
+    ToRetryRequirement, WithContext,
 };
 use crate::reader::Reader;
 use crate::util::{byte, slice};
@@ -93,14 +93,10 @@ impl<'i> Input<'i> {
     where
         E: From<ExpectedValue<'i>>,
     {
-        let actual = if let Some((head, tail)) = self.clone().split_at_opt(prefix.len()) {
-            if head == prefix {
-                return Ok((head, tail));
-            } else {
-                head.as_dangerous()
-            }
-        } else {
-            self.as_dangerous()
+        let actual = match self.clone().split_at_opt(prefix.len()) {
+            Some((head, tail)) if head == prefix => return Ok((head, tail)),
+            Some((head, _)) => head.as_dangerous(),
+            None => self.as_dangerous(),
         };
         Err(E::from(ExpectedValue {
             actual,
@@ -140,12 +136,10 @@ impl<'i> Input<'i> {
 
     #[inline(always)]
     pub(crate) fn split_prefix_opt(self, prefix: &[u8]) -> (Option<Input<'i>>, Input<'i>) {
-        if let Some((head, tail)) = self.clone().split_at_opt(prefix.len()) {
-            if head == prefix {
-                return (Some(head), tail);
-            }
+        match self.clone().split_at_opt(prefix.len()) {
+            Some((head, tail)) if head == prefix => (Some(head), tail),
+            _ => (None, self),
         }
-        (None, self)
     }
 
     /// Splits the input into the first byte and whatever remains.
@@ -208,7 +202,7 @@ impl<'i> Input<'i> {
     #[inline(always)]
     pub(crate) fn split_consumed<F, E>(self, f: F) -> (Input<'i>, Input<'i>)
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnOnce(&mut Reader<'i, E>),
     {
         let mut reader = Reader::new(self.clone());
@@ -233,7 +227,7 @@ impl<'i> Input<'i> {
         operation: &'static str,
     ) -> Result<(Input<'i>, Input<'i>), E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnOnce(&mut Reader<'i, E>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self.clone());
@@ -259,26 +253,25 @@ impl<'i> Input<'i> {
         operation: &'static str,
     ) -> Result<(T, Input<'i>), E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Reader<'i, E>) -> Option<T>,
     {
         let mut reader = Reader::new(self.clone());
-        match f(&mut reader) {
-            Some(ok) => Ok((ok, reader.take_remaining())),
-            None => {
-                let tail = reader.take_remaining();
-                let span = &self.as_dangerous()[..self.len() - tail.len()];
-                Err(E::from(ExpectedValid {
-                    span,
-                    input: self,
-                    context: ExpectedContext {
-                        expected,
-                        operation,
-                    },
-                    retry_requirement: None,
-                }))
-            }
+        if let Some(ok) = f(&mut reader) {
+            Ok((ok, reader.take_remaining()))
+        } else {
+            let tail = reader.take_remaining();
+            let span = &self.as_dangerous()[..self.len() - tail.len()];
+            Err(E::from(ExpectedValid {
+                span,
+                input: self,
+                context: ExpectedContext {
+                    expected,
+                    operation,
+                },
+                retry_requirement: None,
+            }))
         }
     }
 
@@ -290,7 +283,7 @@ impl<'i> Input<'i> {
         operation: &'static str,
     ) -> Result<(T, Input<'i>), E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Reader<'i, E>) -> Result<Option<T>, E>,
     {
@@ -323,7 +316,7 @@ impl<'i> Input<'i> {
         operation: &'static str,
     ) -> Result<(T, Input<'i>), E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Reader<'i, E>) -> Result<T, R>,
         R: ToRetryRequirement,
@@ -382,7 +375,7 @@ impl<'i> Input<'i> {
         operation: &'static str,
     ) -> Result<(Input<'i>, Input<'i>), E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         let bytes = self.as_dangerous();

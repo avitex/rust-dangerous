@@ -55,6 +55,7 @@ impl fmt::Debug for PreferredFormat {
 ///     .to_string();
 /// assert_eq!(formatted, "[68 65 .. 99 a5]");
 /// ```
+#[must_use = "input displays must be written"]
 pub struct InputDisplay<'i> {
     input: &'i [u8],
     underline: bool,
@@ -195,9 +196,10 @@ impl<'i> InputDisplay<'i> {
     }
 
     /// Compute the sections of input to display.
-    pub fn prepare(&mut self) {
+    pub fn prepare(mut self) -> Self {
         let computed = self.section_opt.compute(self.input, self.format);
         self.section = Some(computed);
+        self
     }
 
     /// Writes the [`Input`] to a writer with the chosen format.
@@ -210,11 +212,7 @@ impl<'i> InputDisplay<'i> {
         W: Write,
     {
         match &self.section {
-            None => {
-                let mut this = self.clone();
-                this.prepare();
-                this.write(w)
-            }
+            None => self.clone().prepare().write(w),
             Some(section) => section.write(w, self.underline),
         }
     }

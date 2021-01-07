@@ -17,17 +17,20 @@ impl RetryRequirement {
     /// If the provided  value is `0`, this signifies processing can't be
     /// retried. If the provided value is greater than `0`, this signifies the
     /// amount of additional input bytes required to continue processing.
+    #[must_use]
     pub fn new(value: usize) -> Option<Self> {
         NonZeroUsize::new(value).map(Self)
     }
 
     /// Create a retry requirement from a count of how many bytes we had and
     /// how many we needed.
+    #[must_use]
     pub fn from_had_and_needed(had: usize, needed: usize) -> Option<Self> {
         Self::new(needed.saturating_sub(had))
     }
 
     /// Returns `true` if a provided count meets the requirement.
+    #[must_use]
     pub fn met_by(self, count: usize) -> bool {
         count >= self.continue_after()
     }
@@ -38,11 +41,13 @@ impl RetryRequirement {
     /// Although the value allows you to estimate how much more input you need till
     /// you can continue processing the input, it is a very granular value and may
     /// result in a lot of wasted reprocessing of input if not handled correctly.
+    #[must_use]
     pub fn continue_after(self) -> usize {
         self.0.get()
     }
 
     /// Returns a `NonZeroUsize` wrapped variant of `continue_after`.
+    #[must_use]
     pub fn continue_after_non_zero(self) -> NonZeroUsize {
         self.0
     }

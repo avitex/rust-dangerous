@@ -3,8 +3,8 @@ use core::fmt;
 use crate::input::Input;
 
 use super::{
-    Context, ContextStack, Expected, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
-    RetryRequirement, ToRetryRequirement,
+    Context, ContextStack, Expected, ExpectedLength, ExpectedValid, ExpectedValue,
+    RetryRequirement, ToRetryRequirement, WithContext,
 };
 
 /// `Invalid` contains no details around what went wrong other than a
@@ -30,6 +30,7 @@ use super::{
 /// );
 /// ```
 #[derive(Copy, Clone, PartialEq)]
+#[must_use = "error must be handled"]
 pub struct Invalid {
     retry_requirement: Option<RetryRequirement>,
 }
@@ -71,9 +72,9 @@ impl ToRetryRequirement for Invalid {
     }
 }
 
-impl<'i> FromContext<'i> for Invalid {
+impl<'i> WithContext<'i> for Invalid {
     #[inline(always)]
-    fn from_context<C>(self, _input: Input<'i>, _context: C) -> Self
+    fn with_context<C>(self, _input: Input<'i>, _context: C) -> Self
     where
         C: Context,
     {

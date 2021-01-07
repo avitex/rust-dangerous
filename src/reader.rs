@@ -2,8 +2,8 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::error::{
-    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, FromContext,
-    OperationContext, ToRetryRequirement,
+    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, OperationContext,
+    ToRetryRequirement, WithContext,
 };
 use crate::input::Input;
 
@@ -84,7 +84,7 @@ impl<'i, E> Reader<'i, E> {
     /// context attached.
     pub fn context<C, F, T>(&mut self, context: C, f: F) -> Result<T, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         C: Context,
         F: FnOnce(&mut Self) -> Result<T, E>,
     {
@@ -99,7 +99,7 @@ impl<'i, E> Reader<'i, E> {
     /// context attached.
     pub fn peek_context<C, F, T>(&self, context: C, f: F) -> Result<T, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         C: Context,
         F: FnOnce(&Self) -> Result<T, E>,
     {
@@ -108,26 +108,9 @@ impl<'i, E> Reader<'i, E> {
 
     /// Returns `true` if the `Reader` has no more input to consume.
     #[inline]
+    #[must_use]
     pub fn at_end(&self) -> bool {
         self.input.is_empty()
-    }
-
-    /// Returns the length of input `Reader` has left to consume.
-    ///
-    /// Note that this may not be the total length left in a streaming context;
-    /// consider checking [`Reader::is_bound()`] to validate if there is no more
-    /// input if required.
-    #[inline]
-    pub fn remaining(&self) -> usize {
-        self.input.len()
-    }
-
-    /// Returns `true` if the `Reader`'s input is bound.
-    ///
-    /// See [`Input::bound()`] for more documentation.
-    #[inline]
-    pub fn is_bound(&self) -> bool {
-        self.input.is_bound()
     }
 
     /// Skip `len` number of bytes.
@@ -164,7 +147,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns any error the provided function does.
     pub fn try_skip_while<F>(&mut self, pred: F) -> Result<usize, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         self.try_advance(|input| input.try_split_while(pred, "try skip while"))
@@ -205,7 +188,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns any error the provided function does.
     pub fn try_take_while<F>(&mut self, pred: F) -> Result<Input<'i>, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnMut(u8) -> Result<bool, E>,
     {
         self.try_advance(|input| input.try_split_while(pred, "try take while"))
@@ -214,7 +197,7 @@ impl<'i, E> Reader<'i, E> {
     /// Read a length of input that was successfully consumed from a sub-parse.
     pub fn take_consumed<F>(&mut self, consumer: F) -> Input<'i>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnOnce(&mut Self),
     {
         self.advance(|input| input.split_consumed(consumer))
@@ -243,7 +226,7 @@ impl<'i, E> Reader<'i, E> {
     /// Returns any error the provided function does.
     pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<Input<'i>, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnOnce(&mut Self) -> Result<(), E>,
     {
         self.try_advance(|input| input.try_split_consumed(consumer, "try take consumed"))
@@ -272,12 +255,14 @@ impl<'i, E> Reader<'i, E> {
     ///
     /// This is equivalent to `peek` but does not return an error. Don't use
     /// this function if you want an error if there isn't enough input.
+    #[must_use = "peek result must be used"]
     pub fn peek_opt(&self, len: usize) -> Option<Input<'_>> {
         self.input.clone().split_at_opt(len).map(|(head, _)| head)
     }
 
     /// Returns `true` if `bytes` is next in the `Reader`.
     #[inline]
+    #[must_use = "peek result must be used"]
     pub fn peek_eq(&self, bytes: &[u8]) -> bool {
         self.input.has_prefix(bytes)
     }
@@ -300,12 +285,14 @@ impl<'i, E> Reader<'i, E> {
     /// This is equivalent to `peek_u8` but does not return an error. Don't use
     /// this function if you want an error if there isn't enough input.
     #[inline]
+    #[must_use = "peek result must be used"]
     pub fn peek_u8_opt(&self) -> Option<u8> {
         self.input.first_opt()
     }
 
     /// Returns `true` if `byte` is next in the `Reader`.
     #[inline]
+    #[must_use = "peek result must be used"]
     pub fn peek_u8_eq(&self, byte: u8) -> bool {
         self.peek_eq(&[byte])
     }
@@ -373,7 +360,7 @@ impl<'i, E> Reader<'i, E> {
     pub fn verify<F>(&mut self, expected: &'static str, verifier: F) -> Result<(), E>
     where
         F: FnOnce(&mut Self) -> bool,
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
         self.try_advance(|input| {
@@ -399,7 +386,7 @@ impl<'i, E> Reader<'i, E> {
     pub fn try_verify<F>(&mut self, expected: &'static str, verifier: F) -> Result<(), E>
     where
         F: FnOnce(&mut Self) -> Result<bool, E>,
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
         self.try_advance(|input| {
@@ -423,7 +410,7 @@ impl<'i, E> Reader<'i, E> {
     pub fn expect<F, T>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         F: FnOnce(&mut Self) -> Option<T>,
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
         self.try_advance(|input| input.split_expect(f, expected, "expect"))
@@ -437,7 +424,7 @@ impl<'i, E> Reader<'i, E> {
     /// function does.
     pub fn try_expect<F, T>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Self) -> Result<Option<T>, E>,
     {
@@ -483,7 +470,7 @@ impl<'i, E> Reader<'i, E> {
     /// [`RetryRequirement`]: crate::error::RetryRequirement
     pub fn try_expect_erased<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Self) -> Result<T, R>,
         R: ToRetryRequirement,
@@ -501,12 +488,11 @@ impl<'i, E> Reader<'i, E> {
         F: FnOnce(&mut Self) -> Result<T, E>,
     {
         let checkpoint = self.input.clone();
-        match f(self) {
-            Ok(ok) => Some(ok),
-            Err(_) => {
-                self.input = checkpoint;
-                None
-            }
+        if let Ok(ok) = f(self) {
+            Some(ok)
+        } else {
+            self.input = checkpoint;
+            None
         }
     }
 
@@ -524,7 +510,7 @@ impl<'i, E> Reader<'i, E> {
     #[inline]
     pub fn recover_if<F, T, R>(&mut self, f: F, pred: R) -> Result<Option<T>, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         F: FnOnce(&mut Self) -> Result<T, E>,
         R: FnOnce(&E) -> bool,
     {
@@ -536,7 +522,7 @@ impl<'i, E> Reader<'i, E> {
                     self.input = checkpoint;
                     Ok(None)
                 } else {
-                    Err(err.from_context(checkpoint, OperationContext("recover if")))
+                    Err(err.with_context(checkpoint, OperationContext("recover if")))
                 }
             }
         }

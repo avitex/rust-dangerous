@@ -179,9 +179,8 @@ impl<'a> Section<'a> {
                     visible,
                     span: Some(span),
                 };
-            } else {
-                span = &full[span_offset..=span_offset];
             }
+            span = &full[span_offset..=span_offset];
         }
         // If the span starts at an invalid UTF-8 boundary, show the section
         // as bytes-ascii
@@ -346,18 +345,15 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
                 let s = utf8::from_unchecked(&bytes[..]);
                 if cjk {
                     return Visible::StrCjk(s);
-                } else {
-                    return Visible::Str(s);
                 }
-            } else {
-                let left = utf8::from_unchecked(&bytes[..start]);
-                let right = utf8::from_unchecked(&bytes[end..]);
-                if cjk {
-                    return Visible::StrCjkPair(left, right);
-                } else {
-                    return Visible::StrPair(left, right);
-                }
+                return Visible::Str(s);
             }
+            let left = utf8::from_unchecked(&bytes[..start]);
+            let right = utf8::from_unchecked(&bytes[end..]);
+            if cjk {
+                return Visible::StrCjkPair(left, right);
+            }
+            return Visible::StrPair(left, right);
         }
     }
     take_bytes_head_tail(bytes, width, true)

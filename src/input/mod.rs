@@ -6,7 +6,7 @@ use core::ops::Range;
 use core::{fmt, str};
 
 use crate::display::InputDisplay;
-use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, FromContext, OperationContext};
+use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, OperationContext, WithContext};
 use crate::reader::Reader;
 use crate::util::{slice, utf8};
 
@@ -50,12 +50,14 @@ pub struct Input<'i> {
 impl<'i> Input<'i> {
     /// Returns the underlying byte slice length.
     #[inline(always)]
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.as_dangerous().len()
     }
 
     /// Returns `true` if the underlying byte slice length is zero.
     #[inline(always)]
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.as_dangerous().is_empty()
     }
@@ -64,12 +66,14 @@ impl<'i> Input<'i> {
     ///
     /// See [`Input::bound()`] for more documentation.
     #[inline(always)]
+    #[must_use]
     pub const fn is_bound(&self) -> bool {
         self.flags.is_bound()
     }
 
     /// Returns `true` if the underlying byte slice for `parent` contains that
     /// of `self` in the same section of memory with no bounds out of range.
+    #[must_use]
     pub fn is_within(&self, parent: &Input<'_>) -> bool {
         slice::is_sub_slice(parent.as_dangerous(), self.as_dangerous())
     }
@@ -78,6 +82,7 @@ impl<'i> Input<'i> {
     ///
     /// It is recommended to enable the `bytecount` dependency when using this
     /// function for better performance.
+    #[must_use]
     pub fn count(&self, needle: u8) -> usize {
         #[cfg(feature = "bytecount")]
         {
@@ -130,6 +135,7 @@ impl<'i> Input<'i> {
     ///
     /// assert_eq!(sub.span_of(&parent), Some(sub_range))
     /// ```
+    #[must_use]
     pub fn span_of(&self, parent: &Input<'_>) -> Option<Range<usize>> {
         if self.is_within(parent) {
             let parent_bounds = parent.as_dangerous().as_ptr_range();
@@ -145,6 +151,7 @@ impl<'i> Input<'i> {
     /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
     /// within the `parent`. `None` is returned if `self` is not within in the
     /// `parent` or `self` is empty.
+    #[must_use]
     pub fn non_empty_span_of(&self, parent: &Input<'_>) -> Option<Range<usize>> {
         if self.is_empty() {
             None
@@ -168,7 +175,7 @@ impl<'i> Input<'i> {
     pub fn read_all<F, T, E>(self, f: F) -> Result<T, E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedLength<'i>>,
     {
         let mut r = Reader::new(self.clone());
@@ -196,7 +203,7 @@ impl<'i> Input<'i> {
     pub fn read_partial<F, T, E>(self, f: F) -> Result<(T, Input<'i>), E>
     where
         F: FnOnce(&mut Reader<'i, E>) -> Result<T, E>,
-        E: FromContext<'i>,
+        E: WithContext<'i>,
     {
         let mut r = Reader::new(self);
         match r.context(OperationContext("read partial"), f) {
@@ -226,6 +233,7 @@ impl<'i> Input<'i> {
     /// is named this way simply for users to clearly note where the panic-free
     /// guarantees end when handling the input.
     #[inline(always)]
+    #[must_use]
     pub const fn as_dangerous(&self) -> &'i [u8] {
         &self.bytes
     }

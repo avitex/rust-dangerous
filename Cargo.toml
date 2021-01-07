@@ -11,6 +11,7 @@ repository = "https://github.com/avitex/rust-dangerous"
 license = "MIT"
 readme = "README.md"
 include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "Cargo.toml"]
+keywords = ["parsing", "untrusted"]
 
 [features]
 default = ["full-context", "bytecount", "unicode"]

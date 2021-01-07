@@ -3,7 +3,7 @@ use core::fmt::{self, Debug};
 
 use crate::input::Input;
 
-use super::FromContext;
+use super::WithContext;
 
 #[cfg(feature = "full-context")]
 use alloc::{boxed::Box, vec::Vec};
@@ -233,11 +233,11 @@ impl ContextStack for FullContextStack {
 pub(crate) fn with_context<'i, F, C, T, E>(input: Input<'i>, context: C, f: F) -> Result<T, E>
 where
     F: FnOnce() -> Result<T, E>,
-    E: FromContext<'i>,
+    E: WithContext<'i>,
     C: Context,
 {
     match f() {
         Ok(ok) => Ok(ok),
-        Err(err) => Err(err.from_context(input, context)),
+        Err(err) => Err(err.with_context(input, context)),
     }
 }

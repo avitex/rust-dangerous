@@ -4,17 +4,17 @@ use crate::input::Input;
 
 use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue};
 
-/// Convenience trait requiring [`FromContext`], [`FromExpected`].
-pub trait Error<'i>: FromContext<'i> + FromExpected<'i> {}
+/// Convenience trait requiring [`WithContext`], [`FromExpected`].
+pub trait Error<'i>: WithContext<'i> + FromExpected<'i> {}
 
-impl<'i, T> Error<'i> for T where T: FromContext<'i> + FromExpected<'i> {}
+impl<'i, T> Error<'i> for T where T: WithContext<'i> + FromExpected<'i> {}
 
 /// Implemented for errors that collect [`Context`]s.
-pub trait FromContext<'i> {
+pub trait WithContext<'i> {
     /// Return `Self` with context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
-    fn from_context<C>(self, input: Input<'i>, context: C) -> Self
+    fn with_context<C>(self, input: Input<'i>, context: C) -> Self
     where
         C: Context;
 }
