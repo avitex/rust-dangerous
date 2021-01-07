@@ -269,6 +269,9 @@ impl<'i> Input<'i> {
     ///
     /// See `as_dangerous` for naming.
     ///
+    /// If the underlying byte slice is known to be valid UTF-8 this is will a
+    /// cheap operation, otherwise the bytes will be validated.
+    ///
     /// # Errors
     ///
     /// Returns [`ExpectedValid`] if the the input has invalid UTF-8.
