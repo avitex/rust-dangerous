@@ -437,13 +437,12 @@ impl<'i> Input<'i> {
                     if with_context(self.clone(), OperationContext(operation), || f(c))? {
                         consumed = chars.forward();
                     } else {
-                        let consumed_bytes = consumed.as_bytes();
                         // Because we hit the predicate it doesn't matter if we
                         // have more input, this will always return the same.
                         // This means we know the head input has a bound.
-                        let head = Input::new(consumed_bytes, true);
+                        let head = Input::new_str(consumed, true);
                         // For the tail we derive the bound constaint from self.
-                        let tail = Input::new(&bytes[consumed_bytes.len()..], self.is_bound());
+                        let tail = Input::new(&bytes[consumed.as_bytes().len()..], self.is_bound());
                         // Return the split input parts.
                         return Ok((head, tail));
                     }
@@ -483,7 +482,7 @@ impl<'i> Input<'i> {
                 },
             }
         }
-        Ok((Input::new(consumed.as_bytes(), self.is_bound()), self.end()))
+        Ok((Input::new_str(consumed, self.is_bound()), self.end()))
     }
 
     ///////////////////////////////////////////////////////////////////////////
