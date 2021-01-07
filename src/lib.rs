@@ -16,7 +16,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![forbid(
-    rustdoc,
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
@@ -26,6 +25,7 @@
 )]
 #![deny(
     unused,
+    rustdoc,
     clippy::all,
     clippy::correctness,
     clippy::style,
@@ -35,10 +35,16 @@
     clippy::cargo
 )]
 #![allow(
-    clippy::inline_always,
-    clippy::option_if_let_else,
     clippy::module_name_repetitions,
-    clippy::type_repetition_in_bounds
+    clippy::type_repetition_in_bounds,
+    clippy::inline_always
+)]
+// FIXME: remove false positives
+#![allow(
+    // https://github.com/rust-lang/rust-clippy/issues/5822
+    clippy::option_if_let_else,
+    // https://github.com/rust-lang/rust/issues/72081
+    private_doc_tests,
 )]
 
 #[cfg(feature = "alloc")]
