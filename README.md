@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/avitex/rust-dangerous.svg?branch=master)](https://travis-ci.com/avitex/rust-dangerous)
+[![Build Status](https://github.com/avitex/rust-dangerous/workflows/build/badge.svg)](https://github.com/avitex/rust-dangerous/actions?query=workflow:build)
 [![Coverage Status](https://codecov.io/gh/avitex/rust-dangerous/branch/master/graph/badge.svg?token=X2LXHI8VYL)](https://codecov.io/gh/avitex/rust-dangerous)
 [![Crate](https://img.shields.io/crates/v/dangerous.svg)](https://crates.io/crates/dangerous)
 [![Docs](https://docs.rs/dangerous/badge.svg)](https://docs.rs/dangerous)
