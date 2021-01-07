@@ -406,7 +406,7 @@ impl<'i> Input<'i> {
         operation: &'static str,
     ) -> Result<(Input<'i>, Input<'i>), E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
@@ -421,7 +421,7 @@ impl<'i> Input<'i> {
         operation: &'static str,
     ) -> Result<(Input<'i>, Input<'i>), E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> Result<bool, E>,

@@ -173,10 +173,15 @@ impl<'i, E> Reader<'i, E> {
     }
 
     /// Read all of the remaining string input.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValid`] if the the input could never be valid UTF-8
+    /// and [`ExpectedLength`] if a UTF-8 code point was cut short.
     #[inline]
     pub fn take_remaining_str(&mut self) -> Result<Input<'i>, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
@@ -213,7 +218,7 @@ impl<'i, E> Reader<'i, E> {
     /// and [`ExpectedLength`] if a UTF-8 code point was cut short.
     pub fn take_str_while<F>(&mut self, pred: F) -> Result<Input<'i>, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
@@ -230,7 +235,7 @@ impl<'i, E> Reader<'i, E> {
     /// code point was cut short.
     pub fn try_take_str_while<F>(&mut self, pred: F) -> Result<Input<'i>, E>
     where
-        E: FromContext<'i>,
+        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> Result<bool, E>,
