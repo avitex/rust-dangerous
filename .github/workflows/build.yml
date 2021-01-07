@@ -15,7 +15,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.rust-toolchain }}
-          components: rustfmt
+          components: clippy, rustfmt
           override: true
       - name: Verify versions
         run: rustc --version && rustup --version && cargo --version
@@ -34,6 +34,8 @@ jobs:
         run: cargo test
       - name: Test code with no default features
         run: cargo test --no-default-features
+      - name: Lint code
+        run: cargo clippy
       - name: Check code style
         run: cargo fmt -- --check
       - name: Run cargo-tarpaulin
