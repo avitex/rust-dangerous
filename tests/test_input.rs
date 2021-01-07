@@ -21,7 +21,7 @@ fn test_to_dangerous_non_empty() {
         b"hello"
     );
     // Invalid
-    input!(b"")
+    let _ = input!(b"")
         .to_dangerous_non_empty::<Expected>()
         .unwrap_err();
 }
@@ -35,7 +35,7 @@ fn test_as_dangerous_str() {
         "hello"
     );
     // Invalid
-    input!(b"\xff").to_dangerous_str::<Expected>().unwrap_err();
+    let _ = input!(b"\xff").to_dangerous_str::<Expected>().unwrap_err();
 }
 
 #[test]
@@ -48,10 +48,10 @@ fn test_to_dangerous_non_empty_str() {
         "hello"
     );
     // Invalid
-    input!(b"")
+    let _ = input!(b"")
         .to_dangerous_non_empty_str::<Expected>()
         .unwrap_err();
-    input!(b"\xff")
+    let _ = input!(b"\xff")
         .to_dangerous_non_empty_str::<Expected>()
         .unwrap_err();
 }
