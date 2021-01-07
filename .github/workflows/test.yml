@@ -1,0 +1,38 @@
+name: Test and Build
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust-toolchain: [stable]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust-toolchain }}
+          components: rustfmt
+          override: true
+      - name: Verify versions
+        run: rustc --version && rustup --version && cargo --version
+      - name: Cache build artifacts
+        id: cache-cargo
+        uses: actions/cache@v2
+      - name: Build code
+        run: cargo build
+      - name: Test code
+        run: cargo test
+      - name: Test code with no default features
+        run: cargo test --no-default-features
+      - name: Check code style
+        run: cargo fmt -- --check
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
