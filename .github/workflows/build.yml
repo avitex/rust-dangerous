@@ -1,4 +1,4 @@
-name: Test and Build
+name: build
 on: [push, pull_request]
 jobs:
   test:
@@ -22,6 +22,12 @@ jobs:
       - name: Cache build artifacts
         id: cache-cargo
         uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.rust-toolchain }}
       - name: Build code
         run: cargo build
       - name: Test code
