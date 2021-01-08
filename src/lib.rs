@@ -19,13 +19,13 @@
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unstable_features,
     future_incompatible
 )]
 #![deny(
     unused,
     rustdoc,
+    rust_2018_idioms,
     clippy::all,
     clippy::correctness,
     clippy::style,
