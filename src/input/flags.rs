@@ -1,5 +1,6 @@
 const TAG_BOUND: u8 = 0b1000_0000;
 const TAG_ISSTR: u8 = 0b0100_0000;
+const TAG_START_UNDETERMINED: u8 = 0b0010_0000;
 
 #[derive(Copy, Clone)]
 pub(super) struct Flags(u8);
@@ -23,6 +24,11 @@ impl Flags {
     }
 
     #[inline]
+    pub(super) const fn is_start_undetermined(self) -> bool {
+        self.0 & TAG_START_UNDETERMINED == TAG_START_UNDETERMINED
+    }
+
+    #[inline]
     pub(super) const fn is_str(self) -> bool {
         self.0 & TAG_ISSTR == TAG_ISSTR
     }
@@ -43,6 +49,16 @@ impl Flags {
             self.0 | TAG_ISSTR
         } else {
             self.0 & !TAG_ISSTR
+        };
+        self
+    }
+
+    #[inline(always)]
+    pub(super) const fn start_undetermined(mut self, value: bool) -> Self {
+        self.0 = if value {
+            self.0 | TAG_START_UNDETERMINED
+        } else {
+            self.0 & !TAG_START_UNDETERMINED
         };
         self
     }

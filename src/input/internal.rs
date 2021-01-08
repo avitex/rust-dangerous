@@ -42,14 +42,30 @@ impl<'i> Input<'i> {
     }
 
     #[inline(always)]
+    pub(crate) const fn is_start_undetermined(&self) -> bool {
+        self.flags.is_start_undetermined()
+    }
+
+    #[inline(always)]
     pub(crate) fn has_prefix(&self, prefix: &[u8]) -> bool {
         self.as_dangerous().starts_with(prefix)
     }
 
     /// Returns an empty `Input` pointing the end of `self`.
     #[inline(always)]
-    pub(crate) fn end(self) -> Input<'i> {
-        Input::new(slice::end(self.as_dangerous()), self.is_bound())
+    fn end(self) -> Input<'i> {
+        let bytes = slice::end(self.as_dangerous());
+        if self.is_bound() {
+            Self {
+                bytes,
+                flags: Flags::new(true, self.is_str()),
+            }
+        } else {
+            Self {
+                bytes,
+                flags: Flags::new(false, self.is_str()).start_undetermined(true),
+            }
+        }
     }
 }
 
@@ -82,6 +98,11 @@ impl<'i> Input<'i> {
                 },
             })
         })
+    }
+
+    #[inline(always)]
+    pub(crate) fn split_end(self) -> (Input<'i>, Input<'i>) {
+        (self.clone(), self.end())
     }
 
     #[inline(always)]
@@ -210,11 +231,12 @@ impl<'i> Input<'i> {
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed and derive the bound
-        // constraint from self.
-        // FIXME: is the fact this could be unbound a footgun?
+        // constraint from self. If the tail start is undetermined this means
+        // the last bit of input consumed could be longer if there was more
+        // available and as such makes the input we return unbounded.
         let head = Input::new(
             &self.as_dangerous()[..self.len() - tail.len()],
-            self.is_bound(),
+            self.is_bound() || !tail.is_start_undetermined(),
         );
         // Return the split input parts.
         (head, tail)
@@ -235,11 +257,12 @@ impl<'i> Input<'i> {
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed and derive the bound
-        // constraint from self.
-        // FIXME: is the fact this could be unbound a footgun?
+        // constraint from self. If the tail start is undetermined this means
+        // the last bit of input consumed could be longer if there was more
+        // available and as such makes the input we return unbounded.
         let head = Input::new(
             &self.as_dangerous()[..self.len() - tail.len()],
-            self.is_bound(),
+            self.is_bound() || !tail.is_start_undetermined(),
         );
         // Return the split input parts.
         Ok((head, tail))
@@ -257,22 +280,7 @@ impl<'i> Input<'i> {
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Reader<'i, E>) -> Option<T>,
     {
-        let mut reader = Reader::new(self.clone());
-        if let Some(ok) = f(&mut reader) {
-            Ok((ok, reader.take_remaining()))
-        } else {
-            let tail = reader.take_remaining();
-            let span = &self.as_dangerous()[..self.len() - tail.len()];
-            Err(E::from(ExpectedValid {
-                span,
-                input: self,
-                context: ExpectedContext {
-                    expected,
-                    operation,
-                },
-                retry_requirement: None,
-            }))
-        }
+        self.try_split_expect(|r| Ok(f(r)), expected, operation)
     }
 
     #[inline(always)]

@@ -47,18 +47,19 @@ fn test_streaming_usage_with_valid_requirement() {
 }
 
 #[test]
-fn test_footgun_with_input_non_empty_retry() {
-    use dangerous::error::Invalid;
+fn test_retry_footgun_with_take_consumed() {
+    use dangerous::{Error, Invalid, Reader};
 
-    let input = dangerous::input(b"blah");
-    let result: Result<_, Invalid> = input.read_all(|r| {
+    fn parse<'i, E: Error<'i>>(r: &mut Reader<'i, E>) -> Result<(), E> {
         let consumed = r.try_take_consumed(|r| {
             // We take a exact length of input
-            r.skip(0)
+            r.consume(b"blah")
         })?;
-        // This produces a `RetryRequirement` when it should be fatal?
-        consumed.to_dangerous_non_empty()
-    });
+        consumed.read_all(|r| r.consume(b"blah1"))
+    }
+
+    let input = dangerous::input(b"blah");
+    let result: Result<_, Invalid> = input.read_all(parse);
 
     assert_eq!(result, Err(Invalid::fatal()));
 }

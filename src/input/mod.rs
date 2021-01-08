@@ -244,14 +244,15 @@ impl<'i> Input<'i> {
     ///
     /// # Errors
     ///
-    /// Returns a **non-retryable** [`ExpectedValid`] if the input is empty.
+    /// Returns [`ExpectedLength`] if the input is empty.
     pub fn to_dangerous_non_empty<E>(&self) -> Result<&'i [u8], E>
     where
-        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         if self.is_empty() {
-            Err(E::from(ExpectedValid {
-                retry_requirement: None,
+            Err(E::from(ExpectedLength {
+                min: 1,
+                max: None,
                 span: self.as_dangerous(),
                 input: self.clone(),
                 context: ExpectedContext {
@@ -273,8 +274,7 @@ impl<'i> Input<'i> {
     ///
     /// # Errors
     ///
-    /// Returns a **non-retryable** [`ExpectedValid`] if the input is not valid
-    /// UTF-8.
+    /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
     pub fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
     where
         E: From<ExpectedValid<'i>>,
@@ -315,15 +315,17 @@ impl<'i> Input<'i> {
     ///
     /// # Errors
     ///
-    /// Returns a **non-retryable** [`ExpectedValid`] if the input is either
-    /// empty or not valid UTF-8.
+    /// Returns [`ExpectedLength`] if the input is empty or [`ExpectedValid`] if
+    /// the input is not valid UTF-8.
     pub fn to_dangerous_non_empty_str<E>(&self) -> Result<&'i str, E>
     where
         E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         if self.is_empty() {
-            Err(E::from(ExpectedValid {
-                retry_requirement: None,
+            Err(E::from(ExpectedLength {
+                min: 1,
+                max: None,
                 span: self.as_dangerous(),
                 input: self.clone(),
                 context: ExpectedContext {

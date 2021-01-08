@@ -169,7 +169,7 @@ impl<'i, E> Reader<'i, E> {
     /// Read all of the remaining input.
     #[inline]
     pub fn take_remaining(&mut self) -> Input<'i> {
-        self.advance(|input| (input.clone(), input.end()))
+        self.advance(Input::split_end)
     }
 
     /// Read all of the remaining string input.
