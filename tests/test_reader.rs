@@ -7,6 +7,18 @@ use dangerous::error::{Details, ExpectedContext, RetryRequirement, ToRetryRequir
 use std::any::Any;
 
 #[test]
+fn test_reader_debug() {
+    read_all!(b"hello", |r| {
+        assert_eq!(
+            format!("{:?}", r),
+            "Reader { input: Input([68 65 6c 6c 6f]) }"
+        );
+        r.consume(b"hello")
+    })
+    .unwrap();
+}
+
+#[test]
 fn test_read_nums() {
     macro_rules! validate_read_num {
         ($ty:ty, le: $read_le:ident, be: $read_be:ident) => {
@@ -283,6 +295,19 @@ fn test_peek_opt() {
 }
 
 #[test]
+fn test_peek_u8() {
+    assert_eq!(
+        read_all!(b"hello", |r| {
+            let v = r.peek_u8()? == b'h';
+            r.skip(5)?;
+            Ok(v)
+        })
+        .unwrap(),
+        true
+    );
+}
+
+#[test]
 fn test_peek_u8_opt() {
     assert_eq!(
         read_all!(b"hello", |r| {
@@ -347,3 +372,45 @@ fn test_consume_opt() {
     })
     .unwrap());
 }
+
+#[test]
+fn test_consume_u8() {
+    // Valid
+    read_all!(b"1", |r| { r.consume_u8(b'1') }).unwrap();
+    // Invalid
+    assert_eq!(
+        read_all!(b"1", |r| { r.consume_u8(b'2') })
+            .unwrap_err()
+            .to_retry_requirement(),
+        None
+    );
+    assert_eq!(
+        read_all!(b"", |r| { r.consume_u8(b'1') })
+            .unwrap_err()
+            .to_retry_requirement(),
+        RetryRequirement::new(1)
+    );
+}
+
+#[test]
+fn test_consume_u8_opt() {
+    // Valid
+    assert!(read_all!(b"1", |r| { Ok(r.consume_u8_opt(b'1')) }).unwrap());
+    // Invalid
+    assert!(!read_all!(b"1", |r| {
+        let v = r.consume_u8_opt(b'2');
+        r.skip(1)?;
+        Ok(v)
+    })
+    .unwrap());
+}
+
+// TODO
+// verify
+// try_verify
+// expect
+// try_expect
+// try_expect_erased
+// recover
+// recover_if
+// error
