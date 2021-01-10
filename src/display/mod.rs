@@ -68,10 +68,10 @@ pub trait Write {
     /// Returns a [`core::fmt::Error`] if failed to write.
     fn write_hex(&mut self, b: u8) -> Result {
         fn digit(b: u8) -> char {
-            match b {
-                x @ 0..=9 => (b'0' + x) as char,
-                x @ 10..=15 => (b'a' + (x - 10)) as char,
-                _ => unreachable!(),
+            if b > 9 {
+                (b'a' + (b - 10)) as char
+            } else {
+                (b'0' + b) as char
             }
         }
         self.write_char(digit(b >> 4))?;

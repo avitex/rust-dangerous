@@ -11,7 +11,6 @@ const DEFAULT_MAX_WIDTH: usize = 80;
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
     banner: bool,
-    underline: bool,
     format: PreferredFormat,
     input_max_width: usize,
 }
@@ -25,7 +24,6 @@ where
         Self {
             error,
             banner: false,
-            underline: true,
             format: PreferredFormat::Bytes,
             input_max_width: DEFAULT_MAX_WIDTH,
         }
@@ -39,12 +37,6 @@ where
     /// Set whether or not a banner should printed around the error.
     pub fn banner(mut self, value: bool) -> Self {
         self.banner = value;
-        self
-    }
-
-    /// If enabled (enabled by default), writes an underline for an input span.
-    pub fn underline(mut self, value: bool) -> Self {
-        self.underline = value;
         self
     }
 
