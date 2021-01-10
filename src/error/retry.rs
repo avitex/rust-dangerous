@@ -29,12 +29,6 @@ impl RetryRequirement {
         Self::new(needed.saturating_sub(had))
     }
 
-    /// Returns `true` if a provided count meets the requirement.
-    #[must_use]
-    pub fn met_by(self, count: usize) -> bool {
-        count >= self.continue_after()
-    }
-
     /// An indicator of how many bytes are required to continue processing input, if
     /// applicable.
     ///
