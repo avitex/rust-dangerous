@@ -62,23 +62,15 @@ where
     }
 
     fn write_sections<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
-        self.write_description(w)?;
-        self.write_inputs(w)?;
-        self.write_additional(w)?;
-        self.write_context_backtrace(w)
-    }
-
-    fn write_description<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        let input = self.error.input();
+        let span = self.error.span();
+        // Write description
         w.write_str("error attempting to ")?;
         w.write_str(self.error.context_stack().root().operation())?;
         w.write_str(": ")?;
         self.error.description(w.as_dyn())?;
-        w.write_char('\n')
-    }
-
-    fn write_inputs<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
-        let input = self.error.input();
-        let span = self.error.span();
+        w.write_char('\n')?;
+        // Write inputs
         let input_display = self.input_display(&input);
         let span_display = self.input_display(&span);
         if let Some(expected_value) = self.error.expected() {
@@ -88,7 +80,7 @@ where
             w.write_str("in:\n")?;
         }
         if span.is_within(&input) {
-            write_input(w, input_display.span(&span, self.input_max_width), true)
+            write_input(w, input_display.span(&span, self.input_max_width), true)?;
         } else {
             w.write_str(concat!(
                 "note: error span is not within the error input indicating the\n",
@@ -98,42 +90,13 @@ where
             w.write_str("span:\n")?;
             write_input(w, span_display, false)?;
             w.write_str("input:\n")?;
-            write_input(w, input_display, false)
+            write_input(w, input_display, false)?;
         }
-    }
-
-    fn write_context_backtrace<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
-        w.write_str("backtrace:")?;
-        let write_success = self.error.context_stack().walk(&mut |i, c| {
-            let writer = |w: &mut W, i, c: &dyn Context| {
-                w.write_str("\n ")?;
-                w.write_usize(i)?;
-                w.write_str(". `")?;
-                w.write_str(c.operation())?;
-                w.write_char('`')?;
-                if c.has_expected() {
-                    w.write_str(" (expected ")?;
-                    c.expected(w.as_dyn())?;
-                    w.write_char(')')?;
-                }
-                fmt::Result::Ok(())
-            };
-            writer(w, i, c).is_ok()
-        });
-        if write_success {
-            Ok(())
-        } else {
-            Err(fmt::Error)
-        }
-    }
-
-    fn write_additional<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
-        let input = self.error.input();
-        let span = self.error.span();
+        // Write additional
         w.write_str("additional:\n  ")?;
         if span.is_within(&input) {
             let input_bounds = input.as_dangerous().as_ptr_range();
-            let span_bounds = self.error.span().as_dangerous().as_ptr_range();
+            let span_bounds = span.as_dangerous().as_ptr_range();
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
             match self.format {
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
@@ -157,7 +120,30 @@ where
             w.write_str(", input length: ")?;
             w.write_usize(input.len())?;
         }
-        w.write_char('\n')
+        w.write_char('\n')?;
+        // Write context backtrace
+        w.write_str("backtrace:")?;
+        let write_success = self.error.context_stack().walk(&mut |i, c| {
+            let writer = |w: &mut W, i, c: &dyn Context| {
+                w.write_str("\n ")?;
+                w.write_usize(i)?;
+                w.write_str(". `")?;
+                w.write_str(c.operation())?;
+                w.write_char('`')?;
+                if c.has_expected() {
+                    w.write_str(" (expected ")?;
+                    c.expected(w.as_dyn())?;
+                    w.write_char(')')?;
+                }
+                fmt::Result::Ok(())
+            };
+            writer(w, i, c).is_ok()
+        });
+        if write_success {
+            Ok(())
+        } else {
+            Err(fmt::Error)
+        }
     }
 
     fn input_display<'b>(&self, input: &Input<'b>) -> InputDisplay<'b> {
