@@ -7,7 +7,7 @@ use dangerous::{Fatal, Invalid, ToRetryRequirement};
 #[test]
 fn test_fatal() {
     let error = input!(b"")
-        .to_dangerous_non_empty_str::<Fatal>()
+        .read_all::<_, _, Fatal>(|r| r.consume(b"1"))
         .unwrap_err();
 
     assert!(error.is_fatal());
@@ -19,7 +19,7 @@ fn test_fatal() {
 #[test]
 fn test_invalid_retry() {
     let error = input!(b"")
-        .to_dangerous_non_empty_str::<Invalid>()
+        .read_all::<_, _, Invalid>(|r| r.consume(b"1"))
         .unwrap_err();
 
     assert!(!error.is_fatal());
@@ -36,8 +36,8 @@ fn test_invalid_retry() {
 
 #[test]
 fn test_invalid_fatal() {
-    let error = input!(b"\xFF")
-        .to_dangerous_non_empty_str::<Invalid>()
+    let error = input!(b"2")
+        .read_all::<_, _, Invalid>(|r| r.consume(b"1"))
         .unwrap_err();
 
     assert!(error.is_fatal());

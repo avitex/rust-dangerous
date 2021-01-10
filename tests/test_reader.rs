@@ -124,6 +124,14 @@ fn test_take_remaining() {
 }
 
 #[test]
+fn test_take_remaining_str() {
+    assert_eq!(
+        read_all!(b"hello!", |r| { r.take_remaining_str() }).unwrap(),
+        b"hello!"[..]
+    );
+}
+
+#[test]
 fn test_take_while() {
     assert_eq!(
         read_all!(b"hello!", |r| {
@@ -163,6 +171,19 @@ fn test_take_str_while() {
 }
 
 #[test]
+fn test_skip_str_while() {
+    assert_eq!(
+        read_all!(b"hello!", |r| {
+            let v = r.skip_str_while(|c| c.is_ascii_alphabetic())?;
+            r.skip(1)?;
+            Ok(v)
+        })
+        .unwrap(),
+        5
+    );
+}
+
+#[test]
 fn test_take_str_while_utf8_retry() {
     // Length 1
     assert_eq!(
@@ -190,6 +211,19 @@ fn test_try_take_str_while() {
         })
         .unwrap(),
         b"hello"[..]
+    );
+}
+
+#[test]
+fn test_try_skip_str_while() {
+    assert_eq!(
+        read_all!(b"hello!", |r| {
+            let v = r.try_skip_str_while(|c| Ok(c.is_ascii_alphabetic()))?;
+            r.skip(1)?;
+            Ok(v)
+        })
+        .unwrap(),
+        5
     );
 }
 
@@ -228,6 +262,11 @@ fn test_peek() {
         .unwrap(),
         true
     );
+    let _ = read_all!(b"hello", |r| {
+        let _ = r.peek(6)?;
+        r.skip(5)
+    })
+    .unwrap_err();
 }
 
 #[test]
@@ -235,6 +274,19 @@ fn test_peek_opt() {
     assert_eq!(
         read_all!(b"hello", |r| {
             let v = r.peek_opt(4).map_or(false, |v| v == b"hell"[..]);
+            r.skip(5)?;
+            Ok(v)
+        })
+        .unwrap(),
+        true
+    );
+}
+
+#[test]
+fn test_peek_u8_opt() {
+    assert_eq!(
+        read_all!(b"hello", |r| {
+            let v = r.peek_u8_opt().map_or(false, |v| v == b'h');
             r.skip(5)?;
             Ok(v)
         })
@@ -281,4 +333,17 @@ fn test_consume() {
             .to_retry_requirement(),
         None
     );
+}
+
+#[test]
+fn test_consume_opt() {
+    // Valid
+    assert!(read_all!(b"hello", |r| { Ok(r.consume_opt(b"hello")) }).unwrap());
+    // Invalid
+    assert!(!read_all!(b"abc", |r| {
+        let v = r.consume_opt(b"hello");
+        r.skip(3)?;
+        Ok(v)
+    })
+    .unwrap());
 }
