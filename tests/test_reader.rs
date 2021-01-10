@@ -3,7 +3,9 @@
 
 #[macro_use]
 mod common;
-use dangerous::error::{Details, ExpectedContext, RetryRequirement, ToRetryRequirement};
+
+use dangerous::error::{Details, ExpectedContext, Fatal, RetryRequirement, ToRetryRequirement};
+use dangerous::Reader;
 use std::any::Any;
 
 #[test]
@@ -405,12 +407,86 @@ fn test_consume_u8_opt() {
     .unwrap());
 }
 
-// TODO
-// verify
-// try_verify
-// expect
-// try_expect
-// try_expect_erased
-// recover
-// recover_if
-// error
+#[test]
+fn test_verify() {
+    // Valid
+    read_all!(b"1", |r| { r.verify("value", |r| r.consume_opt(b"1")) }).unwrap();
+    // Invalid
+    let _ = read_all!(b"1", |r| { r.verify("value", |r| r.consume_opt(b"2")) }).unwrap_err();
+}
+
+#[test]
+fn test_try_verify() {
+    // Valid
+    read_all!(b"1", |r| {
+        r.try_verify("value", |r| Ok(r.consume_opt(b"1")))
+    })
+    .unwrap();
+    // Invalid
+    let _ = read_all!(b"1", |r| {
+        r.try_verify("value", |r| Ok(r.consume_opt(b"2")))
+    })
+    .unwrap_err();
+}
+
+#[test]
+fn test_expect() {
+    // Valid
+    read_all!(b"1", |r| {
+        r.expect("value", |r| Some(r.consume_opt(b"1")))
+    })
+    .unwrap();
+    // Invalid
+    let _ = read_all!(b"", |r| { r.expect("value", |_| Option::<()>::None) }).unwrap_err();
+}
+
+#[test]
+fn try_try_expect() {
+    // Valid
+    read_all!(b"", |r| { r.try_expect("value", |_| Ok(Some(()))) }).unwrap();
+    // Invalid
+    let _ = read_all!(b"", |r| {
+        r.try_expect("value", |_| Ok(Option::<()>::None))
+    })
+    .unwrap_err();
+}
+
+#[test]
+fn try_expect_erased() {
+    // Valid
+    read_all!(b"", |r| {
+        r.try_expect_erased("value", |_| Result::<(), Fatal>::Ok(()))
+    })
+    .unwrap();
+    // Invalid
+    let _ = read_all!(b"", |r| {
+        r.try_expect_erased("value", |_| Result::<(), Fatal>::Err(Fatal))
+    })
+    .unwrap_err();
+}
+
+#[test]
+fn test_recover() {
+    read_all!(b"", |r| {
+        r.recover(|r| r.take(1));
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn test_recover_if() {
+    // Valid
+    read_all!(b"", |r| { r.recover_if(|r| { r.take(1) }, |_| true) }).unwrap();
+    // Invalid
+    let _ = read_all!(b"", |r| { r.recover_if(|r| { r.take(1) }, |_| false) }).unwrap_err();
+}
+
+#[test]
+fn test_error() {
+    assert!(read_all!(b"", |r| {
+        r.try_expect_erased("value", |r| r.error(|r: &mut Reader<Fatal>| r.take(1)))
+    })
+    .unwrap_err()
+    .is_fatal())
+}
