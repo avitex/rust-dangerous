@@ -561,7 +561,7 @@ impl<'i> ToRetryRequirement for ExpectedValid<'i> {
 
     #[inline]
     fn is_fatal(&self) -> bool {
-        self.input.is_bound() || self.retry_requirement.is_some()
+        self.input.is_bound() || self.retry_requirement.is_none()
     }
 }
 
