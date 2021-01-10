@@ -77,6 +77,8 @@ fn test_expected_valid_full() {
         .read_all::<_, _, Expected>(|r| r.context("hi", |r| r.take_str_while(|_| true)))
         .unwrap_err();
 
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
         format!("{}", error),
         concat!(
@@ -101,6 +103,8 @@ fn test_expected_valid_root() {
         })
         .unwrap_err();
 
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
         format!("{}", error),
         concat!(
@@ -117,11 +121,13 @@ fn test_expected_valid_root() {
 
 #[test]
 #[cfg(feature = "full-context")]
-fn test_expected_valid_full_debug_str() {
+fn test_expected_valid_full_debug_str_boxed() {
     let error = input!(b"123\n\xC2 ")
-        .read_all::<_, _, Expected>(|r| r.context("hi", |r| r.take_str_while(|_| true)))
+        .read_all::<_, _, Box<Expected>>(|r| r.context("hi", |r| r.take_str_while(|_| true)))
         .unwrap_err();
 
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
         format!("{:#?}", error),
         concat!(
@@ -147,6 +153,8 @@ fn test_expected_length_full() {
         .read_all::<_, _, Expected>(|r| r.context("hi", |r| r.take(5)))
         .unwrap_err();
 
+    assert!(!error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
     assert_eq!(
         format!("{}", error),
         concat!(
@@ -169,6 +177,8 @@ fn test_expected_length_root() {
         .read_all::<_, _, Expected<RootContextStack>>(|r| r.context("hi", |r| r.take(5)))
         .unwrap_err();
 
+    assert!(!error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
     assert_eq!(
         format!("{}", error),
         concat!(
@@ -190,6 +200,8 @@ fn test_expected_value_full() {
         .read_all::<_, _, Expected>(|r| r.context("hi", |r| r.consume(b"124")))
         .unwrap_err();
 
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
         format!("{}", error),
         concat!(
@@ -215,6 +227,8 @@ fn test_expected_value_root() {
         .read_all::<_, _, Expected<RootContextStack>>(|r| r.context("hi", |r| r.consume(b"124")))
         .unwrap_err();
 
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
         format!("{}", error),
         concat!(
