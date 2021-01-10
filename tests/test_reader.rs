@@ -7,8 +7,28 @@ use dangerous::error::{Details, ExpectedContext, RetryRequirement, ToRetryRequir
 use std::any::Any;
 
 #[test]
-
 fn test_read_nums() {
+    macro_rules! validate_read_num {
+        ($ty:ty, le: $read_le:ident, be: $read_be:ident) => {
+            assert_eq!(
+                read_all!(<$ty>::to_le_bytes(<$ty>::MIN), |r| r.$read_le()).unwrap(),
+                <$ty>::MIN
+            );
+            assert_eq!(
+                read_all!(<$ty>::to_be_bytes(<$ty>::MIN), |r| r.$read_be()).unwrap(),
+                <$ty>::MIN
+            );
+            assert_eq!(
+                read_all!(<$ty>::to_le_bytes(<$ty>::MAX), |r| r.$read_le()).unwrap(),
+                <$ty>::MAX
+            );
+            assert_eq!(
+                read_all!(<$ty>::to_be_bytes(<$ty>::MAX), |r| r.$read_be()).unwrap(),
+                <$ty>::MAX
+            );
+        };
+    }
+
     assert_eq!(read_all!(&[0x1], |r| r.read_u8()).unwrap(), 1);
 
     validate_read_num!(i8, le: read_i8_le, be: read_i8_be);
@@ -140,6 +160,10 @@ fn test_take_str_while() {
         .unwrap(),
         b"hello"[..]
     );
+}
+
+#[test]
+fn test_take_str_while_utf8_retry() {
     // Length 1
     assert_eq!(
         read_all!(&[0b0111_1111], |r| r.take_str_while(|_| true)).unwrap(),
