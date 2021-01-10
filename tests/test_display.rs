@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[macro_use]
 mod common;
 
@@ -44,4 +46,33 @@ fn test_invalid_span_does_nothing() {
     let display = input!("hello").display().span(&input!(""), 16);
     assert_eq!(display.to_string(), "[68 65 6c 6c 6f]");
     assert_eq!(display.underline(true).to_string(), "                ");
+}
+
+#[test]
+fn test_format_with_mut_ref_write() {
+    use dangerous::display::{DisplayBase, Write};
+
+    struct Helper;
+
+    impl DisplayBase for Helper {
+        fn fmt<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+            Write::write_str(w, "a")?;
+            Write::write_char(w, ',')?;
+            Write::write_usize(w, 1)?;
+            Write::write_char(w, ',')?;
+            Write::write_hex(w, 1)?;
+            Write::write_char(w, ',')?;
+            Write::write_hex(w, 128)?;
+            Write::write_char(w, ',')?;
+            Write::write_hex(w, 129)
+        }
+    }
+
+    impl fmt::Display for Helper {
+        fn fmt(&self, mut f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            DisplayBase::fmt(&&self, &mut f)
+        }
+    }
+
+    assert_eq!(Helper.to_string(), "a,1,01,80,81");
 }
