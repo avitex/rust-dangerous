@@ -195,3 +195,25 @@ fn test_read_infallible() {
         (input!(b"hello"), input!(b"1"))
     );
 }
+
+#[test]
+fn test_span_of() {
+    let parent = dangerous::input(&[1, 2, 3, 4]);
+    let sub_range = 1..2;
+    let sub = dangerous::input(&parent.as_dangerous()[sub_range.clone()]);
+    assert_eq!(sub.span_of(&parent), Some(sub_range));
+
+    let non_span = dangerous::input(&[1, 2, 2, 4]);
+    assert_eq!(non_span.span_of(&parent), None);
+}
+
+#[test]
+fn test_span_of_non_empty() {
+    let parent = dangerous::input(&[1, 2, 3, 4]);
+    let sub_range = 1..2;
+    let sub = dangerous::input(&parent.as_dangerous()[sub_range.clone()]);
+    assert_eq!(sub.span_of_non_empty(&parent), Some(sub_range));
+
+    let non_span = dangerous::input(&[]);
+    assert_eq!(non_span.span_of_non_empty(&parent), None);
+}

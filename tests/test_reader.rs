@@ -52,6 +52,8 @@ fn test_read_nums() {
     validate_read_num!(i32, le: read_i32_le, be: read_i32_be);
     validate_read_num!(u64, le: read_u64_le, be: read_u64_be);
     validate_read_num!(i64, le: read_i64_le, be: read_i64_be);
+    validate_read_num!(u128, le: read_u128_le, be: read_u128_be);
+    validate_read_num!(i128, le: read_i128_le, be: read_i128_be);
     validate_read_num!(f32, le: read_f32_le, be: read_f32_be);
     validate_read_num!(f64, le: read_f64_le, be: read_f64_be);
 }

@@ -152,7 +152,7 @@ impl<'i> Input<'i> {
     /// within the `parent`. `None` is returned if `self` is not within in the
     /// `parent` or `self` is empty.
     #[must_use]
-    pub fn non_empty_span_of(&self, parent: &Input<'_>) -> Option<Range<usize>> {
+    pub fn span_of_non_empty(&self, parent: &Input<'_>) -> Option<Range<usize>> {
         if self.is_empty() {
             None
         } else {
