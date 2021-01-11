@@ -418,7 +418,7 @@ impl<'i> ExpectedLength<'i> {
 
 impl<'i> fmt::Debug for ExpectedLength<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExpectedValue")
+        f.debug_struct("ExpectedLength")
             .field("min", &self.min())
             .field("max", &self.max())
             .field("input", &self.input())
@@ -527,7 +527,7 @@ impl<'i> ExpectedValid<'i> {
 
 impl<'i> fmt::Debug for ExpectedValid<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExpectedValue")
+        f.debug_struct("ExpectedValid")
             .field("input", &self.input())
             .field("span", &self.span())
             .field("context", &self.context())
