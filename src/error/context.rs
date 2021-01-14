@@ -261,8 +261,9 @@ unsafe impl zc::NoInteriorMut for FullContextStack {}
 ///////////////////////////////////////////////////////////////////////////////
 
 #[inline(always)]
-pub(crate) fn with_context<'i, F, C, T, E>(input: Input<'i>, context: C, f: F) -> Result<T, E>
+pub(crate) fn with_context<'i, I, F, C, T, E>(input: I, context: C, f: F) -> Result<T, E>
 where
+    I: Input<'i>,
     F: FnOnce() -> Result<T, E>,
     E: WithContext<'i>,
     C: Context,

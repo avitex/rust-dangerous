@@ -44,6 +44,9 @@ pub(crate) fn char_len(b: u8) -> usize {
     UTF8_CHAR_LENGTH[b as usize] as usize
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// CharIter
+
 pub(crate) struct CharIter<'i> {
     forward: usize,
     backward: usize,
@@ -59,11 +62,15 @@ impl<'i> CharIter<'i> {
         }
     }
 
+    pub(crate) fn is_done(&self) -> bool {
+        self.forward == self.backward
+    }
+
     pub(crate) fn as_slice(&self) -> &'i [u8] {
         &self.bytes[self.forward..self.backward]
     }
 
-    pub(crate) fn forward(&self) -> &'i str {
+    pub(crate) fn forward_valid(&self) -> &'i str {
         // SAFETY: bytes before this forward increasing index is valid UTF-8.
         unsafe { str::from_utf8_unchecked(&self.bytes[..self.forward]) }
     }
@@ -82,7 +89,7 @@ impl<'i> Iterator for CharIter<'i> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.forward == self.backward {
+        if self.is_done() {
             None
         } else {
             let result = match first_codepoint(self.head()) {
@@ -105,15 +112,18 @@ impl<'i> Iterator for CharIter<'i> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.backward - self.forward;
-        (remaining, Some(remaining))
+        if self.is_done() {
+            (0, None)
+        } else {
+            (1, None)
+        }
     }
 }
 
 impl<'i> DoubleEndedIterator for CharIter<'i> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        if self.forward == self.backward {
+        if self.is_done() {
             None
         } else {
             let result = match last_codepoint(self.tail()) {
