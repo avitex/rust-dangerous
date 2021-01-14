@@ -79,8 +79,9 @@ impl ToRetryRequirement for Invalid {
 
 impl<'i> WithContext<'i> for Invalid {
     #[inline(always)]
-    fn with_context<C>(self, _input: Input<'i>, _context: C) -> Self
+    fn with_context<I, C>(self, _input: I, _context: C) -> Self
     where
+        I: Input<'i>,
         C: Context,
     {
         self

@@ -1,6 +1,6 @@
 use crate::error::{self, Context};
 use crate::fmt::{self, Write};
-use crate::input::Input;
+use crate::input::{Input, MaybeString, Private};
 
 use super::{InputDisplay, PreferredFormat};
 
@@ -146,7 +146,7 @@ where
         }
     }
 
-    fn input_display<'b>(&self, input: &Input<'b>) -> InputDisplay<'b> {
+    fn input_display<'b>(&self, input: &impl Input<'b>) -> InputDisplay<'b> {
         input.display().format(self.format)
     }
 }
@@ -190,8 +190,8 @@ where
     }
 }
 
-fn line_offset(input: &Input<'_>, span_offset: usize) -> usize {
-    match input.clone().split_at_opt(span_offset) {
+fn line_offset(input: &MaybeString<'_>, span_offset: usize) -> usize {
+    match input.clone().split_bytes_at_opt(span_offset) {
         Some((before_span, _)) => before_span.count(b'\n') + 1,
         // Will never be reached in practical usage but we handle to avoid
         // unwrapping.

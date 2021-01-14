@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::input::Input;
+use crate::input::{Bytes, Input, MaybeString};
 
 use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue};
 
@@ -13,8 +13,9 @@ pub trait WithContext<'i> {
     /// Return `Self` with context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
-    fn with_context<C>(self, input: Input<'i>, context: C) -> Self
+    fn with_context<I, C>(self, input: I, context: C) -> Self
     where
+        I: Input<'i>,
         C: Context;
 }
 
@@ -46,13 +47,13 @@ pub trait Details<'i> {
     /// The error itself will have the details and the specific section of input
     /// that caused the error. This value simply allows us to see the bigger
     /// picture given granular errors in a large amount of input.
-    fn input(&self) -> Input<'i>;
+    fn input(&self) -> MaybeString<'i>;
 
     /// The specific section of input that caused an error.
-    fn span(&self) -> Input<'i>;
+    fn span(&self) -> Bytes<'i>;
 
     /// The expected value, if applicable.
-    fn expected(&self) -> Option<Input<'_>>;
+    fn expected(&self) -> Option<MaybeString<'_>>;
 
     /// The description of what went wrong while processing the input.
     ///

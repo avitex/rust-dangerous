@@ -34,3 +34,11 @@ pub(crate) unsafe fn split_at_unchecked<T>(slice: &[T], mid: usize) -> (&[T], &[
     // SAFETY: Caller has to check that `0 <= mid <= slice.len()`
     (slice.get_unchecked(..mid), slice.get_unchecked(mid..))
 }
+
+#[inline(always)]
+pub(crate) unsafe fn split_str_at_unchecked(slice: &str, mid: usize) -> (&str, &str) {
+    debug_assert!(mid <= slice.len());
+    debug_assert!(slice.is_char_boundary(mid));
+    // SAFETY: Caller has to check that `0 <= mid <= slice.len()`
+    (slice.get_unchecked(..mid), slice.get_unchecked(mid..))
+}

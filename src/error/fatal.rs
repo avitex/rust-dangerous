@@ -51,8 +51,9 @@ impl fmt::Display for Fatal {
 }
 
 impl<'i> WithContext<'i> for Fatal {
-    fn with_context<C>(self, _input: Input<'i>, _context: C) -> Self
+    fn with_context<I, C>(self, _input: I, _context: C) -> Self
     where
+        I: Input<'i>,
         C: Context,
     {
         self

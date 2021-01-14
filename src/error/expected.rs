@@ -3,7 +3,7 @@ use alloc::boxed::Box;
 
 use crate::display::{byte_count, ErrorDisplay};
 use crate::fmt;
-use crate::input::Input;
+use crate::input::{Bytes, Input, MaybeString};
 
 use super::{
     Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, RetryRequirement,
@@ -29,7 +29,7 @@ type ExpectedContextStack = crate::error::RootContextStack;
 /// See [`crate::error`] for additional documentation around the error system.
 #[must_use = "error must be handled"]
 pub struct Expected<'i, S = ExpectedContextStack> {
-    input: Input<'i>,
+    input: MaybeString<'i>,
     stack: S,
     kind: ExpectedKind<'i>,
 }
@@ -57,12 +57,13 @@ impl<'i, S> Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
-    fn add_context<C>(&mut self, input: Input<'i>, context: C)
+    fn add_context<I, C>(&mut self, input: I, context: C)
     where
+        I: Input<'i>,
         C: Context,
     {
         if self.input.is_within(&input) {
-            self.input = input
+            self.input = input.into_maybe_string()
         }
         self.stack.push(context);
     }
@@ -85,11 +86,11 @@ impl<'i, S> Details<'i> for Expected<'i, S>
 where
     S: ContextStack,
 {
-    fn input(&self) -> Input<'i> {
+    fn input(&self) -> MaybeString<'i> {
         self.input.clone()
     }
 
-    fn span(&self) -> Input<'i> {
+    fn span(&self) -> Bytes<'i> {
         match &self.kind {
             ExpectedKind::Value(err) => err.found(),
             ExpectedKind::Valid(err) => err.span(),
@@ -97,7 +98,7 @@ where
         }
     }
 
-    fn expected(&self) -> Option<Input<'_>> {
+    fn expected(&self) -> Option<MaybeString<'i>> {
         match &self.kind {
             ExpectedKind::Value(err) => Some(err.expected()),
             ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,
@@ -150,8 +151,9 @@ impl<'i, S> WithContext<'i> for Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
-    fn with_context<C>(mut self, input: Input<'i>, context: C) -> Self
+    fn with_context<I, C>(mut self, input: I, context: C) -> Self
     where
+        I: Input<'i>,
         C: Context,
     {
         self.add_context(input, context);
@@ -164,8 +166,9 @@ impl<'i, S> WithContext<'i> for Box<Expected<'i, S>>
 where
     S: ContextStackBuilder,
 {
-    fn with_context<C>(mut self, input: Input<'i>, context: C) -> Self
+    fn with_context<I, C>(mut self, input: I, context: C) -> Self
     where
+        I: Input<'i>,
         C: Context,
     {
         self.add_context(input, context);
@@ -260,16 +263,16 @@ unsafe impl<'i, S> zc::NoInteriorMut for Expected<'i, S> where S: zc::NoInterior
 /// An error representing a failed exact value requirement of [`Input`].
 #[must_use = "error must be handled"]
 pub struct ExpectedValue<'i> {
-    pub(crate) input: Input<'i>,
+    pub(crate) input: MaybeString<'i>,
     pub(crate) actual: &'i [u8],
-    pub(crate) expected: &'i [u8],
+    pub(crate) expected: MaybeString<'i>,
     pub(crate) context: ExpectedContext,
 }
 
 impl<'i> ExpectedValue<'i> {
     /// The [`Input`] provided in the context when the error occurred.
     #[inline(always)]
-    pub fn input(&self) -> Input<'i> {
+    pub fn input(&self) -> MaybeString<'i> {
         self.input.clone()
     }
 
@@ -282,14 +285,14 @@ impl<'i> ExpectedValue<'i> {
 
     /// The [`Input`] that was found.
     #[inline(always)]
-    pub fn found(&self) -> Input<'i> {
-        Input::new(self.actual, self.input.is_bound())
+    pub fn found(&self) -> Bytes<'i> {
+        Bytes::new(self.actual, self.input.bound())
     }
 
     /// The [`Input`] value that was expected.
     #[inline(always)]
-    pub fn expected(&self) -> Input<'i> {
-        Input::new(self.expected, self.input.is_bound())
+    pub fn expected(&self) -> MaybeString<'i> {
+        self.expected.clone()
     }
 }
 
@@ -332,7 +335,11 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     /// was incomplete.
     #[inline]
     fn is_fatal(&self) -> bool {
-        self.input.is_bound() || !self.expected().has_prefix(self.found().as_dangerous())
+        self.input.is_bound()
+            || !self
+                .expected()
+                .as_dangerous()
+                .starts_with(self.found().as_dangerous())
     }
 }
 
@@ -348,14 +355,14 @@ pub struct ExpectedLength<'i> {
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
     pub(crate) span: &'i [u8],
-    pub(crate) input: Input<'i>,
+    pub(crate) input: MaybeString<'i>,
     pub(crate) context: ExpectedContext,
 }
 
 impl<'i> ExpectedLength<'i> {
     /// The [`Input`] provided in the context when the error occurred.
     #[inline(always)]
-    pub fn input(&self) -> Input<'i> {
+    pub fn input(&self) -> MaybeString<'i> {
         self.input.clone()
     }
 
@@ -368,8 +375,8 @@ impl<'i> ExpectedLength<'i> {
 
     /// The specific part of the [`Input`] that did not meet the requirement.
     #[inline(always)]
-    pub fn span(&self) -> Input<'i> {
-        Input::new(self.span, self.input.is_bound())
+    pub fn span(&self) -> Bytes<'i> {
+        Bytes::new(self.span, self.input.bound())
     }
 
     /// The minimum length that was expected in a context.
@@ -491,7 +498,7 @@ unsafe impl<'i> zc::NoInteriorMut for ExpectedLength<'i> {}
 /// An error representing a failed requirement for a valid [`Input`].
 #[must_use = "error must be handled"]
 pub struct ExpectedValid<'i> {
-    pub(crate) input: Input<'i>,
+    pub(crate) input: MaybeString<'i>,
     pub(crate) span: &'i [u8],
     pub(crate) context: ExpectedContext,
     pub(crate) retry_requirement: Option<RetryRequirement>,
@@ -500,7 +507,7 @@ pub struct ExpectedValid<'i> {
 impl<'i> ExpectedValid<'i> {
     /// The [`Input`] provided in the context when the error occurred.
     #[inline(always)]
-    pub fn input(&self) -> Input<'i> {
+    pub fn input(&self) -> MaybeString<'i> {
         self.input.clone()
     }
 
@@ -513,8 +520,8 @@ impl<'i> ExpectedValid<'i> {
 
     /// The specific part of the [`Input`] that did not meet the requirement.
     #[inline(always)]
-    pub fn span(&self) -> Input<'i> {
-        Input::new(self.span, self.input.is_bound())
+    pub fn span(&self) -> Bytes<'i> {
+        Bytes::new(self.span, self.input.bound())
     }
 
     /// A description of what was expected.
@@ -576,13 +583,13 @@ mod tests {
     #[cfg(all(target_pointer_width = "64", not(feature = "full-context")))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 160);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 184);
     }
 
     #[test]
     #[cfg(all(target_pointer_width = "64", feature = "full-context"))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 184);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 208);
     }
 }

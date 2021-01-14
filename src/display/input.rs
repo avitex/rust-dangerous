@@ -66,7 +66,7 @@ pub struct InputDisplay<'i> {
 
 impl<'i> InputDisplay<'i> {
     /// Create a new `InputDisplay` given [`Input`].
-    pub const fn new(input: &Input<'i>) -> Self {
+    pub fn new(input: &impl Input<'i>) -> Self {
         Self {
             input: input.as_dangerous(),
             format: PreferredFormat::Bytes,
@@ -80,7 +80,7 @@ impl<'i> InputDisplay<'i> {
     ///
     /// - Precision (eg. `{:.16}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
-    pub fn from_formatter(input: &Input<'i>, f: &fmt::Formatter<'_>) -> Self {
+    pub fn from_formatter(input: &impl Input<'i>, f: &fmt::Formatter<'_>) -> Self {
         let format = Self::new(input).str_hint(f.alternate());
         match f.precision() {
             Some(width) => format.head_tail(width),
@@ -170,7 +170,7 @@ impl<'i> InputDisplay<'i> {
     ///
     /// assert_eq!(formatted, "[.. cc dd ee ff]");
     /// ```
-    pub fn span(mut self, span: &Input<'i>, width: usize) -> Self {
+    pub fn span(mut self, span: &impl Input<'i>, width: usize) -> Self {
         self.section = None;
         self.section_opt = SectionOpt::Span {
             width,
