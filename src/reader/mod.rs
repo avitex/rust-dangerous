@@ -2,9 +2,9 @@ mod bytes;
 
 use core::marker::PhantomData;
 
-use crate::error::{
-    with_context, Context, ExpectedValid, OperationContext, ToRetryRequirement, WithContext,
-};
+#[cfg(feature = "retry")]
+use crate::error::ToRetryRequirement;
+use crate::error::{with_context, Context, ExpectedValid, OperationContext, WithContext};
 use crate::fmt;
 use crate::input::{Bytes, Input, PrivateExt, String};
 
@@ -283,6 +283,7 @@ where
     /// Returns an error if provided function does.
     ///
     /// [`RetryRequirement`]: crate::error::RetryRequirement
+    #[cfg(feature = "retry")]
     pub fn try_expect_erased<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,

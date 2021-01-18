@@ -355,7 +355,7 @@ fn test_invalid_error_details_span() {
     use dangerous::error::{
         ContextStack, ContextStackBuilder, Details, ExpectedValid, RootContextStack,
     };
-    use dangerous::input::{Input, MaybeString};
+    use dangerous::{Input, MaybeString};
 
     struct MyError(RootContextStack);
 

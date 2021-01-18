@@ -2,9 +2,10 @@ use core::convert::Infallible;
 use core::ops::Range;
 
 use crate::display::InputDisplay;
+#[cfg(feature = "retry")]
+use crate::error::ToRetryRequirement;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext,
-    ToRetryRequirement, WithContext,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext, WithContext,
 };
 use crate::fmt::{Debug, Display, DisplayBase};
 use crate::reader::Reader;
@@ -270,6 +271,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                     span,
                     input: self.into_maybe_string(),
                     context,
+                    #[cfg(feature = "retry")]
                     retry_requirement: None,
                 }))
             }
@@ -277,6 +279,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         }
     }
 
+    #[cfg(feature = "retry")]
     fn try_split_expect_erased<F, T, R, E>(
         self,
         f: F,

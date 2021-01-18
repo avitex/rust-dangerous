@@ -1,11 +1,9 @@
 mod bytes;
-mod entry;
 mod maybe;
 mod string;
 mod traits;
 
 pub use self::bytes::Bytes;
-pub use self::entry::input;
 pub use self::maybe::MaybeString;
 pub use self::string::String;
 pub use self::traits::Input;

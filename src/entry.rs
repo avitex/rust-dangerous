@@ -1,4 +1,4 @@
-use super::{Bound, Bytes, Input, String};
+use crate::input::{Bound, Bytes, Input, String};
 
 /// Creates a new `Input` from a byte slice.
 ///
