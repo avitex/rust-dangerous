@@ -3,6 +3,8 @@ use core::fmt;
 #[macro_use]
 mod common;
 
+use dangerous::Input;
+
 #[test]
 fn test_valid_utf8() {
     assert_input_display_eq!("hello ♥", "{}", "[68 65 6c 6c 6f 20 e2 99 a5]");
@@ -40,10 +42,10 @@ fn test_invalid_utf8() {
 
 #[test]
 fn test_invalid_span_does_nothing() {
-    let display = input!("hello").display().span(&input!("world"), 16);
+    let display = input!(b"hello").display().span(&input!("world"), 16);
     assert_eq!(display.to_string(), "[68 65 6c 6c 6f]");
     assert_eq!(display.underline(true).to_string(), "                ");
-    let display = input!("hello").display().span(&input!(""), 16);
+    let display = input!(b"hello").display().span(&input!(""), 16);
     assert_eq!(display.to_string(), "[68 65 6c 6c 6f]");
     assert_eq!(display.underline(true).to_string(), "                ");
 }

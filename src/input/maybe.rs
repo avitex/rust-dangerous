@@ -10,10 +10,21 @@ pub enum MaybeString<'i> {
 }
 
 impl<'i> MaybeString<'i> {
-    /// Returns an [`InputDisplay`] for formatting.
-    #[inline(always)]
-    pub fn display(&self) -> InputDisplay<'i> {
-        InputDisplay::new(self)
+    pub fn is_string(&self) -> bool {
+        match self {
+            Self::Bytes(_) => false,
+            Self::String(_) => true,
+        }
+    }
+
+    pub fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
+    where
+        E: From<ExpectedValid<'i>>,
+    {
+        match self {
+            Self::Bytes(v) => v.to_dangerous_str(),
+            Self::String(v) => Ok(v.as_dangerous()),
+        }
     }
 }
 
@@ -22,23 +33,6 @@ impl<'i> Input<'i> for MaybeString<'i> {
         match self {
             Self::Bytes(v) => v.bound(),
             Self::String(v) => v.bound(),
-        }
-    }
-
-    fn as_dangerous(&self) -> &'i [u8] {
-        match self {
-            Self::Bytes(v) => v.as_dangerous(),
-            Self::String(v) => v.as_dangerous(),
-        }
-    }
-
-    fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
-    where
-        E: From<ExpectedValid<'i>>,
-    {
-        match self {
-            Self::Bytes(v) => v.to_dangerous_str(),
-            Self::String(v) => v.to_dangerous_str(),
         }
     }
 
@@ -76,6 +70,13 @@ impl<'i> Private<'i> for MaybeString<'i> {
         }
     }
 
+    fn into_unbound(self) -> Self {
+        match self {
+            Self::Bytes(v) => Self::Bytes(v.into_unbound()),
+            Self::String(v) => Self::String(v.into_unbound()),
+        }
+    }
+
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
         if self.len() < mid {
             return None;
@@ -85,7 +86,7 @@ impl<'i> Private<'i> for MaybeString<'i> {
                 .split_bytes_at_opt(mid)
                 .map(|(head, tail)| (Self::Bytes(head), Self::Bytes(tail))),
             Self::String(v) => {
-                let is_valid_string_split = v.as_dangerous_str().is_char_boundary(mid);
+                let is_valid_string_split = v.as_dangerous().is_char_boundary(mid);
                 v.split_bytes_at_opt(mid).map(|(head, tail)| {
                     if is_valid_string_split {
                         let head = unsafe { String::from_bytes_unchecked(head) };
@@ -101,6 +102,19 @@ impl<'i> Private<'i> for MaybeString<'i> {
 
     fn split_bytes_at_opt(self, index: usize) -> Option<(Bytes<'i>, Bytes<'i>)> {
         self.into_bytes().split_bytes_at_opt(index)
+    }
+
+    unsafe fn split_at_byte_unchecked(self, mid: usize) -> (Self, Self) {
+        match self {
+            Self::Bytes(v) => {
+                let (head, tail) = v.split_at_byte_unchecked(mid);
+                (Self::Bytes(head), Self::Bytes(tail))
+            }
+            Self::String(v) => {
+                let (head, tail) = v.split_at_byte_unchecked(mid);
+                (Self::String(head), Self::String(tail))
+            }
+        }
     }
 }
 
@@ -118,8 +132,10 @@ impl<'i> Clone for MaybeString<'i> {
 
 impl<'i> fmt::Debug for MaybeString<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let display = InputDisplay::from_formatter(self, f).str_hint(true);
-        f.debug_tuple("Input").field(&display).finish()
+        match self {
+            Self::Bytes(v) => v.fmt(f),
+            Self::String(v) => v.fmt(f),
+        }
     }
 }
 
@@ -131,6 +147,8 @@ impl<'i> fmt::DisplayBase for MaybeString<'i> {
 
 impl<'i> fmt::Display for MaybeString<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        InputDisplay::from_formatter(self, f).str_hint(true).fmt(f)
+        InputDisplay::from_formatter(self, f)
+            .str_hint(self.is_string())
+            .fmt(f)
     }
 }

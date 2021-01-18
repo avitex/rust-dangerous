@@ -1,4 +1,4 @@
-use dangerous::Expected;
+use dangerous::{Expected, Input};
 
 fn main() {
     // Expect length

@@ -7,7 +7,7 @@ use dangerous::error::{
     Context, Expected, ExpectedLength, ExpectedValid, ExpectedValue, Fatal, Invalid,
     RetryRequirement, RootContextStack, ToRetryRequirement, WithContext,
 };
-use dangerous::Input;
+use dangerous::{Bytes, Input};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Fatal
@@ -98,8 +98,9 @@ impl<'i> fmt::Debug for ExpectedKind<'i> {
 }
 
 impl<'i> WithContext<'i> for ExpectedKind<'i> {
-    fn with_context<C>(self, _input: Input<'i>, _context: C) -> Self
+    fn with_context<I, C>(self, _input: I, _context: C) -> Self
     where
+        I: Input<'i>,
         C: Context,
     {
         self
@@ -135,7 +136,7 @@ fn test_expected_valid() {
 
     assert_eq!(
         format!("{:?}", error),
-        "ExpectedValid { input: Input([31 32 33 c2 20]), span: Input([c2]), context: ExpectedContext { operation: \"take str while\", expected: \"utf-8 code point\" }, retry_requirement: None }",
+        "ExpectedValid { input: Bytes([31 32 33 c2 20]), span: Bytes([c2]), context: ExpectedContext { operation: \"take str while\", expected: \"utf-8 code point\" }, retry_requirement: None }",
     );
 }
 
@@ -226,7 +227,7 @@ fn test_expected_length() {
 
     assert_eq!(
         format!("{:?}", error),
-        "ExpectedLength { min: 5, max: None, input: Input([31 32 33]), span: Input([31 32 33]), context: ExpectedContext { operation: \"take\", expected: \"enough input\" } }"
+        "ExpectedLength { min: 5, max: None, input: Bytes([31 32 33]), span: Bytes([31 32 33]), context: ExpectedContext { operation: \"take\", expected: \"enough input\" } }"
     );
 }
 
@@ -288,7 +289,7 @@ fn test_expected_value() {
 
     assert_eq!(
         format!("{:?}", error),
-        "ExpectedValue { input: Input([31 32 33]), actual: Input([31 32 33]), expected: Input([31 32 34]), context: ExpectedContext { operation: \"consume\", expected: \"exact value\" } }"
+        "ExpectedValue { input: Bytes([31 32 33]), actual: Bytes([31 32 33]), expected: Bytes([31 32 34]), context: ExpectedContext { operation: \"consume\", expected: \"exact value\" } }"
     );
 }
 
@@ -354,7 +355,7 @@ fn test_invalid_error_details_span() {
     use dangerous::error::{
         ContextStack, ContextStackBuilder, Details, ExpectedValid, RootContextStack,
     };
-    use dangerous::Input;
+    use dangerous::input::{Input, MaybeString};
 
     struct MyError(RootContextStack);
 
@@ -365,13 +366,13 @@ fn test_invalid_error_details_span() {
     }
 
     impl<'i> Details<'i> for MyError {
-        fn input(&self) -> Input<'i> {
-            input!(b"something")
+        fn input(&self) -> MaybeString<'i> {
+            input!(b"something").into_maybe_string()
         }
-        fn span(&self) -> Input<'i> {
+        fn span(&self) -> Bytes<'i> {
             input!(b"not-a-proper-span")
         }
-        fn expected(&self) -> Option<Input<'_>> {
+        fn expected(&self) -> Option<MaybeString<'_>> {
             None
         }
         fn description(&self, w: &mut dyn Write) -> fmt::Result {

@@ -6,14 +6,14 @@
 //! ```
 use std::io::{self, Read};
 
-use dangerous::{Error, Expected, Reader};
+use dangerous::{Error, Expected, Input, Reader};
 
 fn main() {
     let mut input_data = Vec::new();
     io::stdin()
         .read_to_end(&mut input_data)
         .expect("read input");
-    let input = dangerous::input(input_data.as_ref());
+    let input = dangerous::input(input_data.as_slice());
     match input.read_all::<_, _, Expected>(read_ini) {
         Ok(ini) => println!("{:#?}", ini),
         Err(e) => eprintln!("{:#}", e),

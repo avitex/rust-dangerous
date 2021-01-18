@@ -4,6 +4,7 @@
 mod common;
 
 use dangerous::error::{Expected, RetryRequirement, ToRetryRequirement};
+use dangerous::Input;
 
 #[test]
 fn test_as_dangerous() {

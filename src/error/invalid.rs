@@ -17,7 +17,7 @@ use super::{
 /// # Example
 ///
 /// ```
-/// use dangerous::Invalid;
+/// use dangerous::{Input, Invalid};
 ///
 /// let error: Invalid = dangerous::input(b"").read_all(|r| {
 ///     r.read_u8()

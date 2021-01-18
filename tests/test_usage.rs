@@ -1,6 +1,7 @@
 #[test]
 fn test_usage_with_fn() {
     use dangerous::error::{Expected, RetryRequirement, ToRetryRequirement};
+    use dangerous::Input;
 
     let input = dangerous::input(b"a");
 
@@ -19,7 +20,7 @@ fn test_usage_with_fn() {
 
 #[test]
 fn test_streaming_usage_with_fatal_requirement() {
-    use dangerous::{Invalid, Reader};
+    use dangerous::{Input, Invalid, Reader};
 
     let input = dangerous::input(b"blah");
     let result: Result<_, Invalid> = input.read_all(|r| {
@@ -33,6 +34,7 @@ fn test_streaming_usage_with_fatal_requirement() {
 #[test]
 fn test_streaming_usage_with_valid_requirement() {
     use dangerous::error::{Invalid, RetryRequirement, ToRetryRequirement};
+    use dangerous::Input;
 
     let input = dangerous::input(b"blah");
     let result: Result<_, Invalid> = input.read_all(|r| {
@@ -48,7 +50,7 @@ fn test_streaming_usage_with_valid_requirement() {
 
 #[test]
 fn test_retry_footgun_with_take_consumed() {
-    use dangerous::{Error, Invalid, Reader};
+    use dangerous::{Error, Input, Invalid, Reader};
 
     fn parse<'i, E: Error<'i>>(r: &mut Reader<'i, E>) -> Result<(), E> {
         let consumed = r.try_take_consumed(|r| {

@@ -1,6 +1,6 @@
 use std::net::Ipv4Addr;
 
-use dangerous::{Error, Expected, Invalid, Reader};
+use dangerous::{Error, Expected, Input, Invalid, Reader};
 
 fn main() {
     let input = dangerous::input(b"192.168.1.x");

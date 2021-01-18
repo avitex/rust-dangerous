@@ -1,8 +1,10 @@
+use core::convert::Infallible;
 use core::ops::Range;
 
 use crate::display::InputDisplay;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ToRetryRequirement, WithContext,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext,
+    ToRetryRequirement, WithContext,
 };
 use crate::fmt::{Debug, Display, DisplayBase};
 use crate::reader::Reader;
@@ -28,28 +30,6 @@ pub trait Input<'i>: Private<'i> {
     #[must_use]
     fn bound(&self) -> Bound;
 
-    /// Returns the underlying byte slice.
-    ///
-    /// The naming of this function is to a degree hyperbole, and should not be
-    /// necessarily taken as proof of something dangerous or memory unsafe. It
-    /// is named this way simply for users to clearly note where the panic-free
-    /// guarantees end when handling the input.
-    fn as_dangerous(&self) -> &'i [u8];
-
-    /// Decodes the underlying byte slice into a UTF-8 `str` slice.
-    ///
-    /// See `as_dangerous` for naming.
-    ///
-    /// If the underlying byte slice is known to be valid UTF-8 this is will a
-    /// cheap operation, otherwise the bytes will be validated.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
-    fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
-    where
-        E: From<ExpectedValid<'i>>;
-
     /// Returns `self` as a bound `Input`.
     ///
     /// Bound `Input` carries the guarantee that it will not be extended in
@@ -58,7 +38,7 @@ pub trait Input<'i>: Private<'i> {
     /// # Example
     ///
     /// ```
-    /// use dangerous::{Invalid, ToRetryRequirement};
+    /// use dangerous::{Input, Invalid, ToRetryRequirement};
     ///
     /// let error: Invalid = dangerous::input(b"1234")
     ///     .into_bound()
@@ -86,14 +66,14 @@ pub trait Input<'i>: Private<'i> {
     #[inline(always)]
     #[must_use]
     fn len(&self) -> usize {
-        self.as_dangerous().len()
+        self.as_dangerous_bytes().len()
     }
 
     /// Returns `true` if the underlying byte slice length is zero.
     #[inline(always)]
     #[must_use]
     fn is_empty(&self) -> bool {
-        self.as_dangerous().is_empty()
+        self.len() == 0
     }
 
     #[must_use]
@@ -105,7 +85,7 @@ pub trait Input<'i>: Private<'i> {
     /// of `self` in the same section of memory with no bounds out of range.
     #[must_use]
     fn is_within<'p>(&self, parent: &impl Input<'p>) -> bool {
-        slice::is_sub_slice(parent.as_dangerous(), self.as_dangerous())
+        slice::is_sub_slice(parent.as_dangerous_bytes(), self.as_dangerous_bytes())
     }
 
     /// Returns the occurrences of `needle` within the underlying byte slice.
@@ -116,7 +96,7 @@ pub trait Input<'i>: Private<'i> {
     fn count(&self, needle: u8) -> usize {
         #[cfg(feature = "bytecount")]
         {
-            bytecount::count(self.as_dangerous(), needle)
+            bytecount::count(self.as_dangerous_bytes(), needle)
         }
         #[cfg(not(feature = "bytecount"))]
         {
@@ -135,6 +115,8 @@ pub trait Input<'i>: Private<'i> {
     /// # Example
     ///
     /// ```
+    /// use dangerous::Input;
+    ///
     /// let parent = dangerous::input(&[1, 2, 3, 4]);
     /// let sub_range = 1..2;
     /// let sub = dangerous::input(&parent.as_dangerous()[sub_range.clone()]);
@@ -144,8 +126,8 @@ pub trait Input<'i>: Private<'i> {
     #[must_use]
     fn span_of<'p>(&self, parent: &impl Input<'p>) -> Option<Range<usize>> {
         if self.is_within(parent) {
-            let parent_bounds = parent.as_dangerous().as_ptr_range();
-            let sub_bounds = self.as_dangerous().as_ptr_range();
+            let parent_bounds = parent.as_dangerous_bytes().as_ptr_range();
+            let sub_bounds = self.as_dangerous_bytes().as_ptr_range();
             let start_offset = sub_bounds.start as usize - parent_bounds.start as usize;
             let end_offset = sub_bounds.end as usize - parent_bounds.start as usize;
             Some(start_offset..end_offset)
@@ -166,60 +148,61 @@ pub trait Input<'i>: Private<'i> {
         }
     }
 
-    /// Returns the underlying byte slice if it is not empty.
-    ///
-    /// See [`Input::as_dangerous`] for naming.
+    /// Create a reader with the expectation all of the input is read.
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedLength`] if the input is empty.
-    fn to_dangerous_non_empty<E>(&self) -> Result<&'i [u8], E>
+    /// Returns an error if either the provided function does, or there is
+    /// trailing input.
+    fn read_all<F, T, E>(self, f: F) -> Result<T, E>
     where
+        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, E>,
+        E: WithContext<'i>,
         E: From<ExpectedLength<'i>>,
     {
-        if self.is_empty() {
-            Err(E::from(ExpectedLength {
-                min: 1,
-                max: None,
-                span: self.as_dangerous(),
-                input: self.clone().into_maybe_string(),
+        let mut r = Reader::new(self.clone());
+        match r.context(OperationContext("read all"), f) {
+            Ok(ok) if r.at_end() => Ok(ok),
+            Ok(_) => Err(E::from(ExpectedLength {
+                min: 0,
+                max: Some(0),
+                span: r.take_remaining().as_dangerous_bytes(),
+                input: self.into_maybe_string(),
                 context: ExpectedContext {
-                    operation: "convert input to non-empty slice",
-                    expected: "non-empty input",
+                    operation: "read all",
+                    expected: "no trailing input",
                 },
-            }))
-        } else {
-            Ok(self.as_dangerous())
+            })),
+            Err(err) => Err(err),
         }
     }
 
-    /// Decodes the underlying byte slice into a UTF-8 `str` slice.
-    ///
-    /// See [`Input::as_dangerous`] for naming.
+    /// Create a reader to read a part of the input and return the rest.
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedLength`] if the input is empty or [`ExpectedValid`] if
-    /// the input is not valid UTF-8.
-    fn to_dangerous_non_empty_str<E>(&self) -> Result<&'i str, E>
+    /// Returns an error if the provided function does.
+    fn read_partial<F, T, E>(self, f: F) -> Result<(T, Self), E>
     where
-        E: From<ExpectedValid<'i>>,
-        E: From<ExpectedLength<'i>>,
+        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, E>,
+        E: WithContext<'i>,
     {
-        if self.is_empty() {
-            Err(E::from(ExpectedLength {
-                min: 1,
-                max: None,
-                span: self.as_dangerous(),
-                input: self.clone().into_maybe_string(),
-                context: ExpectedContext {
-                    operation: "convert input to non-empty str",
-                    expected: "non empty input",
-                },
-            }))
-        } else {
-            self.to_dangerous_str()
+        let mut r = Reader::new(self);
+        match r.context(OperationContext("read partial"), f) {
+            Ok(ok) => Ok((ok, r.take_remaining())),
+            Err(err) => Err(err),
         }
+    }
+
+    /// Create a reader to read a part of the input and return the rest
+    /// without any errors.
+    fn read_infallible<F, T>(self, f: F) -> (T, Self)
+    where
+        F: FnOnce(&mut Reader<'i, Infallible, Self>) -> T,
+    {
+        let mut r = Reader::new(self);
+        let ok = f(&mut r);
+        (ok, r.take_remaining())
     }
 }
 
@@ -230,15 +213,24 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     /// Returns an empty `Input` pointing the end of `self`.
     fn end(self) -> Self;
 
+    fn into_unbound(self) -> Self;
+
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)>;
 
     fn split_bytes_at_opt(self, mid: usize) -> Option<(Bytes<'i>, Bytes<'i>)>;
+
+    /// Splits at a byte index without any validation.
+    unsafe fn split_at_byte_unchecked(self, mid: usize) -> (Self, Self);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Private extensions to any `Input`
 
 pub(crate) trait PrivateExt<'i>: Input<'i> {
+    fn as_dangerous_bytes(&self) -> &'i [u8] {
+        self.clone().into_bytes().as_dangerous()
+    }
+
     fn split_expect<F, T, E>(
         self,
         f: F,
@@ -273,7 +265,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             Ok(Some(ok)) => Ok((ok, reader.take_remaining())),
             Ok(None) => {
                 let tail = reader.take_remaining();
-                let span = &self.as_dangerous()[..self.len() - tail.len()];
+                let span = &self.as_dangerous_bytes()[..self.len() - tail.len()];
                 Err(E::from(ExpectedValid {
                     span,
                     input: self.into_maybe_string(),
@@ -302,7 +294,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             Ok(ok) => Ok((ok, reader.take_remaining())),
             Err(err) => {
                 let tail = reader.take_remaining();
-                let span = &self.as_dangerous()[..self.len() - tail.len()];
+                let span = &self.as_dangerous_bytes()[..self.len() - tail.len()];
                 Err(E::from(ExpectedValid {
                     span,
                     input: self.into_maybe_string(),
@@ -313,6 +305,54 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                     retry_requirement: err.to_retry_requirement(),
                 }))
             }
+        }
+    }
+
+    #[inline(always)]
+    fn split_consumed<F, E>(self, f: F) -> (Self, Self)
+    where
+        E: WithContext<'i>,
+        F: FnOnce(&mut Reader<'i, E, Self>),
+    {
+        let mut reader = Reader::new(self.clone());
+        f(&mut reader);
+        // We take the remaining input.
+        let tail = reader.take_remaining();
+        // For the head, we take what we consumed.
+        let mid = self.len() - tail.len();
+        let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
+        // We derive the bound constraint from self. If the tail start is
+        // undetermined this means the last bit of input consumed could be
+        // longer if there was more available and as such makes the input we
+        // return unbounded.
+        if tail.bound() == Bound::None {
+            (head.into_unbound(), tail)
+        } else {
+            (head, tail)
+        }
+    }
+
+    #[inline(always)]
+    fn try_split_consumed<F, E>(self, f: F, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: WithContext<'i>,
+        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<(), E>,
+    {
+        let mut reader = Reader::new(self.clone());
+        with_context(self.clone(), OperationContext(operation), || f(&mut reader))?;
+        // We take the remaining input.
+        let tail = reader.take_remaining();
+        // For the head, we take what we consumed.
+        let mid = self.len() - tail.len();
+        let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
+        // We derive the bound constraint from self. If the tail start is
+        // undetermined this means the last bit of input consumed could be
+        // longer if there was more available and as such makes the input we
+        // return unbounded.
+        if tail.bound() == Bound::None {
+            Ok((head.into_unbound(), tail))
+        } else {
+            Ok((head, tail))
         }
     }
 }

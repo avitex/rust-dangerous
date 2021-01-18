@@ -95,7 +95,7 @@ where
         // Write additional
         w.write_str("additional:\n  ")?;
         if span.is_within(&input) {
-            let input_bounds = input.as_dangerous().as_ptr_range();
+            let input_bounds = input.clone().into_bytes().as_dangerous().as_ptr_range();
             let span_bounds = span.as_dangerous().as_ptr_range();
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
             match self.format {
@@ -116,7 +116,7 @@ where
             w.write_str(", span length: ")?;
             w.write_usize(span.len())?;
             w.write_str("input ptr: ")?;
-            w.write_usize(input.as_dangerous().as_ptr() as usize)?;
+            w.write_usize(input.clone().into_bytes().as_dangerous().as_ptr() as usize)?;
             w.write_str(", input length: ")?;
             w.write_usize(input.len())?;
         }

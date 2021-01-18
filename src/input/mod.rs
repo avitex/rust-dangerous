@@ -35,7 +35,7 @@ impl Bound {
             Bound::Both => Bound::Both,
             // As we have skipped to the end without checking, we don't know
             // where the start is, perhaps the true end is not known yet!
-            _ => Bound::None,
+            Bound::Start | Bound::None => Bound::None,
         }
     }
 }
