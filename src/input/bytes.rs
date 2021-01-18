@@ -13,12 +13,19 @@ use super::{Bound, Input, MaybeString, Private, String};
 
 pub struct Bytes<'i> {
     bytes: &'i [u8],
+    #[cfg(feature = "retry")]
     bound: Bound,
 }
 
 impl<'i> Bytes<'i> {
+    #[cfg(feature = "retry")]
     pub(crate) fn new(bytes: &'i [u8], bound: Bound) -> Self {
         Self { bytes, bound }
+    }
+
+    #[cfg(not(feature = "retry"))]
+    pub(crate) fn new(bytes: &'i [u8], _bound: Bound) -> Self {
+        Self { bytes }
     }
 
     /// Returns the underlying byte slice.
@@ -33,7 +40,7 @@ impl<'i> Bytes<'i> {
 
     /// Decodes the underlying byte slice into a UTF-8 `str` slice.
     ///
-    /// See `as_dangerous` for naming.
+    /// See [`Bytes::as_dangerous`] for naming.
     ///
     /// If the underlying byte slice is known to be valid UTF-8 this is will a
     /// cheap operation, otherwise the bytes will be validated.
@@ -64,6 +71,7 @@ impl<'i> Bytes<'i> {
                         operation: "convert input to str",
                         expected: "utf-8 code point",
                     },
+                    #[cfg(feature = "retry")]
                     retry_requirement: None,
                 }))
             }
@@ -72,7 +80,7 @@ impl<'i> Bytes<'i> {
 
     /// Returns the underlying byte slice if it is not empty.
     ///
-    /// See [`Input::as_dangerous`] for naming.
+    /// See [`Bytes::as_dangerous`] for naming.
     ///
     /// # Errors
     ///
@@ -99,7 +107,7 @@ impl<'i> Bytes<'i> {
 
     /// Decodes the underlying byte slice into a UTF-8 `str` slice.
     ///
-    /// See [`Input::as_dangerous`] for naming.
+    /// See [`Bytes::as_dangerous`] for naming.
     ///
     /// # Errors
     ///
@@ -128,16 +136,28 @@ impl<'i> Bytes<'i> {
 }
 
 impl<'i> Input<'i> for Bytes<'i> {
+    #[cfg(feature = "retry")]
     fn bound(&self) -> Bound {
         self.bound
     }
 
-    fn into_bytes(self) -> Bytes<'i> {
+    #[cfg(not(feature = "retry"))]
+    fn bound(&self) -> Bound {
+        Bound::Both
+    }
+
+    #[cfg(feature = "retry")]
+    fn into_bound(mut self) -> Self {
+        self.bound = Bound::Both;
         self
     }
 
-    fn into_bound(mut self) -> Self {
-        self.bound = Bound::Both;
+    #[cfg(not(feature = "retry"))]
+    fn into_bound(self) -> Self {
+        self
+    }
+
+    fn into_bytes(self) -> Bytes<'i> {
         self
     }
 
@@ -426,6 +446,7 @@ impl<'i> Bytes<'i> {
                                 operation,
                                 expected: "utf-8 code point",
                             },
+                            #[cfg(feature = "retry")]
                             retry_requirement: None,
                         }));
                     }
@@ -485,11 +506,17 @@ impl<'i> Bytes<'i> {
 
 impl<'i> Private<'i> for Bytes<'i> {
     fn end(self) -> Self {
-        Self::new(slice::end(self.as_dangerous()), self.bound.for_end())
+        Self::new(slice::end(self.as_dangerous()), self.bound().for_end())
     }
 
+    #[cfg(feature = "retry")]
     fn into_unbound(mut self) -> Self {
         self.bound = Bound::None;
+        self
+    }
+
+    #[cfg(not(feature = "retry"))]
+    fn into_unbound(self) -> Self {
         self
     }
 
@@ -500,9 +527,9 @@ impl<'i> Private<'i> for Bytes<'i> {
     fn split_bytes_at_opt(self, mid: usize) -> Option<(Bytes<'i>, Bytes<'i>)> {
         slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
             // We split at a known length making the head input bound.
-            let head = Bytes::new(head, self.bound.close_end());
+            let head = Bytes::new(head, self.bound().close_end());
             // For the tail we derive the bound constraint from self.
-            let tail = Bytes::new(tail, self.bound);
+            let tail = Bytes::new(tail, self.bound());
             // Return the split input parts.
             (head, tail)
         })
@@ -519,7 +546,7 @@ impl<'i> Private<'i> for Bytes<'i> {
 
 impl<'i> Clone for Bytes<'i> {
     fn clone(&self) -> Self {
-        Self::new(self.bytes, self.bound)
+        Self::new(self.bytes, self.bound())
     }
 }
 

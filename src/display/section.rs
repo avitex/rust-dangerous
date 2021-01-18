@@ -548,7 +548,7 @@ mod tests {
     use super::*;
 
     use crate::display::InputDisplay;
-    use crate::input::input;
+    use crate::input;
 
     const BAD_UTF8: u8 = 0b1101_1111; // 223, 0xdf
 

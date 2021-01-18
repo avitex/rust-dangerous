@@ -1,9 +1,9 @@
 use crate::error::{ExpectedLength, ExpectedValid, ExpectedValue, WithContext};
 use crate::input::{Bytes, Input, Private, String};
 
-use super::Reader;
+use super::BytesReader;
 
-impl<'i, E> Reader<'i, E, Bytes<'i>> {
+impl<'i, E> BytesReader<'i, E> {
     /// Skip `len` number of bytes.
     ///
     /// # Errors

@@ -18,14 +18,14 @@ impl<'i> String<'i> {
 
     /// Returns the underlying string slice.
     ///
-    /// See [`Input::as_dangerous`] for naming.
+    /// See [`Bytes::as_dangerous`] for naming.
     pub fn as_dangerous(&self) -> &'i str {
         unsafe { utf8::from_unchecked(self.utf8.as_dangerous()) }
     }
 
     /// Returns the underlying string slice if it is not empty.
     ///
-    /// See [`Input::as_dangerous`] for naming.
+    /// See [`Bytes::as_dangerous`] for naming.
     ///
     /// # Errors
     ///

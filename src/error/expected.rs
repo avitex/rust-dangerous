@@ -5,10 +5,10 @@ use crate::display::{byte_count, ErrorDisplay};
 use crate::fmt;
 use crate::input::{Bytes, Input, MaybeString};
 
-use super::{
-    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, RetryRequirement,
-    ToRetryRequirement, WithContext,
-};
+use super::{Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, WithContext};
+
+#[cfg(feature = "retry")]
+use super::{RetryRequirement, ToRetryRequirement};
 
 #[cfg(feature = "full-context")]
 type ExpectedContextStack = crate::error::FullContextStack;
@@ -118,6 +118,7 @@ where
     }
 }
 
+#[cfg(feature = "retry")]
 impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         match &self.kind {
@@ -136,7 +137,7 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", feature = "retry"))]
 impl<'i, S> ToRetryRequirement for Box<Expected<'i, S>> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         (**self).to_retry_requirement()
@@ -319,6 +320,7 @@ impl<'i> fmt::Display for ExpectedValue<'i> {
     }
 }
 
+#[cfg(feature = "retry")]
 impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
@@ -471,6 +473,7 @@ impl<'i> fmt::Display for ExpectedLength<'i> {
     }
 }
 
+#[cfg(feature = "retry")]
 impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
@@ -502,6 +505,7 @@ pub struct ExpectedValid<'i> {
     pub(crate) input: MaybeString<'i>,
     pub(crate) span: &'i [u8],
     pub(crate) context: ExpectedContext,
+    #[cfg(feature = "retry")]
     pub(crate) retry_requirement: Option<RetryRequirement>,
 }
 
@@ -535,12 +539,16 @@ impl<'i> ExpectedValid<'i> {
 
 impl<'i> fmt::Debug for ExpectedValid<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExpectedValid")
-            .field("input", &self.input())
-            .field("span", &self.span())
-            .field("context", &self.context())
-            .field("retry_requirement", &self.retry_requirement)
-            .finish()
+        let mut debug = f.debug_struct("ExpectedValid");
+
+        debug.field("input", &self.input());
+        debug.field("span", &self.span());
+        debug.field("context", &self.context());
+
+        #[cfg(feature = "retry")]
+        debug.field("retry_requirement", &self.retry_requirement);
+
+        debug.finish()
     }
 }
 
@@ -557,6 +565,7 @@ impl<'i> fmt::Display for ExpectedValid<'i> {
     }
 }
 
+#[cfg(feature = "retry")]
 impl<'i> ToRetryRequirement for ExpectedValid<'i> {
     #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
