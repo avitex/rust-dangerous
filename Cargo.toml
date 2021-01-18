@@ -19,7 +19,7 @@ default = ["retry", "full-context", "bytecount", "unicode"]
 std = []
 # Enables allocations.
 alloc = []
-# Enables retry.
+# Enables retry support.
 retry = []
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
