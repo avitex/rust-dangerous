@@ -2,7 +2,7 @@
 
 macro_rules! input {
     ($input:expr) => {
-        dangerous::input($input.as_ref())
+        dangerous::input(&$input)
     };
 }
 
@@ -26,6 +26,9 @@ macro_rules! read_infallible {
 
 macro_rules! assert_input_display_eq {
     ($input:expr, $format:expr, $expected:expr) => {
-        assert_eq!(format!($format, input!($input)), $expected);
+        assert_eq!(
+            format!($format, input!(<&[u8]>::from($input.as_ref()))),
+            $expected
+        );
     };
 }

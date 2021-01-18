@@ -3,7 +3,7 @@
 //! # Basic usage
 //!
 //! ```
-//! use dangerous::Invalid;
+//! use dangerous::{Input, Invalid};
 //!
 //! let input = dangerous::input(b"hello");
 //! let result: Result<_, Invalid> = input.read_partial(|r| {
@@ -49,6 +49,9 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+
+#[macro_use]
+mod macros;
 
 pub mod input;
 mod reader;

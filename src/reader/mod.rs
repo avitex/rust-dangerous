@@ -2,14 +2,11 @@ mod bytes;
 
 use core::marker::PhantomData;
 
+use crate::error::{
+    with_context, Context, ExpectedValid, OperationContext, ToRetryRequirement, WithContext,
+};
 use crate::fmt;
 use crate::input::{Bytes, Input, PrivateExt, String};
-use crate::{
-    error::{
-        with_context, Context, ExpectedValid, OperationContext, ToRetryRequirement, WithContext,
-    },
-    MaybeString,
-};
 
 pub type BytesReader<'i, E> = Reader<'i, E, Bytes<'i>>;
 pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
@@ -45,7 +42,7 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// peeking should not be used for the resulting type.
 ///
 /// ```
-/// use dangerous::Invalid;
+/// use dangerous::{Input, Invalid};
 ///
 /// let input = dangerous::input(b"true");
 /// let result: Result<_, Invalid> = input.read_all(|r| {
@@ -77,7 +74,7 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
 /// [`RetryRequirement`]: crate::error::RetryRequirement  
-pub struct Reader<'i, E, I = MaybeString<'i>>
+pub struct Reader<'i, E, I = Bytes<'i>>
 where
     I: Input<'i>,
 {
@@ -130,6 +127,44 @@ where
         F: FnOnce(&Self) -> Result<T, E>,
     {
         with_context(self.input.clone(), context, || f(self))
+    }
+
+    /// Read a length of input that was successfully consumed from a sub-parse.
+    pub fn take_consumed<F>(&mut self, consumer: F) -> I
+    where
+        E: WithContext<'i>,
+        F: FnOnce(&mut Self),
+    {
+        self.advance(|input| input.split_consumed(consumer))
+    }
+
+    /// Try read a length of input that was successfully consumed from a
+    /// sub-parse.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::{Input, Invalid};
+    ///
+    /// let result: Result<_, Invalid> = dangerous::input(b"abc").read_all(|r| {
+    ///     r.try_take_consumed(|r| {
+    ///         r.skip(1)?;
+    ///         r.consume(b"bc")
+    ///     })
+    /// });
+    ///
+    /// assert_eq!(result.unwrap(), b"abc"[..]);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function does.
+    pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<I, E>
+    where
+        E: WithContext<'i>,
+        F: FnOnce(&mut Self) -> Result<(), E>,
+    {
+        self.try_advance(|input| input.try_split_consumed(consumer, "try take consumed"))
     }
 
     /// Read and verify a value without returning it.
@@ -222,7 +257,7 @@ where
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{Error, Expected, Invalid, Reader};
+    /// use dangerous::{Error, Expected, Input, Invalid, Reader};
     ///
     /// // Our custom reader function
     /// fn read_ipv4_addr<'i, E>(r: &mut Reader<'i, E>) -> Result<Ipv4Addr, E>
@@ -316,7 +351,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use dangerous::{Error, Expected, Fatal, Reader};
+    /// use dangerous::{Error, Expected, Fatal, Input, Reader};
     ///
     /// fn branch_a<'i, E>(r: &mut Reader<'i, E>) -> Result<u8, E>
     /// where

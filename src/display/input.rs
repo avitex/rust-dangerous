@@ -1,5 +1,5 @@
 use crate::fmt::{self, Write};
-use crate::input::Input;
+use crate::input::{Input, PrivateExt};
 
 use super::section::{Section, SectionOpt};
 use super::unit::{byte_display_width, byte_display_write, char_display_width, char_display_write};
@@ -49,6 +49,8 @@ impl fmt::Debug for PreferredFormat {
 /// # Example
 ///
 /// ```
+/// use dangerous::Input;
+///
 /// let formatted = dangerous::input("heya ♥".as_bytes())
 ///     .display()
 ///     .head_tail(16)
@@ -68,7 +70,7 @@ impl<'i> InputDisplay<'i> {
     /// Create a new `InputDisplay` given [`Input`].
     pub fn new(input: &impl Input<'i>) -> Self {
         Self {
-            input: input.as_dangerous(),
+            input: input.as_dangerous_bytes(),
             format: PreferredFormat::Bytes,
             underline: false,
             section: None,
@@ -115,6 +117,8 @@ impl<'i> InputDisplay<'i> {
     /// # Example
     ///
     /// ```
+    /// use dangerous::Input;
+    ///
     /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     /// let formatted = input.display().head_tail(16).to_string();
     ///
@@ -131,6 +135,8 @@ impl<'i> InputDisplay<'i> {
     /// # Example
     ///
     /// ```
+    /// use dangerous::Input;
+    ///
     /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     /// let formatted = input.display().head(16).to_string();
     ///
@@ -147,6 +153,8 @@ impl<'i> InputDisplay<'i> {
     /// # Example
     ///
     /// ```
+    /// use dangerous::Input;
+    ///
     /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     /// let formatted = input.display().tail(16).to_string();
     ///
@@ -163,6 +171,8 @@ impl<'i> InputDisplay<'i> {
     /// # Example
     ///
     /// ```
+    /// use dangerous::Input;
+    ///
     /// let full = &[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
     /// let input = dangerous::input(full);
     /// let span = dangerous::input(&full[5..]);
@@ -174,7 +184,7 @@ impl<'i> InputDisplay<'i> {
         self.section = None;
         self.section_opt = SectionOpt::Span {
             width,
-            span: span.as_dangerous(),
+            span: span.as_dangerous_bytes(),
         };
         self
     }
@@ -184,6 +194,8 @@ impl<'i> InputDisplay<'i> {
     /// # Example
     ///
     /// ```
+    /// use dangerous::Input;
+    ///
     /// let input = dangerous::input(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     /// let formatted = input.display().full().to_string();
     ///

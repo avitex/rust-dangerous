@@ -20,10 +20,21 @@ where
 ///////////////////////////////////////////////////////////////////////////////
 // Private entry and implementations
 
-pub trait IntoInput<'i> {
+pub trait IntoInput<'i>: Copy {
     type Input: Input<'i>;
 
     fn into_input(self) -> Self::Input;
+}
+
+impl<'i, T> IntoInput<'i> for &T
+where
+    T: IntoInput<'i>,
+{
+    type Input = T::Input;
+
+    fn into_input(self) -> Self::Input {
+        (*self).into_input()
+    }
 }
 
 impl<'i> IntoInput<'i> for &'i [u8] {
@@ -45,7 +56,7 @@ impl<'i> IntoInput<'i> for &'i str {
 ///////////////////////////////////////////////////////////////////////////////
 // Array impl
 
-// TODO: replace below macros with this
+// FIXME: replace below macros with this
 // impl<'i, const N: usize> IntoInput<'i> for &'i [u8; N] {
 //     type Input = Bytes<'i>;
 
@@ -68,4 +79,7 @@ macro_rules! impl_array_into_input {
     };
 }
 
-impl_array_into_input!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32, 64, 128, 256);
+impl_array_into_input!(
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 32,
+    64, 128, 256
+);

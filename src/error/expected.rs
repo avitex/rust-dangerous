@@ -338,8 +338,9 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
         self.input.is_bound()
             || !self
                 .expected()
+                .into_bytes()
                 .as_dangerous()
-                .starts_with(self.found().as_dangerous())
+                .starts_with(self.found().into_bytes().as_dangerous())
     }
 }
 

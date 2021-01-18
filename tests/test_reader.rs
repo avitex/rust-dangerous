@@ -5,15 +5,16 @@
 mod common;
 
 use dangerous::error::{Details, ExpectedContext, Fatal, RetryRequirement, ToRetryRequirement};
-use dangerous::Reader;
+use dangerous::{Input, Reader};
 use std::any::Any;
+use std::str;
 
 #[test]
-fn test_reader_debug() {
+fn test_reader_bytes_debug() {
     read_all!(b"hello", |r| {
         assert_eq!(
             format!("{:?}", r),
-            "Reader { input: Input([68 65 6c 6c 6f]) }"
+            "Reader { input: Bytes([68 65 6c 6c 6f]) }"
         );
         r.consume(b"hello")
     })
@@ -44,8 +45,9 @@ fn test_read_nums() {
     }
 
     assert_eq!(read_all!(&[0x1], |r| r.read_u8()).unwrap(), 1);
+    assert_eq!(read_all!(&[0b0000_0001], |r| r.read_i8()).unwrap(), 1);
+    assert_eq!(read_all!(&[0b1000_0000], |r| r.read_i8()).unwrap(), -128);
 
-    validate_read_num!(i8, le: read_i8_le, be: read_i8_be);
     validate_read_num!(u16, le: read_u16_le, be: read_u16_be);
     validate_read_num!(i16, le: read_i16_le, be: read_i16_be);
     validate_read_num!(u32, le: read_u32_le, be: read_u32_be);
@@ -143,7 +145,7 @@ fn test_take_remaining() {
 fn test_take_remaining_str() {
     assert_eq!(
         read_all!(b"hello!", |r| { r.take_remaining_str() }).unwrap(),
-        b"hello!"[..]
+        "hello!"[..]
     );
 }
 
@@ -182,7 +184,7 @@ fn test_take_str_while() {
             Ok(v)
         })
         .unwrap(),
-        b"hello"[..]
+        "hello"[..]
     );
 }
 
@@ -204,7 +206,7 @@ fn test_take_str_while_utf8_retry() {
     // Length 1
     assert_eq!(
         read_all!(&[0b0111_1111], |r| r.take_str_while(|_| true)).unwrap(),
-        input!(&[0b0111_1111])
+        input!(str::from_utf8(&[0b0111_1111]).unwrap())
     );
     // Length 2
     let err = read_all!(&[0b1101_1111], |r| r.take_str_while(|_| true)).unwrap_err();
@@ -226,7 +228,7 @@ fn test_try_take_str_while() {
             Ok(v)
         })
         .unwrap(),
-        b"hello"[..]
+        "hello"[..]
     );
 }
 

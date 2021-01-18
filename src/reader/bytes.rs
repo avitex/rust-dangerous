@@ -1,5 +1,5 @@
 use crate::error::{ExpectedLength, ExpectedValid, ExpectedValue, WithContext};
-use crate::input::{Bytes, Private, String};
+use crate::input::{Bytes, Input, Private, String};
 
 use super::Reader;
 
@@ -104,7 +104,7 @@ impl<'i, E> Reader<'i, E, Bytes<'i>> {
     /// Returns [`ExpectedValid`] if the input could never be valid UTF-8
     /// and [`ExpectedLength`] if a UTF-8 code point was cut short.
     #[inline]
-    pub fn try_take_remaining_str(&mut self) -> Result<String<'i>, E>
+    pub fn take_remaining_str(&mut self) -> Result<String<'i>, E>
     where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
@@ -166,44 +166,6 @@ impl<'i, E> Reader<'i, E, Bytes<'i>> {
         F: FnMut(char) -> Result<bool, E>,
     {
         self.try_advance(|input| input.try_split_str_while(pred, "try take str while"))
-    }
-
-    /// Read a length of input that was successfully consumed from a sub-parse.
-    pub fn take_consumed<F>(&mut self, consumer: F) -> Bytes<'i>
-    where
-        E: WithContext<'i>,
-        F: FnOnce(&mut Self),
-    {
-        self.advance(|input| input.split_consumed(consumer))
-    }
-
-    /// Try read a length of input that was successfully consumed from a
-    /// sub-parse.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use dangerous::Invalid;
-    ///
-    /// let result: Result<_, Invalid> = dangerous::input(b"abc").read_all(|r| {
-    ///     r.try_take_consumed(|r| {
-    ///         r.skip(1)?;
-    ///         r.consume(b"bc")
-    ///     })
-    /// });
-    ///
-    /// assert_eq!(result.unwrap(), b"abc"[..]);
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Returns any error the provided function does.
-    pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<Bytes<'i>, E>
-    where
-        E: WithContext<'i>,
-        F: FnOnce(&mut Self) -> Result<(), E>,
-    {
-        self.try_advance(|input| input.try_split_consumed(consumer, "try take consumed"))
     }
 
     /// Peek a length of input.
@@ -325,4 +287,42 @@ impl<'i, E> Reader<'i, E, Bytes<'i>> {
     pub fn consume_u8_opt(&mut self, byte: u8) -> bool {
         self.consume_opt(&[byte])
     }
+
+    /// Read a byte.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there is no more input.
+    #[inline]
+    pub fn read_u8(&mut self) -> Result<u8, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_first("read u8"))
+    }
+
+    /// Read a `i8`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there is no more input.
+    #[inline]
+    pub fn read_i8(&mut self) -> Result<i8, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_first("read i8"))
+            .map(|v| v as i8)
+    }
+
+    impl_read_num!(u16, le: read_u16_le, be: read_u16_be);
+    impl_read_num!(i16, le: read_i16_le, be: read_i16_be);
+    impl_read_num!(u32, le: read_u32_le, be: read_u32_be);
+    impl_read_num!(i32, le: read_i32_le, be: read_i32_be);
+    impl_read_num!(u64, le: read_u64_le, be: read_u64_be);
+    impl_read_num!(i64, le: read_i64_le, be: read_i64_be);
+    impl_read_num!(u128, le: read_u128_le, be: read_u128_be);
+    impl_read_num!(i128, le: read_i128_le, be: read_i128_be);
+    impl_read_num!(f32, le: read_f32_le, be: read_f32_be);
+    impl_read_num!(f64, le: read_f64_le, be: read_f64_be);
 }

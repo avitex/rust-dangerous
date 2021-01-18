@@ -7,7 +7,7 @@
 use std::error::Error as StdError;
 use std::io;
 
-use dangerous::{Error, Expected, Invalid, Reader, ToRetryRequirement};
+use dangerous::{Error, Expected, Input, Invalid, Reader, ToRetryRequirement};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
