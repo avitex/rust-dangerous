@@ -1,3 +1,4 @@
+#[cfg(not(feature = "const-generics"))]
 use core::convert::TryInto;
 use core::str;
 
@@ -456,10 +457,31 @@ impl<'i> Bytes<'i> {
         Ok((String::new(consumed, self.bound()), self.end()))
     }
 
+    #[inline(always)]
+    #[cfg(feature = "const-generics")]
+    pub(crate) fn split_array<E, const N: usize>(
+        self,
+        operation: &'static str,
+    ) -> Result<([u8; N], Bytes<'i>), E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        match self.split_at(N, operation) {
+            Ok((head, tail)) => {
+                let ptr = head.as_dangerous().as_ptr() as *const [u8; N];
+                // SAFETY: safe as we took only N amount and u8 is `Copy`.
+                let arr = unsafe { *ptr };
+                Ok((arr, tail))
+            }
+            Err(err) => Err(err),
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
-    // FIXME: use https://github.com/rust-lang/rust/pull/79135 once stable in 1.51
+    // FIXME: use `split_array` once stable in 1.51
 
     #[inline(always)]
+    #[cfg(not(feature = "const-generics"))]
     pub(crate) fn split_arr_2<E>(self, operation: &'static str) -> Result<([u8; 2], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
@@ -471,6 +493,7 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "const-generics"))]
     pub(crate) fn split_arr_4<E>(self, operation: &'static str) -> Result<([u8; 4], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
@@ -482,6 +505,7 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "const-generics"))]
     pub(crate) fn split_arr_8<E>(self, operation: &'static str) -> Result<([u8; 8], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
@@ -493,6 +517,7 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "const-generics"))]
     pub(crate) fn split_arr_16<E>(self, operation: &'static str) -> Result<([u8; 16], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,

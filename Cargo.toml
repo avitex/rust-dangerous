@@ -21,6 +21,9 @@ std = []
 alloc = []
 # Enables retry support.
 retry = []
+# Enables const generic support.
+# Will be removed in `1.51`.
+const-generics = []
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
 # Enables full context backtraces.
