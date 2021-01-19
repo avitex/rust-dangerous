@@ -270,7 +270,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         }
     }
 
-    // TODO: `not(feature = "retry")` support
     #[cfg(feature = "retry")]
     #[inline(always)]
     fn try_split_expect_erased<F, T, R, E>(
