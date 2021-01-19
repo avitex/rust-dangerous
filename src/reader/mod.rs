@@ -8,13 +8,19 @@ use crate::error::{with_context, Context, ExpectedValid, OperationContext, WithC
 use crate::fmt;
 use crate::input::{Bytes, Input, PrivateExt, String};
 
+/// [`Bytes`] specific [`Reader`].
 pub type BytesReader<'i, E> = Reader<'i, E, Bytes<'i>>;
+
+/// [`String`] specific [`Reader`].
 pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 
 /// A `Reader` is created from and consumes an [`Input`].
 ///
 /// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`],
 /// [`Input::read_partial()`] or [`Input::read_infallible()`].
+///
+/// See [`BytesReader`] for [`Bytes`] specific functions and [`StringReader`]
+/// for [`String`] specific functions.
 ///
 /// # Errors
 ///

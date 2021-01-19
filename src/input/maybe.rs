@@ -3,13 +3,18 @@ use crate::fmt;
 
 use super::{Bound, Bytes, Input, String};
 
-#[must_use = "input must be consumed"]
+/// [`String`] if known UTF-8, [`Bytes`] if not.
+#[must_use]
 pub enum MaybeString<'i> {
+    /// The [`Input`] is not known to be UTF-8.
     Bytes(Bytes<'i>),
+    /// The [`Input`] is known to be UTF-8.
     String(String<'i>),
 }
 
 impl<'i> MaybeString<'i> {
+    /// Returns `true` if he [`Input`] is known to be UTF-8.
+    #[must_use]
     pub fn is_string(&self) -> bool {
         match self {
             Self::Bytes(_) => false,
@@ -17,18 +22,7 @@ impl<'i> MaybeString<'i> {
         }
     }
 
-    #[must_use]
-    pub fn is_bound(&self) -> bool {
-        self.bound() == Bound::Both
-    }
-
-    pub fn bound(&self) -> Bound {
-        match self {
-            Self::Bytes(v) => v.bound(),
-            Self::String(v) => v.bound(),
-        }
-    }
-
+    /// Consumes `self` into [`Bytes`].
     pub fn into_bytes(self) -> Bytes<'i> {
         match self {
             Self::Bytes(v) => v.into_bytes(),
@@ -36,10 +30,22 @@ impl<'i> MaybeString<'i> {
         }
     }
 
+    /// Returns an [`InputDisplay`] for formatting.
     pub fn display(&self) -> InputDisplay<'i> {
         match self {
             Self::Bytes(v) => v.display(),
             Self::String(v) => v.display(),
+        }
+    }
+
+    pub(crate) fn is_bound(&self) -> bool {
+        self.bound() == Bound::Both
+    }
+
+    pub(crate) fn bound(&self) -> Bound {
+        match self {
+            Self::Bytes(v) => v.bound(),
+            Self::String(v) => v.bound(),
         }
     }
 }

@@ -12,6 +12,8 @@ use crate::util::{byte, slice, utf8};
 
 use super::{Bound, Input, MaybeString, Private, String};
 
+/// Raw [`Input`].
+#[must_use = "input must be consumed"]
 pub struct Bytes<'i> {
     bytes: &'i [u8],
     #[cfg(feature = "retry")]
@@ -69,6 +71,7 @@ impl<'i> Bytes<'i> {
     /// necessarily taken as proof of something dangerous or memory unsafe. It
     /// is named this way simply for users to clearly note where the panic-free
     /// guarantees end when handling the input.
+    #[must_use]
     pub fn as_dangerous(&self) -> &'i [u8] {
         self.bytes
     }
@@ -77,9 +80,6 @@ impl<'i> Bytes<'i> {
     ///
     /// See [`Bytes::as_dangerous`] for naming.
     ///
-    /// If the underlying byte slice is known to be valid UTF-8 this is will a
-    /// cheap operation, otherwise the bytes will be validated.
-    ///
     /// # Errors
     ///
     /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
@@ -87,30 +87,7 @@ impl<'i> Bytes<'i> {
     where
         E: From<ExpectedValid<'i>>,
     {
-        let bytes = self.as_dangerous();
-        match str::from_utf8(bytes) {
-            Ok(s) => Ok(s),
-            Err(utf8_err) => {
-                let valid_up_to = utf8_err.valid_up_to();
-                let span = match utf8_err.error_len() {
-                    Some(error_len) => {
-                        let error_end = valid_up_to + error_len;
-                        &bytes[valid_up_to..error_end]
-                    }
-                    None => &bytes[valid_up_to..],
-                };
-                Err(E::from(ExpectedValid {
-                    span,
-                    input: self.clone().into_maybe_string(),
-                    context: ExpectedContext {
-                        operation: "convert input to str",
-                        expected: "utf-8 code point",
-                    },
-                    #[cfg(feature = "retry")]
-                    retry_requirement: None,
-                }))
-            }
-        }
+        self.clone().into_string().map(|s| s.as_dangerous())
     }
 
     /// Returns the underlying byte slice if it is not empty.
@@ -167,6 +144,18 @@ impl<'i> Bytes<'i> {
         } else {
             self.to_dangerous_str()
         }
+    }
+
+    /// Decodes the underlying byte slice into a UTF-8 [`String`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
+    pub fn into_string<E>(self) -> Result<String<'i>, E>
+    where
+        E: From<ExpectedValid<'i>>,
+    {
+        String::from_utf8(self)
     }
 }
 

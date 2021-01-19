@@ -28,7 +28,7 @@ use super::{Bound, Bytes, MaybeString};
 /// [`dangerous::input()`]: crate::input()
 #[must_use = "input must be consumed"]
 pub trait Input<'i>: Private<'i> {
-    #[must_use]
+    /// Returns the [`Input`] [`Bound`].
     fn bound(&self) -> Bound;
 
     /// Returns `self` as a bound `Input`.
@@ -53,8 +53,11 @@ pub trait Input<'i>: Private<'i> {
     /// [`RetryRequirement`]: crate::error::RetryRequirement
     fn into_bound(self) -> Self;
 
+    /// Consumes `self` into [`Bytes`].
     fn into_bytes(self) -> Bytes<'i>;
 
+    /// Consumes `self` into [`MaybeString`] returning `MaybeString::String` if
+    /// the underlying bytes are known `UTF-8`.
     fn into_maybe_string(self) -> MaybeString<'i>;
 
     /// Returns an [`InputDisplay`] for formatting.
@@ -77,6 +80,7 @@ pub trait Input<'i>: Private<'i> {
         self.byte_len() == 0
     }
 
+    /// Returns `true` if [`Self::bound()`] is [`Bound::Both`].
     #[must_use]
     fn is_bound(&self) -> bool {
         self.bound() == Bound::Both
