@@ -291,7 +291,6 @@ where
     /// Returns an error if provided function does.
     ///
     /// [`RetryRequirement`]: crate::error::RetryRequirement
-    // TODO: `not(feature = "retry")` support
     #[cfg(feature = "retry")]
     pub fn try_expect_erased<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
