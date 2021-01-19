@@ -1,6 +1,6 @@
 use crate::error::{self, Context};
 use crate::fmt::{self, Write};
-use crate::input::{Input, MaybeString, Private};
+use crate::input::{Bytes, Input, Private};
 
 use super::{InputDisplay, PreferredFormat};
 
@@ -71,10 +71,11 @@ where
         self.error.description(w.as_dyn())?;
         w.write_char('\n')?;
         // Write inputs
-        let input_display = self.input_display(&input);
-        let span_display = self.input_display(&span);
+        let input_display = self.configure_input_display(input.display());
+        let span_display = self.configure_input_display(span.display());
+        let input = input.into_bytes();
         if let Some(expected_value) = self.error.expected() {
-            let expected_display = self.input_display(&expected_value);
+            let expected_display = self.configure_input_display(expected_value.display());
             w.write_str("expected:\n")?;
             write_input(w, expected_display, false)?;
             w.write_str("in:\n")?;
@@ -95,7 +96,7 @@ where
         // Write additional
         w.write_str("additional:\n  ")?;
         if span.is_within(&input) {
-            let input_bounds = input.clone().into_bytes().as_dangerous().as_ptr_range();
+            let input_bounds = input.as_dangerous().as_ptr_range();
             let span_bounds = span.as_dangerous().as_ptr_range();
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
             match self.format {
@@ -116,7 +117,7 @@ where
             w.write_str(", span length: ")?;
             w.write_usize(span.len())?;
             w.write_str("input ptr: ")?;
-            w.write_usize(input.clone().into_bytes().as_dangerous().as_ptr() as usize)?;
+            w.write_usize(input.as_dangerous().as_ptr() as usize)?;
             w.write_str(", input length: ")?;
             w.write_usize(input.len())?;
         }
@@ -146,8 +147,8 @@ where
         }
     }
 
-    fn input_display<'b>(&self, input: &impl Input<'b>) -> InputDisplay<'b> {
-        input.display().format(self.format)
+    fn configure_input_display<'b>(&self, display: InputDisplay<'b>) -> InputDisplay<'b> {
+        display.format(self.format)
     }
 }
 
@@ -190,7 +191,7 @@ where
     }
 }
 
-fn line_offset(input: &MaybeString<'_>, span_offset: usize) -> usize {
+fn line_offset(input: &Bytes<'_>, span_offset: usize) -> usize {
     match input.clone().split_bytes_at_opt(span_offset) {
         Some((before_span, _)) => before_span.count(b'\n') + 1,
         // Will never be reached in practical usage but we handle to avoid

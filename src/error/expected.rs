@@ -62,7 +62,7 @@ where
         I: Input<'i>,
         C: Context,
     {
-        if self.input.is_within(&input) {
+        if self.input.clone().into_bytes().is_within(&input) {
             self.input = input.into_maybe_string()
         }
         self.stack.push(context);
@@ -327,7 +327,7 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
         if self.is_fatal() {
             None
         } else {
-            let needed = self.expected().len();
+            let needed = self.expected().into_bytes().len();
             let had = self.found().len();
             RetryRequirement::from_had_and_needed(had, needed)
         }
