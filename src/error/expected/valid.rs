@@ -6,7 +6,8 @@ use super::ExpectedContext;
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
 
-/// An error representing a failed requirement for a valid [`Input`].
+/// An error representing a failed requirement for a valid
+/// [`Input`](crate::Input).
 #[must_use = "error must be handled"]
 pub struct ExpectedValid<'i> {
     pub(crate) input: MaybeString<'i>,
@@ -17,7 +18,8 @@ pub struct ExpectedValid<'i> {
 }
 
 impl<'i> ExpectedValid<'i> {
-    /// The [`Input`] provided in the context when the error occurred.
+    /// The [`Input`](crate::Input) provided in the context when the error
+    /// occurred.
     #[inline(always)]
     pub fn input(&self) -> MaybeString<'i> {
         self.input.clone()
@@ -30,7 +32,8 @@ impl<'i> ExpectedValid<'i> {
         self.context
     }
 
-    /// The specific part of the [`Input`] that did not meet the requirement.
+    /// The specific part of the [`Input`](crate::Input) that did not meet the
+    /// requirement.
     #[inline(always)]
     pub fn span(&self) -> Bytes<'i> {
         Bytes::new(self.span, self.input.bound())
