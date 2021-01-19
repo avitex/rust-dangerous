@@ -14,6 +14,7 @@ pub struct String<'i> {
 }
 
 impl<'i> String<'i> {
+    #[inline(always)]
     pub(crate) fn new(s: &'i str, bound: Bound) -> Self {
         Self {
             utf8: Bytes::new(s.as_bytes(), bound),
@@ -37,8 +38,8 @@ impl<'i> String<'i> {
     }
 
     /// Returns `true` if the underlying byte slice length is zero.
-    #[inline(always)]
     #[must_use]
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.as_dangerous().is_empty()
     }
@@ -47,6 +48,7 @@ impl<'i> String<'i> {
     ///
     /// See [`Bytes::as_dangerous`] for naming.
     #[must_use]
+    #[inline(always)]
     pub fn as_dangerous(&self) -> &'i str {
         unsafe { utf8::from_unchecked(self.utf8.as_dangerous()) }
     }
@@ -118,25 +120,30 @@ impl<'i> String<'i> {
     /// # Safety
     ///
     /// Caller must ensure that the provides [`Bytes`] are valid UTF-8.
+    #[inline(always)]
     pub unsafe fn from_utf8_unchecked(utf8: Bytes<'i>) -> Self {
         Self { utf8 }
     }
 }
 
 impl<'i> Input<'i> for String<'i> {
+    #[inline(always)]
     fn bound(&self) -> Bound {
         self.utf8.bound()
     }
 
+    #[inline(always)]
     fn into_bytes(self) -> Bytes<'i> {
         self.utf8
     }
 
+    #[inline(always)]
     fn into_bound(mut self) -> Self {
         self.utf8 = self.utf8.into_bound();
         self
     }
 
+    #[inline(always)]
     fn into_maybe_string(self) -> MaybeString<'i> {
         MaybeString::String(self)
     }
@@ -147,17 +154,20 @@ impl<'i> Input<'i> for String<'i> {
 }
 
 impl<'i> Private<'i> for String<'i> {
+    #[inline(always)]
     fn end(self) -> Self {
         Self {
             utf8: self.utf8.end(),
         }
     }
 
+    #[inline(always)]
     fn into_unbound(mut self) -> Self {
         self.utf8 = self.utf8.into_unbound();
         self
     }
 
+    #[inline(always)]
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
         let string = self.as_dangerous();
         let iter = &mut string.chars();
@@ -169,10 +179,12 @@ impl<'i> Private<'i> for String<'i> {
         }
     }
 
+    #[inline(always)]
     fn split_bytes_at_opt(self, mid: usize) -> Option<(Bytes<'i>, Bytes<'i>)> {
         self.utf8.split_bytes_at_opt(mid)
     }
 
+    #[inline(always)]
     unsafe fn split_at_byte_unchecked(self, mid: usize) -> (Self, Self) {
         let (head, tail) = slice::split_str_at_unchecked(self.as_dangerous(), mid);
         (
@@ -183,6 +195,7 @@ impl<'i> Private<'i> for String<'i> {
 }
 
 impl<'i> Clone for String<'i> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         Self {
             utf8: self.utf8.clone(),

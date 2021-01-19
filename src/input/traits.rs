@@ -67,21 +67,22 @@ pub trait Input<'i>: Private<'i> {
     // Provided methods
 
     /// Returns the underlying byte slice length.
-    #[inline(always)]
     #[must_use]
+    #[inline(always)]
     fn byte_len(&self) -> usize {
         self.as_dangerous_bytes().len()
     }
 
     /// Returns `true` if the underlying byte slice length is zero.
-    #[inline(always)]
     #[must_use]
+    #[inline(always)]
     fn is_empty(&self) -> bool {
         self.byte_len() == 0
     }
 
     /// Returns `true` if [`Self::bound()`] is [`Bound::Both`].
     #[must_use]
+    #[inline(always)]
     fn is_bound(&self) -> bool {
         self.bound() == Bound::Both
     }
@@ -139,6 +140,7 @@ pub trait Input<'i>: Private<'i> {
     ///
     /// Returns an error if either the provided function does, or there is
     /// trailing input.
+    #[inline]
     fn read_all<F, T, E>(self, f: F) -> Result<T, E>
     where
         F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, E>,
@@ -167,6 +169,7 @@ pub trait Input<'i>: Private<'i> {
     /// # Errors
     ///
     /// Returns an error if the provided function does.
+    #[inline]
     fn read_partial<F, T, E>(self, f: F) -> Result<(T, Self), E>
     where
         F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, E>,
@@ -181,6 +184,7 @@ pub trait Input<'i>: Private<'i> {
 
     /// Create a reader to read a part of the input and return the rest
     /// without any errors.
+    #[inline]
     fn read_infallible<F, T>(self, f: F) -> (T, Self)
     where
         F: FnOnce(&mut Reader<'i, Infallible, Self>) -> T,
@@ -212,10 +216,12 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
 // Private extensions to any `Input`
 
 pub(crate) trait PrivateExt<'i>: Input<'i> {
+    #[inline(always)]
     fn as_dangerous_bytes(&self) -> &'i [u8] {
         self.clone().into_bytes().as_dangerous()
     }
 
+    #[inline(always)]
     fn split_expect<F, T, E>(
         self,
         f: F,
@@ -230,6 +236,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self.try_split_expect(|r| Ok(f(r)), expected, operation)
     }
 
+    #[inline(always)]
     fn try_split_expect<F, T, E>(
         self,
         f: F,
@@ -265,6 +272,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 
     // TODO: `not(feature = "retry")` support
     #[cfg(feature = "retry")]
+    #[inline(always)]
     fn try_split_expect_erased<F, T, R, E>(
         self,
         f: F,
