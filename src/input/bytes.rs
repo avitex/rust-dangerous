@@ -29,6 +29,40 @@ impl<'i> Bytes<'i> {
         Self { bytes }
     }
 
+    /// Returns the underlying byte slice length.
+    #[inline(always)]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.as_dangerous().len()
+    }
+
+    /// Returns `true` if the underlying byte slice length is zero.
+    #[inline(always)]
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.as_dangerous().is_empty()
+    }
+
+    /// Returns the occurrences of `needle` within the underlying byte slice.
+    ///
+    /// It is recommended to enable the `bytecount` dependency when using this
+    /// function for better performance.
+    #[must_use]
+    pub fn count(&self, needle: u8) -> usize {
+        #[cfg(feature = "bytecount")]
+        {
+            bytecount::count(self.as_dangerous(), needle)
+        }
+        #[cfg(not(feature = "bytecount"))]
+        {
+            self.as_dangerous()
+                .iter()
+                .copied()
+                .filter(|b| *b == needle)
+                .count()
+        }
+    }
+
     /// Returns the underlying byte slice.
     ///
     /// The naming of this function is to a degree hyperbole, and should not be

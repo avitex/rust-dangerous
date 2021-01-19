@@ -16,6 +16,28 @@ impl<'i> String<'i> {
         }
     }
 
+    /// Returns the number of UTF-8 characters in the string.
+    ///
+    /// It is recommended to enable the `bytecount` dependency when using this
+    /// function for better performance.
+    pub fn num_chars(&self) -> usize {
+        #[cfg(feature = "bytecount")]
+        {
+            bytecount::num_chars(self.utf8.as_dangerous())
+        }
+        #[cfg(not(feature = "bytecount"))]
+        {
+            self.as_dangerous().chars().count()
+        }
+    }
+
+    /// Returns `true` if the underlying byte slice length is zero.
+    #[inline(always)]
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.as_dangerous().is_empty()
+    }
+
     /// Returns the underlying string slice.
     ///
     /// See [`Bytes::as_dangerous`] for naming.

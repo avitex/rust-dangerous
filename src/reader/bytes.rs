@@ -61,7 +61,7 @@ impl<'i, E> BytesReader<'i, E> {
         F: FnMut(char) -> bool,
     {
         self.try_advance(|input| input.split_str_while(pred, "skip str while"))
-            .map(|head| head.len())
+            .map(|head| head.byte_len())
     }
 
     /// Try skip a length of string input while a predicate check remains
@@ -82,7 +82,7 @@ impl<'i, E> BytesReader<'i, E> {
         F: FnMut(char) -> Result<bool, E>,
     {
         self.try_advance(|input| input.try_split_str_while(pred, "try skip str while"))
-            .map(|head| head.len())
+            .map(|head| head.byte_len())
     }
 
     /// Read a length of input.
