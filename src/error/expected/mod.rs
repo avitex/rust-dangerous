@@ -66,11 +66,7 @@ where
     S: ContextStackBuilder,
 {
     #[inline(always)]
-    fn add_context<I, C>(&mut self, input: I, context: C)
-    where
-        I: Input<'i>,
-        C: Context,
-    {
+    fn add_context(&mut self, input: impl Input<'i>, context: impl Context) {
         if self.input.clone().into_bytes().is_within(&input) {
             self.input = input.into_maybe_string()
         }
@@ -161,11 +157,7 @@ impl<'i, S> WithContext<'i> for Expected<'i, S>
 where
     S: ContextStackBuilder,
 {
-    fn with_context<I, C>(mut self, input: I, context: C) -> Self
-    where
-        I: Input<'i>,
-        C: Context,
-    {
+    fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
         self.add_context(input, context);
         self
     }
@@ -176,11 +168,7 @@ impl<'i, S> WithContext<'i> for Box<Expected<'i, S>>
 where
     S: ContextStackBuilder,
 {
-    fn with_context<I, C>(mut self, input: I, context: C) -> Self
-    where
-        I: Input<'i>,
-        C: Context,
-    {
+    fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
         self.add_context(input, context);
         self
     }

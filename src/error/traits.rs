@@ -13,10 +13,7 @@ pub trait WithContext<'i> {
     /// Return `Self` with context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
-    fn with_context<I, C>(self, input: I, context: C) -> Self
-    where
-        I: Input<'i>,
-        C: Context;
+    fn with_context(self, input: impl Input<'i>, context: impl Context) -> Self;
 }
 
 /// Convenience trait requiring [`From`] for [`ExpectedValue`], [`ExpectedLength`]

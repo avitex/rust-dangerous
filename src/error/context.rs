@@ -59,9 +59,7 @@ pub trait ContextStackBuilder {
     fn from_root(context: ExpectedContext) -> Self;
 
     /// Push an additional context onto the stack.
-    fn push<C>(&mut self, context: C)
-    where
-        C: Context;
+    fn push(&mut self, context: impl Context);
 }
 
 /// A dynamic function for walking a context stack.
@@ -181,11 +179,7 @@ impl ContextStackBuilder for RootContextStack {
         Self { context }
     }
 
-    fn push<C>(&mut self, _context: C)
-    where
-        C: Context,
-    {
-    }
+    fn push(&mut self, _context: impl Context) {}
 }
 
 impl ContextStack for RootContextStack {
@@ -225,10 +219,7 @@ impl ContextStackBuilder for FullContextStack {
         }
     }
 
-    fn push<C>(&mut self, context: C)
-    where
-        C: Context,
-    {
+    fn push(&mut self, context: impl Context) {
         self.stack.push(Box::new(context))
     }
 }
@@ -261,12 +252,14 @@ unsafe impl zc::NoInteriorMut for FullContextStack {}
 ///////////////////////////////////////////////////////////////////////////////
 
 #[inline(always)]
-pub(crate) fn with_context<'i, I, F, C, T, E>(input: I, context: C, f: F) -> Result<T, E>
+pub(crate) fn with_context<'i, F, T, E>(
+    input: impl Input<'i>,
+    context: impl Context,
+    f: F,
+) -> Result<T, E>
 where
-    I: Input<'i>,
-    F: FnOnce() -> Result<T, E>,
     E: WithContext<'i>,
-    C: Context,
+    F: FnOnce() -> Result<T, E>,
 {
     match f() {
         Ok(ok) => Ok(ok),

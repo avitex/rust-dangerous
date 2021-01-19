@@ -98,11 +98,7 @@ impl<'i> fmt::Debug for ExpectedKind<'i> {
 }
 
 impl<'i> WithContext<'i> for ExpectedKind<'i> {
-    fn with_context<I, C>(self, _input: I, _context: C) -> Self
-    where
-        I: Input<'i>,
-        C: Context,
-    {
+    fn with_context(self, _input: impl Input<'i>, _context: impl Context) -> Self {
         self
     }
 }
