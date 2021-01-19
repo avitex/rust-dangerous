@@ -1,6 +1,6 @@
 use crate::input::{Bound, Bytes, Input, String};
 
-/// Creates a new `Input` from a byte slice.
+/// Creates a new `Input` from a byte or string slice.
 ///
 /// It is recommended to use this directly from the crate as `dangerous::input()`,
 /// not as an import via `use` as shown below, as you lose the discoverability.

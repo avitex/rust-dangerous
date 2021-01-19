@@ -325,7 +325,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
     {
         self.try_advance(|input| input.split_first("read i8"))
-            .map(|v| v as i8)
+            .map(|v| i8::from_ne_bytes([v]))
     }
 
     impl_read_num!(u16, le: read_u16_le, be: read_u16_be);

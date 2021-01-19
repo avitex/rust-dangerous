@@ -1,10 +1,14 @@
+use core::str;
+
 use crate::display::InputDisplay;
-use crate::error::{ExpectedContext, ExpectedLength};
+use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid};
 use crate::fmt;
 use crate::util::{slice, utf8};
 
 use super::{Bound, Bytes, Input, MaybeString, Private};
 
+/// UTF-8 [`Input`].
+#[must_use = "input must be consumed"]
 pub struct String<'i> {
     utf8: Bytes<'i>,
 }
@@ -20,6 +24,7 @@ impl<'i> String<'i> {
     ///
     /// It is recommended to enable the `bytecount` dependency when using this
     /// function for better performance.
+    #[must_use]
     pub fn num_chars(&self) -> usize {
         #[cfg(feature = "bytecount")]
         {
@@ -41,6 +46,7 @@ impl<'i> String<'i> {
     /// Returns the underlying string slice.
     ///
     /// See [`Bytes::as_dangerous`] for naming.
+    #[must_use]
     pub fn as_dangerous(&self) -> &'i str {
         unsafe { utf8::from_unchecked(self.utf8.as_dangerous()) }
     }
@@ -72,12 +78,47 @@ impl<'i> String<'i> {
         }
     }
 
+    /// Decodes [`Bytes`] into a UTF-8 [`String`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
+    pub fn from_utf8<E>(utf8: Bytes<'i>) -> Result<String<'i>, E>
+    where
+        E: From<ExpectedValid<'i>>,
+    {
+        let bytes = utf8.as_dangerous();
+        match str::from_utf8(bytes) {
+            Ok(s) => Ok(String::new(s, utf8.bound())),
+            Err(utf8_err) => {
+                let valid_up_to = utf8_err.valid_up_to();
+                let span = match utf8_err.error_len() {
+                    Some(error_len) => {
+                        let error_end = valid_up_to + error_len;
+                        &bytes[valid_up_to..error_end]
+                    }
+                    None => &bytes[valid_up_to..],
+                };
+                Err(E::from(ExpectedValid {
+                    span,
+                    input: utf8.into_maybe_string(),
+                    context: ExpectedContext {
+                        operation: "convert input to str",
+                        expected: "utf-8 code point",
+                    },
+                    #[cfg(feature = "retry")]
+                    retry_requirement: None,
+                }))
+            }
+        }
+    }
+
     /// Construct a `String` from unchecked [`Bytes`].
     ///
     /// # Safety
     ///
     /// Caller must ensure that the provides [`Bytes`] are valid UTF-8.
-    pub unsafe fn from_bytes_unchecked(utf8: Bytes<'i>) -> Self {
+    pub unsafe fn from_utf8_unchecked(utf8: Bytes<'i>) -> Self {
         Self { utf8 }
     }
 }
@@ -121,8 +162,8 @@ impl<'i> Private<'i> for String<'i> {
         let string = self.as_dangerous();
         let iter = &mut string.chars();
         if iter.nth(mid.saturating_sub(1)).is_some() {
-            let mid = string.as_bytes().len() - iter.as_str().as_bytes().len();
-            Some(unsafe { self.split_at_byte_unchecked(mid) })
+            let byte_mid = string.as_bytes().len() - iter.as_str().as_bytes().len();
+            Some(unsafe { self.split_at_byte_unchecked(byte_mid) })
         } else {
             None
         }
