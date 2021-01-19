@@ -5,7 +5,7 @@
 mod common;
 
 use dangerous::error::{Details, ExpectedContext, Fatal, RetryRequirement, ToRetryRequirement};
-use dangerous::{Input, Reader};
+use dangerous::{BytesReader, Input};
 use std::any::Any;
 use std::str;
 
@@ -489,7 +489,7 @@ fn test_recover_if() {
 #[test]
 fn test_error() {
     assert!(read_all!(b"", |r| {
-        r.try_expect_erased("value", |r| r.error(|r: &mut Reader<Fatal>| r.take(1)))
+        r.try_expect_erased("value", |r| r.error(|r: &mut BytesReader<Fatal>| r.take(1)))
     })
     .unwrap_err()
     .is_fatal())

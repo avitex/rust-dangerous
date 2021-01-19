@@ -6,7 +6,7 @@
 //! ```
 use std::io::{self, Read};
 
-use dangerous::{Error, Expected, Input, Reader};
+use dangerous::{BytesReader, Error, Expected, Input};
 
 fn main() {
     let mut input_data = Vec::new();
@@ -38,7 +38,7 @@ struct Section<'a> {
     properties: Vec<Pair<'a>>,
 }
 
-fn read_ini<'i, E>(r: &mut Reader<'i, E>) -> Result<Document<'i>, E>
+fn read_ini<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Document<'i>, E>
 where
     E: Error<'i>,
 {
@@ -56,7 +56,7 @@ where
     })
 }
 
-fn read_sections<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Section<'i>>, E>
+fn read_sections<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Vec<Section<'i>>, E>
 where
     E: Error<'i>,
 {
@@ -68,7 +68,7 @@ where
 }
 
 fn read_zero_or_more_properties_until_section<'i, E>(
-    r: &mut Reader<'i, E>,
+    r: &mut BytesReader<'i, E>,
 ) -> Result<Vec<Pair<'i>>, E>
 where
     E: Error<'i>,
@@ -103,7 +103,7 @@ where
     Ok(out)
 }
 
-fn read_section<'i, E>(r: &mut Reader<'i, E>) -> Result<Section<'i>, E>
+fn read_section<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Section<'i>, E>
 where
     E: Error<'i>,
 {
@@ -131,8 +131,8 @@ enum ConsumeTo {
     EndOfLine,
 }
 
-fn skip_whitespace_or_comment<E>(r: &mut Reader<'_, E>, to_where: ConsumeTo) {
-    fn skip_comment<E>(r: &mut Reader<E>) -> usize {
+fn skip_whitespace_or_comment<E>(r: &mut BytesReader<'_, E>, to_where: ConsumeTo) {
+    fn skip_comment<E>(r: &mut BytesReader<E>) -> usize {
         if r.peek_u8_eq(b';') {
             r.skip_while(|c| c != b'\n')
         } else {
