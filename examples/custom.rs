@@ -1,6 +1,6 @@
 use std::net::Ipv4Addr;
 
-use dangerous::{Error, Expected, Input, Invalid, Reader};
+use dangerous::{BytesReader, Error, Expected, Input, Invalid};
 
 fn main() {
     let input = dangerous::input(b"192.168.1.x");
@@ -9,7 +9,7 @@ fn main() {
     println!("{:#}", error);
 }
 
-fn read_ipv4_addr<'i, E>(r: &mut Reader<'i, E>) -> Result<Ipv4Addr, E>
+fn read_ipv4_addr<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Ipv4Addr, E>
 where
     E: Error<'i>,
 {

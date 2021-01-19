@@ -80,7 +80,7 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
 /// [`RetryRequirement`]: crate::error::RetryRequirement  
-pub struct Reader<'i, E, I = Bytes<'i>>
+pub struct Reader<'i, E, I>
 where
     I: Input<'i>,
 {
@@ -263,10 +263,10 @@ where
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{Error, Expected, Input, Invalid, Reader};
+    /// use dangerous::{BytesReader, Error, Expected, Input, Invalid};
     ///
     /// // Our custom reader function
-    /// fn read_ipv4_addr<'i, E>(r: &mut Reader<'i, E>) -> Result<Ipv4Addr, E>
+    /// fn read_ipv4_addr<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Ipv4Addr, E>
     /// where
     ///   E: Error<'i>,
     /// {
@@ -359,16 +359,16 @@ where
     /// # Example
     ///
     /// ```
-    /// use dangerous::{Error, Expected, Fatal, Input, Reader};
+    /// use dangerous::{BytesReader, Error, Expected, Fatal, Input};
     ///
-    /// fn branch_a<'i, E>(r: &mut Reader<'i, E>) -> Result<u8, E>
+    /// fn branch_a<'i, E>(r: &mut BytesReader<'i, E>) -> Result<u8, E>
     /// where
     ///     E: Error<'i>
     /// {
     ///     r.consume(b"hello").map(|()| 1)
     /// }
     ///
-    /// fn branch_b<'i, E>(r: &mut Reader<'i, E>) -> Result<u8, E>
+    /// fn branch_b<'i, E>(r: &mut BytesReader<'i, E>) -> Result<u8, E>
     /// where
     ///     E: Error<'i>
     /// {
@@ -378,7 +378,7 @@ where
     /// let input = dangerous::input(b"world");
     /// let result: Result<_, Expected> = input.read_all(|r| {
     ///     r.expect("valid branch", |r| {
-    ///         r.error(|r: &mut Reader<Fatal>| {
+    ///         r.error(|r: &mut BytesReader<Fatal>| {
     ///             r.recover(branch_a).or_else(|| r.recover(branch_b))
     ///         })
     ///     })
