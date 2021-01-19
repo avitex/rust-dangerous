@@ -66,7 +66,7 @@ pub trait Input<'i>: Private<'i> {
     /// Returns the underlying byte slice length.
     #[inline(always)]
     #[must_use]
-    fn len(&self) -> usize {
+    fn byte_len(&self) -> usize {
         self.as_dangerous_bytes().len()
     }
 
@@ -74,7 +74,7 @@ pub trait Input<'i>: Private<'i> {
     #[inline(always)]
     #[must_use]
     fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.byte_len() == 0
     }
 
     #[must_use]
@@ -87,26 +87,6 @@ pub trait Input<'i>: Private<'i> {
     #[must_use]
     fn is_within<'p>(&self, parent: &impl Input<'p>) -> bool {
         slice::is_sub_slice(parent.as_dangerous_bytes(), self.as_dangerous_bytes())
-    }
-
-    /// Returns the occurrences of `needle` within the underlying byte slice.
-    ///
-    /// It is recommended to enable the `bytecount` dependency when using this
-    /// function for better performance.
-    #[must_use]
-    fn count(&self, needle: u8) -> usize {
-        #[cfg(feature = "bytecount")]
-        {
-            bytecount::count(self.as_dangerous_bytes(), needle)
-        }
-        #[cfg(not(feature = "bytecount"))]
-        {
-            self.as_dangerous()
-                .iter()
-                .copied()
-                .filter(|b| *b == needle)
-                .count()
-        }
     }
 
     /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
@@ -266,7 +246,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             Ok(Some(ok)) => Ok((ok, reader.take_remaining())),
             Ok(None) => {
                 let tail = reader.take_remaining();
-                let span = &self.as_dangerous_bytes()[..self.len() - tail.len()];
+                let span = &self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()];
                 Err(E::from(ExpectedValid {
                     span,
                     input: self.into_maybe_string(),
@@ -298,7 +278,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             Ok(ok) => Ok((ok, reader.take_remaining())),
             Err(err) => {
                 let tail = reader.take_remaining();
-                let span = &self.as_dangerous_bytes()[..self.len() - tail.len()];
+                let span = &self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()];
                 Err(E::from(ExpectedValid {
                     span,
                     input: self.into_maybe_string(),
@@ -323,7 +303,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
-        let mid = self.len() - tail.len();
+        let mid = self.byte_len() - tail.byte_len();
         let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
         // We derive the bound constraint from self. If the tail start is
         // undetermined this means the last bit of input consumed could be
@@ -347,7 +327,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
-        let mid = self.len() - tail.len();
+        let mid = self.byte_len() - tail.byte_len();
         let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
         // We derive the bound constraint from self. If the tail start is
         // undetermined this means the last bit of input consumed could be
