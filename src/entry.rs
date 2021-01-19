@@ -10,6 +10,7 @@ use crate::input::{Bound, Bytes, Input, String};
 ///
 /// dangerous::input(b"hello"); // do this instead
 /// ```
+#[inline(always)]
 pub fn input<'i, I>(input: I) -> I::Input
 where
     I: IntoInput<'i>,
@@ -32,6 +33,7 @@ where
 {
     type Input = T::Input;
 
+    #[inline(always)]
     fn into_input(self) -> Self::Input {
         (*self).into_input()
     }
@@ -40,6 +42,7 @@ where
 impl<'i> IntoInput<'i> for &'i [u8] {
     type Input = Bytes<'i>;
 
+    #[inline(always)]
     fn into_input(self) -> Self::Input {
         Bytes::new(self, Bound::Start)
     }
@@ -48,6 +51,7 @@ impl<'i> IntoInput<'i> for &'i [u8] {
 impl<'i> IntoInput<'i> for &'i str {
     type Input = String<'i>;
 
+    #[inline(always)]
     fn into_input(self) -> Self::Input {
         String::new(self, Bound::Start)
     }
@@ -60,6 +64,7 @@ impl<'i> IntoInput<'i> for &'i str {
 impl<'i, const N: usize> IntoInput<'i> for &'i [u8; N] {
     type Input = Bytes<'i>;
 
+    #[inline(always)]
     fn into_input(self) -> Self::Input {
         Bytes::new(self, Bound::Start)
     }
@@ -72,6 +77,7 @@ macro_rules! impl_array_into_input {
             impl<'i> IntoInput<'i> for &'i [u8; $n] {
                 type Input = Bytes<'i>;
 
+                #[inline(always)]
                 fn into_input(self) -> Self::Input {
                     Bytes::new(self, Bound::Start)
                 }

@@ -13,8 +13,8 @@ pub(crate) use self::traits::{Private, PrivateExt};
 /// Indication of whether [`Input`] will change in futher passes.
 ///
 /// Used for retry functionality if enabled.
-#[derive(Copy, Clone, Eq, PartialEq)]
 #[must_use]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum Bound {
     /// Both sides of the [`Input`](crate::Input) may change in further passes.
     None,
@@ -27,11 +27,13 @@ pub enum Bound {
 }
 
 impl Bound {
+    #[inline(always)]
     pub(crate) fn close_end(self) -> Self {
         let _ = self;
         Bound::Both
     }
 
+    #[inline(always)]
     pub(crate) fn for_end(self) -> Self {
         match self {
             // If both sides are bounded nothing will change.

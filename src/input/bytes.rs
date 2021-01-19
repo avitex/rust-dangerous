@@ -22,25 +22,27 @@ pub struct Bytes<'i> {
 
 impl<'i> Bytes<'i> {
     #[cfg(feature = "retry")]
+    #[inline(always)]
     pub(crate) fn new(bytes: &'i [u8], bound: Bound) -> Self {
         Self { bytes, bound }
     }
 
     #[cfg(not(feature = "retry"))]
+    #[inline(always)]
     pub(crate) fn new(bytes: &'i [u8], _bound: Bound) -> Self {
         Self { bytes }
     }
 
     /// Returns the underlying byte slice length.
-    #[inline(always)]
     #[must_use]
+    #[inline(always)]
     pub fn len(&self) -> usize {
         self.as_dangerous().len()
     }
 
     /// Returns `true` if the underlying byte slice length is zero.
-    #[inline(always)]
     #[must_use]
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.as_dangerous().is_empty()
     }
@@ -72,6 +74,7 @@ impl<'i> Bytes<'i> {
     /// is named this way simply for users to clearly note where the panic-free
     /// guarantees end when handling the input.
     #[must_use]
+    #[inline(always)]
     pub fn as_dangerous(&self) -> &'i [u8] {
         self.bytes
     }
@@ -83,6 +86,7 @@ impl<'i> Bytes<'i> {
     /// # Errors
     ///
     /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
+    #[inline(always)]
     pub fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
     where
         E: From<ExpectedValid<'i>>,
@@ -151,6 +155,7 @@ impl<'i> Bytes<'i> {
     /// # Errors
     ///
     /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
+    #[inline(always)]
     pub fn into_string<E>(self) -> Result<String<'i>, E>
     where
         E: From<ExpectedValid<'i>>,
@@ -161,34 +166,41 @@ impl<'i> Bytes<'i> {
 
 impl<'i> Input<'i> for Bytes<'i> {
     #[cfg(feature = "retry")]
+    #[inline(always)]
     fn bound(&self) -> Bound {
         self.bound
     }
 
     #[cfg(not(feature = "retry"))]
+    #[inline(always)]
     fn bound(&self) -> Bound {
         Bound::Both
     }
 
     #[cfg(feature = "retry")]
+    #[inline(always)]
     fn into_bound(mut self) -> Self {
         self.bound = Bound::Both;
         self
     }
 
     #[cfg(not(feature = "retry"))]
+    #[inline(always)]
     fn into_bound(self) -> Self {
         self
     }
 
+    #[inline(always)]
     fn into_bytes(self) -> Bytes<'i> {
         self
     }
 
+    #[inline(always)]
     fn into_maybe_string(self) -> MaybeString<'i> {
         MaybeString::Bytes(self)
     }
 
+    #[inline(always)]
     fn display(&self) -> InputDisplay<'i> {
         InputDisplay::new(self)
     }
@@ -480,8 +492,8 @@ impl<'i> Bytes<'i> {
         Ok((String::new(consumed, self.bound()), self.end()))
     }
 
-    #[inline(always)]
     #[cfg(feature = "const-generics")]
+    #[inline(always)]
     pub(crate) fn split_array<E, const N: usize>(
         self,
         operation: &'static str,
@@ -503,8 +515,8 @@ impl<'i> Bytes<'i> {
     ///////////////////////////////////////////////////////////////////////////
     // FIXME: use `split_array` once stable in 1.51
 
-    #[inline(always)]
     #[cfg(not(feature = "const-generics"))]
+    #[inline(always)]
     pub(crate) fn split_arr_2<E>(self, operation: &'static str) -> Result<([u8; 2], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
@@ -515,8 +527,8 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[inline(always)]
     #[cfg(not(feature = "const-generics"))]
+    #[inline(always)]
     pub(crate) fn split_arr_4<E>(self, operation: &'static str) -> Result<([u8; 4], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
@@ -527,8 +539,8 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[inline(always)]
     #[cfg(not(feature = "const-generics"))]
+    #[inline(always)]
     pub(crate) fn split_arr_8<E>(self, operation: &'static str) -> Result<([u8; 8], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
@@ -539,8 +551,8 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[inline(always)]
     #[cfg(not(feature = "const-generics"))]
+    #[inline(always)]
     pub(crate) fn split_arr_16<E>(self, operation: &'static str) -> Result<([u8; 16], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
@@ -553,25 +565,30 @@ impl<'i> Bytes<'i> {
 }
 
 impl<'i> Private<'i> for Bytes<'i> {
+    #[inline(always)]
     fn end(self) -> Self {
         Self::new(slice::end(self.as_dangerous()), self.bound().for_end())
     }
 
     #[cfg(feature = "retry")]
+    #[inline(always)]
     fn into_unbound(mut self) -> Self {
         self.bound = Bound::None;
         self
     }
 
     #[cfg(not(feature = "retry"))]
+    #[inline(always)]
     fn into_unbound(self) -> Self {
         self
     }
 
+    #[inline(always)]
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
         self.split_bytes_at_opt(mid)
     }
 
+    #[inline(always)]
     fn split_bytes_at_opt(self, mid: usize) -> Option<(Bytes<'i>, Bytes<'i>)> {
         slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
             // We split at a known length making the head input bound.
@@ -583,6 +600,7 @@ impl<'i> Private<'i> for Bytes<'i> {
         })
     }
 
+    #[inline(always)]
     unsafe fn split_at_byte_unchecked(self, mid: usize) -> (Self, Self) {
         let (head, tail) = slice::split_at_unchecked(self.as_dangerous(), mid);
         (
@@ -593,6 +611,7 @@ impl<'i> Private<'i> for Bytes<'i> {
 }
 
 impl<'i> Clone for Bytes<'i> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         Self::new(self.bytes, self.bound())
     }

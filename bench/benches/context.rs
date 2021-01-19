@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use dangerous::{Error, Expected, Invalid};
+use dangerous::{Error, Expected, Fatal, Input, Invalid};
 
 fn expected<'i, E>(bytes: &'i [u8]) -> Result<(), E>
 where
@@ -13,6 +13,15 @@ where
             })
         })
     })
+}
+
+fn bench_fatal(c: &mut Criterion) {
+    c.bench_function("fatal_ok", |b| {
+        b.iter(|| expected::<Fatal>(black_box(b"o")))
+    });
+    c.bench_function("fatal_err", |b| {
+        b.iter(|| expected::<Fatal>(black_box(b"e")))
+    });
 }
 
 fn bench_invalid(c: &mut Criterion) {
@@ -39,5 +48,5 @@ fn bench_expected(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_invalid, bench_expected);
+criterion_group!(benches, bench_fatal, bench_invalid, bench_expected);
 criterion_main!(benches);

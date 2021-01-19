@@ -50,6 +50,7 @@ impl fmt::Display for Fatal {
 }
 
 impl<'i> WithContext<'i> for Fatal {
+    #[inline(always)]
     fn with_context<I, C>(self, _input: I, _context: C) -> Self
     where
         I: Input<'i>,

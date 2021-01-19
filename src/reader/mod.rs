@@ -93,14 +93,14 @@ where
     I: Input<'i>,
 {
     /// Returns `true` if the `Reader` has no more input to consume.
-    #[inline]
     #[must_use]
+    #[inline(always)]
     pub fn at_end(&self) -> bool {
         self.input.is_empty()
     }
 
     /// Read all of the remaining input.
-    #[inline]
+    #[inline(always)]
     pub fn take_remaining(&mut self) -> I {
         self.advance(|input| (input.clone(), input.end()))
     }
@@ -111,6 +111,7 @@ where
     ///
     /// Returns any error returned by the provided function with the specified
     /// context attached.
+    #[inline(always)]
     pub fn context<C, F, T>(&mut self, context: C, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,
@@ -126,6 +127,7 @@ where
     ///
     /// Returns any error returned by the provided function with the specified
     /// context attached.
+    #[inline(always)]
     pub fn peek_context<C, F, T>(&self, context: C, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,

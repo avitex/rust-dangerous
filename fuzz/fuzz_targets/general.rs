@@ -3,7 +3,7 @@ use libfuzzer_sys::fuzz_target;
 
 use core::fmt::{self, Write as _};
 
-use dangerous::Expected;
+use dangerous::{Input, Expected};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 macro_rules! read_partial {
