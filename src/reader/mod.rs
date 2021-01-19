@@ -112,10 +112,9 @@ where
     /// Returns any error returned by the provided function with the specified
     /// context attached.
     #[inline(always)]
-    pub fn context<C, F, T>(&mut self, context: C, f: F) -> Result<T, E>
+    pub fn context<F, T>(&mut self, context: impl Context, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,
-        C: Context,
         F: FnOnce(&mut Self) -> Result<T, E>,
     {
         with_context(self.input.clone(), context, || f(self))
@@ -128,10 +127,9 @@ where
     /// Returns any error returned by the provided function with the specified
     /// context attached.
     #[inline(always)]
-    pub fn peek_context<C, F, T>(&self, context: C, f: F) -> Result<T, E>
+    pub fn peek_context<F, T>(&self, context: impl Context, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,
-        C: Context,
         F: FnOnce(&Self) -> Result<T, E>,
     {
         with_context(self.input.clone(), context, || f(self))
