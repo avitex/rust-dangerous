@@ -162,8 +162,8 @@ impl<'i> Private<'i> for String<'i> {
     }
 
     #[inline(always)]
-    fn into_unbound(mut self) -> Self {
-        self.utf8 = self.utf8.into_unbound();
+    fn into_unbound_end(mut self) -> Self {
+        self.utf8 = self.utf8.into_unbound_end();
         self
     }
 

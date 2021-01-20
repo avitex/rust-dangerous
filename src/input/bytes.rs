@@ -180,7 +180,7 @@ impl<'i> Input<'i> for Bytes<'i> {
     #[cfg(feature = "retry")]
     #[inline(always)]
     fn into_bound(mut self) -> Self {
-        self.bound = Bound::Both;
+        self.bound = Bound::force_close();
         self
     }
 
@@ -288,7 +288,7 @@ impl<'i> Bytes<'i> {
         };
         Err(E::from(ExpectedValue {
             actual,
-            expected: MaybeString::Bytes(Bytes::new(prefix, Bound::Both)),
+            expected: MaybeString::from_bound_bytes(prefix),
             input: self.into_maybe_string(),
             context: ExpectedContext {
                 operation,
@@ -307,13 +307,13 @@ impl<'i> Bytes<'i> {
         E: From<ExpectedValue<'i>>,
     {
         let actual = match self.clone().split_at_opt(1) {
-            Some((head, tail)) if head.has_prefix(&[prefix]) => return Ok((head, tail)),
+            Some((head, tail)) if head == [prefix][..] => return Ok((head, tail)),
             Some((head, _)) => head.as_dangerous(),
             None => self.as_dangerous(),
         };
         Err(E::from(ExpectedValue {
             actual,
-            expected: MaybeString::Bytes(Bytes::new(byte::to_slice(prefix), Bound::Both)),
+            expected: MaybeString::from_bound_bytes(byte::to_slice(prefix)),
             input: self.into_maybe_string(),
             context: ExpectedContext {
                 operation,
@@ -572,14 +572,14 @@ impl<'i> Private<'i> for Bytes<'i> {
 
     #[cfg(feature = "retry")]
     #[inline(always)]
-    fn into_unbound(mut self) -> Self {
-        self.bound = Bound::None;
+    fn into_unbound_end(mut self) -> Self {
+        self.bound = self.bound.open_end();
         self
     }
 
     #[cfg(not(feature = "retry"))]
     #[inline(always)]
-    fn into_unbound(self) -> Self {
+    fn into_unbound_end(self) -> Self {
         self
     }
 

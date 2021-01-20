@@ -202,7 +202,8 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     /// Returns an empty `Input` pointing the end of `self`.
     fn end(self) -> Self;
 
-    fn into_unbound(self) -> Self;
+    // Return self with its end bound removed.
+    fn into_unbound_end(self) -> Self;
 
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)>;
 
@@ -318,10 +319,10 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
         // We derive the bound constraint from self. If the tail start is
         // undetermined this means the last bit of input consumed could be
-        // longer if there was more available and as such makes the input we
-        // return unbounded.
+        // longer if there was more available and as such makes the end of input
+        // we return unbounded.
         if tail.bound() == Bound::None {
-            (head.into_unbound(), tail)
+            (head.into_unbound_end(), tail)
         } else {
             (head, tail)
         }
@@ -342,10 +343,10 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
         // We derive the bound constraint from self. If the tail start is
         // undetermined this means the last bit of input consumed could be
-        // longer if there was more available and as such makes the input we
-        // return unbounded.
+        // longer if there was more available and as such makes the end of input
+        // we return unbounded.
         if tail.bound() == Bound::None {
-            Ok((head.into_unbound(), tail))
+            Ok((head.into_unbound_end(), tail))
         } else {
             Ok((head, tail))
         }

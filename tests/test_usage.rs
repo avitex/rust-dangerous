@@ -66,3 +66,44 @@ fn test_retry_footgun_with_take_consumed() {
 
     assert_eq!(result, Err(Invalid::fatal()));
 }
+
+#[test]
+fn test_retry_footgun_from_unbound_spent_reader() {
+    use dangerous::error::{RetryRequirement, ToRetryRequirement};
+    use dangerous::{BytesReader, Error, Input, Invalid};
+
+    fn parse<'i, E: Error<'i>>(r: &mut BytesReader<'i, E>) -> Result<(), E> {
+        // This may have not finished so the input is unbound.
+        let _ = r.take_while(|_| true);
+        // This may have not finished so the input is unbound.
+        let unbound = r.take_while(|_| true);
+        // We try to take more and get a retry error.
+        unbound.read_all(|r| r.skip(1))
+    }
+
+    let input = dangerous::input(b"blah");
+    let result: Result<_, Invalid> = input.read_all(parse);
+
+    assert_eq!(
+        result.unwrap_err().to_retry_requirement(),
+        RetryRequirement::new(1),
+    );
+}
+
+#[test]
+fn test_retry_footgun_from_unbound_spent_reader_take_0() {
+    use dangerous::{BytesReader, Error, Input, Invalid};
+
+    fn parse<'i, E: Error<'i>>(r: &mut BytesReader<'i, E>) -> Result<(), E> {
+        let _ = r.take_while(|_| true);
+        // We read input with a length of zero from the spent Reader.
+        let bound = r.take(0)?;
+        // This should result in a fatal error.
+        bound.read_all(|r| r.skip(1))
+    }
+
+    let input = dangerous::input(b"blah");
+    let result: Result<_, Invalid> = input.read_all(parse);
+
+    assert_eq!(result, Err(Invalid::fatal()));
+}
