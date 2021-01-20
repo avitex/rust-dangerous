@@ -49,9 +49,33 @@ pub enum Bound {
 
 impl Bound {
     #[inline(always)]
-    pub(crate) fn close_end(self) -> Self {
-        let _ = self;
+    pub(crate) fn force_close() -> Self {
         Bound::Both
+    }
+
+    /// An end is opened when it is detected a `take_consumed` reader could have
+    /// continued.
+    #[inline(always)]
+    pub(crate) fn open_end(self) -> Self {
+        match self {
+            // If at least the start is bound make sure the end is unbound.
+            Bound::Both | Bound::Start => Bound::Start,
+            // If the start is unbound both sides of the input are unbound.
+            Bound::None => Bound::None,
+        }
+    }
+
+    /// An end is closed when a known length of input is sucessfully taken.
+    #[inline(always)]
+    pub(crate) fn close_end(self) -> Self {
+        // We don't care if the input has no bounds. The only place input with
+        // no bounds can originate is when a reader has reached the end of input
+        // and could have consumed more. In other words - input with no bounds
+        // is always empty. A length of zero taken from input with no bounds
+        // will always succeed but the first half will have both sides bound to
+        // prevent deadlocks.
+        let _ = self;
+        Bound::force_close()
     }
 
     #[inline(always)]
