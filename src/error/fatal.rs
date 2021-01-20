@@ -85,5 +85,8 @@ impl<'i> From<ExpectedValid<'i>> for Fatal {
     }
 }
 
+#[cfg(feature = "std")]
+impl std::error::Error for Fatal {}
+
 #[cfg(feature = "zc")]
 unsafe impl zc::NoInteriorMut for Fatal {}
