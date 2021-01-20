@@ -50,6 +50,7 @@ impl<'i> String<'i> {
     #[must_use]
     #[inline(always)]
     pub fn as_dangerous(&self) -> &'i str {
+        // SAFETY: string container guarantees valid UTF-8 bytes.
         unsafe { utf8::from_unchecked(self.utf8.as_dangerous()) }
     }
 
@@ -173,6 +174,10 @@ impl<'i> Private<'i> for String<'i> {
         let iter = &mut string.chars();
         if iter.nth(mid.saturating_sub(1)).is_some() {
             let byte_mid = string.as_bytes().len() - iter.as_str().as_bytes().len();
+            // SAFETY: we take byte_mid as the difference between the parent
+            // string and the remaining string left over from the char iterator.
+            // This means both the index can only ever be valid and the bytes in
+            // between are valid UTF-8.
             Some(unsafe { self.split_at_byte_unchecked(byte_mid) })
         } else {
             None
