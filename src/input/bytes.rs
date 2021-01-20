@@ -1,4 +1,4 @@
-#[cfg(not(feature = "const-generics"))]
+#[cfg(not(feature = "unstable-const-generics"))]
 use core::convert::TryInto;
 use core::str;
 
@@ -492,7 +492,7 @@ impl<'i> Bytes<'i> {
         Ok((String::new(consumed, self.bound()), self.end()))
     }
 
-    #[cfg(feature = "const-generics")]
+    #[cfg(feature = "unstable-const-generics")]
     #[inline(always)]
     pub(crate) fn split_array<E, const N: usize>(
         self,
@@ -515,7 +515,7 @@ impl<'i> Bytes<'i> {
     ///////////////////////////////////////////////////////////////////////////
     // FIXME: use `split_array` once stable in 1.51
 
-    #[cfg(not(feature = "const-generics"))]
+    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_2<E>(self, operation: &'static str) -> Result<([u8; 2], Bytes<'i>), E>
     where
@@ -527,7 +527,7 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[cfg(not(feature = "const-generics"))]
+    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_4<E>(self, operation: &'static str) -> Result<([u8; 4], Bytes<'i>), E>
     where
@@ -539,7 +539,7 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[cfg(not(feature = "const-generics"))]
+    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_8<E>(self, operation: &'static str) -> Result<([u8; 8], Bytes<'i>), E>
     where
@@ -551,7 +551,7 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[cfg(not(feature = "const-generics"))]
+    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_16<E>(self, operation: &'static str) -> Result<([u8; 16], Bytes<'i>), E>
     where

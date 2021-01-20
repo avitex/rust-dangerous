@@ -15,19 +15,21 @@ keywords = ["parsing", "untrusted"]
 
 [features]
 default = ["retry", "full-context", "bytecount", "unicode"]
-# Enables `std::error::Error` implementation for errors.
-std = []
+# Enables both `std::error::Error` impls and allocations.
+std = ["alloc"]
 # Enables allocations.
 alloc = []
 # Enables retry support.
 retry = []
-# Enables const generic support.
-# Will be removed in `1.51`.
-const-generics = []
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
 # Enables full context backtraces.
 full-context = ["alloc"]
+# Enables `doc_cfg` feature.
+unstable-doc-cfg = []
+# Enables const generic support.
+# Will be removed in `1.51`.
+unstable-const-generics = []
 
 [dependencies]
 zc = { version = "0.2", optional = true, default-features = false }
@@ -51,4 +53,3 @@ required-features = ["zc"]
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]

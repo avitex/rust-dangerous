@@ -290,6 +290,7 @@ where
     ///
     /// [`RetryRequirement`]: crate::error::RetryRequirement
     #[cfg(feature = "retry")]
+    #[cfg_attr(feature = "unstable-doc-cfg", doc(cfg(feature = "retry")))]
     pub fn try_expect_erased<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,

@@ -6,7 +6,7 @@
 //! ```
 use std::io::{self, Read};
 
-use dangerous::{BytesReader, Input, Error, Expected, Invalid};
+use dangerous::{BytesReader, Error, Expected, Input, Invalid};
 
 fn main() {
     let mut input_data = Vec::new();

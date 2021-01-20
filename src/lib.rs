@@ -13,8 +13,8 @@
 //! assert_eq!(result, Ok((b'h', dangerous::input(b"ello"))));
 //! ```
 
-#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
+#![cfg_attr(feature = "unstable-doc-cfg", feature(doc_cfg))]
 #![forbid(
     missing_docs,
     trivial_casts,
@@ -64,8 +64,10 @@ pub mod error;
 pub use self::entry::input;
 pub use self::error::{Error, Expected, Fatal, FromExpected, WithContext};
 #[cfg(feature = "retry")]
+#[cfg_attr(feature = "unstable-doc-cfg", doc(cfg(feature = "retry")))]
 pub use self::error::{Invalid, ToRetryRequirement};
 #[cfg(feature = "retry")]
+#[cfg_attr(feature = "unstable-doc-cfg", doc(cfg(feature = "retry")))]
 pub use self::input::Bound;
 pub use self::input::{Bytes, Input, MaybeString, String};
 pub use self::reader::{BytesReader, Reader, StringReader};
