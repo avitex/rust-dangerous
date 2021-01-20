@@ -316,6 +316,9 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
         let mid = self.byte_len() - tail.byte_len();
+        // SAFETY: we take mid as the difference between the parent slice and
+        // the remaining slice left over from the reader. This means the index
+        // can only ever be valid.
         let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
         // We derive the bound constraint from self. If the tail start is
         // undetermined this means the last bit of input consumed could be
@@ -340,6 +343,9 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
         let mid = self.byte_len() - tail.byte_len();
+        // SAFETY: we take mid as the difference between the parent slice and
+        // the remaining slice left over from the reader. This means the index
+        // can only ever be valid.
         let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
         // We derive the bound constraint from self. If the tail start is
         // undetermined this means the last bit of input consumed could be

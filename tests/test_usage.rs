@@ -50,25 +50,7 @@ fn test_streaming_usage_with_valid_requirement() {
 }
 
 #[test]
-fn test_retry_footgun_with_take_consumed() {
-    use dangerous::{BytesReader, Error, Input, Invalid};
-
-    fn parse<'i, E: Error<'i>>(r: &mut BytesReader<'i, E>) -> Result<(), E> {
-        let consumed = r.try_take_consumed(|r| {
-            // We take a exact length of input
-            r.consume(b"blah")
-        })?;
-        consumed.read_all(|r| r.consume(b"blah1"))
-    }
-
-    let input = dangerous::input(b"blah");
-    let result: Result<_, Invalid> = input.read_all(parse);
-
-    assert_eq!(result, Err(Invalid::fatal()));
-}
-
-#[test]
-fn test_retry_footgun_from_unbound_spent_reader() {
+fn test_retry_unbound_spent_reader() {
     use dangerous::error::{RetryRequirement, ToRetryRequirement};
     use dangerous::{BytesReader, Error, Input, Invalid};
 
@@ -88,6 +70,24 @@ fn test_retry_footgun_from_unbound_spent_reader() {
         result.unwrap_err().to_retry_requirement(),
         RetryRequirement::new(1),
     );
+}
+
+#[test]
+fn test_retry_footgun_with_take_consumed() {
+    use dangerous::{BytesReader, Error, Input, Invalid};
+
+    fn parse<'i, E: Error<'i>>(r: &mut BytesReader<'i, E>) -> Result<(), E> {
+        let consumed = r.try_take_consumed(|r| {
+            // We take a exact length of input
+            r.consume(b"blah")
+        })?;
+        consumed.read_all(|r| r.consume(b"blah1"))
+    }
+
+    let input = dangerous::input(b"blah");
+    let result: Result<_, Invalid> = input.read_all(parse);
+
+    assert_eq!(result, Err(Invalid::fatal()));
 }
 
 #[test]
