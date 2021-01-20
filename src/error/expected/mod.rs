@@ -29,7 +29,7 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///   stacks.
 /// - It is generally recommended for better performance to box `Expected` if
 ///   the structures being returned from parsing are smaller than or equal to
-///   `~128 bytes`. This is because the `Expected` structure is `160 - 184
+///   `~128 bytes`. This is because the `Expected` structure is `184 - 208
 ///   bytes` large on 64 bit systems and successful parses may be hindered by
 ///   the time to move the `Result<T, Expected>` value. By boxing `Expected` the
 ///   size becomes only `8 bytes`. When in doubt, write a benchmark.
