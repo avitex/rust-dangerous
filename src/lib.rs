@@ -53,7 +53,6 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 
-mod entry;
 mod input;
 mod reader;
 mod util;
@@ -61,7 +60,6 @@ mod util;
 pub mod display;
 pub mod error;
 
-pub use self::entry::input;
 pub use self::error::{Error, Expected, Fatal, FromExpected, WithContext};
 #[cfg(feature = "retry")]
 #[cfg_attr(feature = "unstable-doc-cfg", doc(cfg(feature = "retry")))]
@@ -69,7 +67,7 @@ pub use self::error::{Invalid, ToRetryRequirement};
 #[cfg(feature = "retry")]
 #[cfg_attr(feature = "unstable-doc-cfg", doc(cfg(feature = "retry")))]
 pub use self::input::Bound;
-pub use self::input::{Bytes, Input, MaybeString, String};
+pub use self::input::{input, Bytes, Input, MaybeString, String};
 pub use self::reader::{BytesReader, Reader, StringReader};
 
 pub(crate) mod fmt {
