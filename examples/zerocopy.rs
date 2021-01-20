@@ -1,4 +1,4 @@
-use dangerous::{Expected, Reader};
+use dangerous::{Expected, Input, BytesReader};
 use zc::Dependant;
 
 #[derive(Dependant, Debug)]
@@ -17,7 +17,7 @@ fn main() {
     dbg!(parsed);
 }
 
-fn parse<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<&'i str>, E>
+fn parse<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Vec<&'i str>, E>
 where
     E: dangerous::Error<'i>,
 {
