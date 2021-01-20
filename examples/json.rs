@@ -6,14 +6,14 @@
 //! ```
 use std::io::{self, Read};
 
-use dangerous::{Error, Expected, Invalid, Reader};
+use dangerous::{BytesReader, Input, Error, Expected, Invalid};
 
 fn main() {
     let mut input_data = Vec::new();
     io::stdin()
         .read_to_end(&mut input_data)
         .expect("read input");
-    let input = dangerous::input(input_data.as_ref());
+    let input = dangerous::input(input_data.as_slice());
     match input.read_all::<_, _, Box<Expected>>(read_value) {
         Ok(json) => println!("{:#?}", json),
         Err(e) => eprintln!("{:#}", e),
@@ -30,7 +30,7 @@ enum Value<'a> {
     Object(Vec<(&'a str, Value<'a>)>),
 }
 
-fn read_value<'i, E>(r: &mut Reader<'i, E>) -> Result<Value<'i>, E>
+fn read_value<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Value<'i>, E>
 where
     E: Error<'i>,
 {
@@ -54,7 +54,7 @@ where
     Ok(value)
 }
 
-fn read_arr<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<Value<'i>>, E>
+fn read_arr<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Vec<Value<'i>>, E>
 where
     E: Error<'i>,
 {
@@ -82,7 +82,7 @@ where
     })
 }
 
-fn read_map<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<(&'i str, Value<'i>)>, E>
+fn read_map<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Vec<(&'i str, Value<'i>)>, E>
 where
     E: Error<'i>,
 {
@@ -113,7 +113,7 @@ where
     })
 }
 
-fn read_str<'i, E>(r: &mut Reader<'i, E>) -> Result<&'i str, E>
+fn read_str<'i, E>(r: &mut BytesReader<'i, E>) -> Result<&'i str, E>
 where
     E: Error<'i>,
 {
@@ -141,7 +141,7 @@ where
     })
 }
 
-fn read_null<'i, E>(r: &mut Reader<'i, E>) -> Result<(), E>
+fn read_null<'i, E>(r: &mut BytesReader<'i, E>) -> Result<(), E>
 where
     E: Error<'i>,
 {
@@ -149,7 +149,7 @@ where
     r.context("json null", |r| r.consume(b"null"))
 }
 
-fn read_bool<'i, E>(r: &mut Reader<'i, E>) -> Result<bool, E>
+fn read_bool<'i, E>(r: &mut BytesReader<'i, E>) -> Result<bool, E>
 where
     E: Error<'i>,
 {
@@ -161,7 +161,7 @@ where
     })
 }
 
-fn read_num<'i, E>(r: &mut Reader<'i, E>) -> Result<f64, E>
+fn read_num<'i, E>(r: &mut BytesReader<'i, E>) -> Result<f64, E>
 where
     E: Error<'i>,
 {
@@ -183,7 +183,7 @@ where
     })
 }
 
-fn skip_whitespace<E>(r: &mut Reader<'_, E>) {
+fn skip_whitespace<E>(r: &mut BytesReader<'_, E>) {
     r.skip_while(|c| c.is_ascii_whitespace());
 }
 

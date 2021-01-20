@@ -7,7 +7,7 @@
 use std::error::Error as StdError;
 use std::io;
 
-use dangerous::{Error, Expected, Input, Invalid, Reader, ToRetryRequirement};
+use dangerous::{BytesReader, Error, Expected, Input, Invalid, ToRetryRequirement};
 
 const VALID_MESSAGE: &[u8] = &[
     0x01, // version: 1
@@ -99,7 +99,7 @@ impl Decoder {
     }
 }
 
-fn decode_message<'i, E>(r: &mut Reader<'i, E>) -> Result<Message<'i>, E>
+fn decode_message<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Message<'i>, E>
 where
     E: Error<'i>,
 {
