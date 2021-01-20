@@ -1,4 +1,4 @@
-use dangerous::{Expected, Input, BytesReader};
+use dangerous::{BytesReader, Expected, Input};
 use zc::Dependant;
 
 #[derive(Dependant, Debug)]

@@ -204,7 +204,7 @@ unsafe impl zc::NoInteriorMut for RootContextStack {}
 
 /// A [`ContextStack`] that contains all [`Context`]s collected.
 #[cfg(feature = "full-context")]
-#[cfg_attr(docsrs, doc(cfg(feature = "full-context")))]
+#[cfg_attr(feature = "unstable-doc-cfg", doc(cfg(feature = "full-context")))]
 pub struct FullContextStack {
     root: ExpectedContext,
     stack: Vec<Box<dyn Context>>,

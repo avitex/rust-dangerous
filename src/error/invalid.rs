@@ -123,7 +123,6 @@ impl From<Option<RetryRequirement>> for Invalid {
 }
 
 #[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl std::error::Error for Invalid {}
 
 #[cfg(feature = "zc")]
