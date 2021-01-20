@@ -294,10 +294,7 @@ impl<'i, E> BytesReader<'i, E> {
     ///
     /// Returns an error if the length requirement to read could not be met.
     #[cfg(feature = "unstable-const-generics")]
-    #[cfg_attr(
-        feature = "unstable-doc-cfg",
-        doc(cfg(feature = "unstable-const-generics"))
-    )]
+    #[cfg_attr(docsrs, doc(cfg(feature = "unstable-const-generics")))]
     pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], E>
     where
         E: From<ExpectedLength<'i>>,
