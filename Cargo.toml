@@ -30,12 +30,12 @@ full-context = ["alloc"]
 unstable-const-generics = []
 
 [dependencies]
-zc = { version = "0.2", optional = true, default-features = false }
+zc = { version = "0.3", optional = true, default-features = false }
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
 [dev-dependencies]
-zc = "0.2"
+zc = "0.3"
 
 [[example]]
 name = "json"
