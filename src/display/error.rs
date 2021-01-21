@@ -61,14 +61,14 @@ where
         self
     }
 
-    fn write_sections<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn write_sections(&self, w: &mut dyn Write) -> fmt::Result {
         let input = self.error.input();
         let span = self.error.span();
         // Write description
         w.write_str("error attempting to ")?;
         w.write_str(self.error.context_stack().root().operation())?;
         w.write_str(": ")?;
-        self.error.description(w.as_dyn())?;
+        self.error.description(w)?;
         w.write_char('\n')?;
         // Write inputs
         let input_display = self.configure_input_display(input.display());
@@ -125,7 +125,7 @@ where
         // Write context backtrace
         w.write_str("backtrace:")?;
         let write_success = self.error.context_stack().walk(&mut |i, c| {
-            let writer = |w: &mut W, i, c: &dyn Context| {
+            let writer = |w: &mut dyn Write, i, c: &dyn Context| {
                 w.write_str("\n ")?;
                 w.write_usize(i)?;
                 w.write_str(". `")?;
@@ -133,7 +133,7 @@ where
                 w.write_char('`')?;
                 if c.has_expected() {
                     w.write_str(" (expected ")?;
-                    c.expected(w.as_dyn())?;
+                    c.expected(w)?;
                     w.write_char(')')?;
                 }
                 fmt::Result::Ok(())
@@ -162,7 +162,7 @@ impl<'a, 'i, T> fmt::DisplayBase for ErrorDisplay<'a, T>
 where
     T: error::Details<'i>,
 {
-    fn fmt<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn Write) -> fmt::Result {
         if self.banner {
             w.write_str("\n-- INPUT ERROR ---------------------------------------------\n")?;
             self.write_sections(w)?;
@@ -200,10 +200,7 @@ fn line_offset(input: &Bytes<'_>, span_offset: usize) -> usize {
     }
 }
 
-fn write_input<W>(w: &mut W, input: InputDisplay<'_>, underline: bool) -> fmt::Result
-where
-    W: Write + ?Sized,
-{
+fn write_input(w: &mut dyn Write, input: InputDisplay<'_>, underline: bool) -> fmt::Result {
     let input = input.prepare();
     w.write_str("> ")?;
     fmt::DisplayBase::fmt(&input, w)?;

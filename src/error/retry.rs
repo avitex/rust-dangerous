@@ -54,7 +54,7 @@ impl fmt::Debug for RetryRequirement {
 }
 
 impl fmt::DisplayBase for RetryRequirement {
-    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         byte_count(w, self.continue_after())?;
         w.write_str(" more")
     }

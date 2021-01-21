@@ -216,7 +216,7 @@ impl<'i> InputDisplay<'i> {
 }
 
 impl<'i> fmt::DisplayBase for InputDisplay<'i> {
-    fn fmt<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn Write) -> fmt::Result {
         match &self.section {
             None => self.clone().prepare().fmt(w),
             Some(section) => section.write(w, self.underline),
@@ -247,22 +247,16 @@ impl<'i> Clone for InputDisplay<'i> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub(super) struct InputWriter<'a, W>
-where
-    W: Write + ?Sized,
-{
-    w: &'a mut W,
+pub(super) struct InputWriter<'a> {
+    w: &'a mut dyn Write,
     underline: bool,
     full: &'a [u8],
     span: Option<&'a [u8]>,
 }
 
-impl<'a, W> InputWriter<'a, W>
-where
-    W: Write + ?Sized,
-{
+impl<'a> InputWriter<'a> {
     pub(super) fn new(
-        w: &'a mut W,
+        w: &'a mut dyn Write,
         full: &'a [u8],
         span: Option<&'a [u8]>,
         underline: bool,

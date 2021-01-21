@@ -53,7 +53,7 @@ impl fmt::Debug for Invalid {
 }
 
 impl fmt::DisplayBase for Invalid {
-    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         w.write_str("invalid input")?;
         if let Some(retry_requirement) = self.retry_requirement {
             w.write_str(": needs ")?;

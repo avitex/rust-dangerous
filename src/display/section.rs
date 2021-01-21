@@ -207,7 +207,7 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(super) fn write<W: Write + ?Sized>(&self, w: &mut W, underline: bool) -> fmt::Result {
+    pub(super) fn write(&self, w: &mut dyn Write, underline: bool) -> fmt::Result {
         let mut writer = InputWriter::new(w, self.full, self.span, underline);
         match self.visible {
             Visible::Bytes(bytes) => writer.write_bytes_side(bytes, false),

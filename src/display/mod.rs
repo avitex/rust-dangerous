@@ -19,23 +19,20 @@ pub trait DisplayBase {
     /// # Errors
     ///
     /// Returns a [`core::fmt::Error`] if failed to write.
-    fn fmt<W: Write + ?Sized>(&self, w: &mut W) -> Result;
+    fn fmt(&self, w: &mut dyn Write) -> Result;
 }
 
 impl<T> DisplayBase for &T
 where
     T: DisplayBase,
 {
-    fn fmt<W: Write + ?Sized>(&self, w: &mut W) -> Result {
+    fn fmt(&self, w: &mut dyn Write) -> Result {
         (**self).fmt(w)
     }
 }
 
 /// Library specific [`Write`] trait for formatting.
 pub trait Write {
-    /// Return `self` as a `dyn Write`.
-    fn as_dyn(&mut self) -> &mut dyn Write;
-
     /// Writes a string slice into this writer, returning whether the write
     /// succeeded.
     ///
@@ -83,10 +80,6 @@ impl<T> Write for &mut T
 where
     T: Write,
 {
-    fn as_dyn(&mut self) -> &mut dyn Write {
-        (**self).as_dyn()
-    }
-
     fn write_str(&mut self, s: &str) -> Result {
         (**self).write_str(s)
     }
@@ -105,10 +98,6 @@ where
 }
 
 impl<'a> Write for Formatter<'a> {
-    fn as_dyn(&mut self) -> &mut dyn Write {
-        self
-    }
-
     fn write_str(&mut self, s: &str) -> Result {
         core::fmt::Write::write_str(self, s)
     }
@@ -124,7 +113,7 @@ impl<'a> Write for Formatter<'a> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub(crate) fn byte_count<W: Write + ?Sized>(w: &mut W, count: usize) -> Result {
+pub(crate) fn byte_count(w: &mut dyn Write, count: usize) -> Result {
     match count {
         0 => w.write_str("no bytes"),
         1 => w.write_str("1 byte"),

@@ -38,7 +38,7 @@ impl fmt::Debug for Fatal {
 }
 
 impl fmt::DisplayBase for Fatal {
-    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         w.write_str("invalid input")
     }
 }

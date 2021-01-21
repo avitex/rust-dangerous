@@ -99,7 +99,7 @@ impl<'i> fmt::Debug for ExpectedLength<'i> {
 }
 
 impl<'i> fmt::DisplayBase for ExpectedLength<'i> {
-    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         w.write_str("found ")?;
         byte_count(w, self.span().len())?;
         w.write_str(" when ")?;

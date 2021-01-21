@@ -76,7 +76,7 @@ impl<'i> fmt::Debug for MaybeString<'i> {
 }
 
 impl<'i> fmt::DisplayBase for MaybeString<'i> {
-    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         self.display().fmt(w)
     }
 }

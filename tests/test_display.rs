@@ -57,7 +57,7 @@ fn test_format_with_mut_ref_write() {
     struct Helper;
 
     impl DisplayBase for Helper {
-        fn fmt<W: Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+        fn fmt(&self, w: &mut dyn Write) -> fmt::Result {
             Write::write_str(w, "a")?;
             Write::write_char(w, ',')?;
             Write::write_usize(w, 1)?;

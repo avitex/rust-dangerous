@@ -63,7 +63,7 @@ impl<'i> fmt::Debug for ExpectedValid<'i> {
 }
 
 impl<'i> fmt::DisplayBase for ExpectedValid<'i> {
-    fn fmt<W: fmt::Write + ?Sized>(&self, w: &mut W) -> fmt::Result {
+    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         w.write_str("expected ")?;
         w.write_str(self.context.expected)
     }

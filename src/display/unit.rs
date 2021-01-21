@@ -15,11 +15,7 @@ pub(super) fn byte_display_width(b: u8, show_ascii: bool) -> usize {
     }
 }
 
-pub(super) fn byte_display_write<W: Write + ?Sized>(
-    b: u8,
-    show_ascii: bool,
-    w: &mut W,
-) -> fmt::Result {
+pub(super) fn byte_display_write(b: u8, show_ascii: bool, w: &mut dyn Write) -> fmt::Result {
     if show_ascii {
         match b {
             b'\"' => w.write_str("'\\\"'"),
@@ -44,7 +40,7 @@ pub(super) fn char_display_width(c: char, cjk: bool) -> usize {
         .fold(0, |acc, c| acc + unicode_width(c, cjk))
 }
 
-pub(super) fn char_display_write<W: Write + ?Sized>(c: char, w: &mut W) -> fmt::Result {
+pub(super) fn char_display_write(c: char, w: &mut dyn Write) -> fmt::Result {
     for c in c.escape_debug() {
         w.write_char(c)?;
     }
