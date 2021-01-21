@@ -184,6 +184,7 @@ fn test_expected_valid_root() {
 }
 
 #[test]
+#[cfg(feature = "full-context")]
 fn test_expected_valid_full() {
     let error: Expected = trigger_expected_valid();
 
@@ -207,6 +208,7 @@ fn test_expected_valid_full() {
 }
 
 #[test]
+#[cfg(feature = "full-context")]
 fn test_expected_valid_full_boxed() {
     let error: Expected = trigger_expected_valid();
     let error_boxed: Box<Expected> = trigger_expected_valid();
@@ -267,6 +269,7 @@ fn test_expected_length_root() {
 }
 
 #[test]
+#[cfg(feature = "full-context")]
 fn test_expected_length_full() {
     let error: Expected = trigger_expected_length();
 
@@ -345,6 +348,7 @@ fn test_expected_value_root() {
 }
 
 #[test]
+#[cfg(feature = "full-context")]
 fn test_expected_value_full() {
     let error: Expected = trigger_expected_value();
 
