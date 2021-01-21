@@ -4,8 +4,7 @@
 #[macro_use]
 mod common;
 
-use dangerous::error::{Details, ExpectedContext, Fatal, RetryRequirement, ToRetryRequirement};
-use dangerous::{BytesReader, Input};
+use common::*;
 use std::any::Any;
 use std::str;
 
@@ -14,7 +13,26 @@ fn test_reader_bytes_debug() {
     read_all!(b"hello", |r| {
         assert_eq!(
             format!("{:?}", r),
-            "Reader { input: Bytes([68 65 6c 6c 6f]) }"
+            "Reader { input: Bytes { bound: Start, bytes: [68 65 6c 6c 6f] } }"
+        );
+        r.consume(b"hello")
+    })
+    .unwrap();
+}
+
+#[test]
+fn test_reader_bytes_pretty_debug() {
+    read_all!(b"hello", |r| {
+        assert_eq!(
+            format!("{:#?}\n", r),
+            indoc! {r#"
+                Reader {
+                    input: Bytes {
+                        bound: Start,
+                        bytes: "hello",
+                    },
+                }
+            "#}
         );
         r.consume(b"hello")
     })

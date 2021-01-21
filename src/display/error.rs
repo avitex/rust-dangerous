@@ -126,7 +126,7 @@ where
         w.write_str("backtrace:")?;
         let write_success = self.error.context_stack().walk(&mut |i, c| {
             let writer = |w: &mut dyn Write, i, c: &dyn Context| {
-                w.write_str("\n ")?;
+                w.write_str("\n  ")?;
                 w.write_usize(i)?;
                 w.write_str(". `")?;
                 w.write_str(c.operation())?;

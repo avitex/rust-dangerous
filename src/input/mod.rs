@@ -3,6 +3,8 @@ mod maybe;
 mod string;
 mod traits;
 
+use crate::fmt;
+
 pub use self::bytes::Bytes;
 pub use self::maybe::MaybeString;
 pub use self::string::String;
@@ -88,6 +90,17 @@ impl Bound {
             // where the start is, perhaps the true end is not known yet!
             Bound::Start | Bound::None => Bound::None,
         }
+    }
+}
+
+impl fmt::Debug for Bound {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::None => "None",
+            Self::Start => "Start",
+            Self::Both => "Both",
+        };
+        f.write_str(s)
     }
 }
 

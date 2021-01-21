@@ -1,9 +1,8 @@
-use core::fmt;
-
 #[macro_use]
 mod common;
 
-use dangerous::Input;
+use common::*;
+use std::fmt;
 
 #[test]
 fn test_valid_utf8() {

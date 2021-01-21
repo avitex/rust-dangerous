@@ -1,13 +1,8 @@
-use core::fmt;
-
 #[macro_use]
 mod common;
 
-use dangerous::error::{
-    Context, Expected, ExpectedLength, ExpectedValid, ExpectedValue, Fatal, Invalid,
-    RetryRequirement, RootContextStack, ToRetryRequirement, WithContext,
-};
-use dangerous::{Bytes, Input};
+use common::*;
+use std::fmt;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Fatal
@@ -121,156 +116,175 @@ impl<'i> From<ExpectedLength<'i>> for ExpectedKind<'i> {
     }
 }
 
+fn trigger_expected_valid<E: Error<'static>>() -> E {
+    input!(b"123\xC2 ")
+        .read_all(|r| r.context("hi", |r| r.take_str_while(|_| true)))
+        .unwrap_err()
+}
+
+fn trigger_expected_length<E: Error<'static>>() -> E {
+    input!(b"123")
+        .read_all(|r| r.context("hi", |r| r.take(5)))
+        .unwrap_err()
+}
+
+fn trigger_expected_value<E: Error<'static>>() -> E {
+    input!(b"123")
+        .read_all(|r| r.context("hi", |r| r.consume(b"124")))
+        .unwrap_err()
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Expected valid
 
 #[test]
-fn test_expected_valid() {
-    let error = input!(b"123\xC2 ")
-        .read_all::<_, _, ExpectedKind>(|r| r.context("hi", |r| r.take_str_while(|_| true)))
-        .unwrap_err();
+fn test_expected_valid_variant() {
+    let error: ExpectedKind = trigger_expected_valid();
 
     assert_eq!(
-        format!("{:?}", error),
-        "ExpectedValid { input: Bytes([31 32 33 c2 20]), span: Bytes([c2]), context: ExpectedContext { operation: \"take str while\", expected: \"utf-8 code point\" }, retry_requirement: None }",
+        format!("{:#?}\n", error),
+        indoc! {r#"
+            ExpectedValid {
+                input: Bytes {
+                    bound: Start,
+                    bytes: ['1' '2' '3' c2 20],
+                },
+                span: Bytes {
+                    bound: Start,
+                    bytes: [c2],
+                },
+                context: ExpectedContext {
+                    operation: "take str while",
+                    expected: "utf-8 code point",
+                },
+                retry_requirement: None,
+            }
+        "#}
     );
 }
 
 #[test]
 fn test_expected_valid_root() {
-    let error = input!(b"123\xC2 ")
-        .read_all::<_, _, Expected<RootContextStack>>(|r| {
-            r.context("hi", |r| r.take_str_while(|_| true))
-        })
-        .unwrap_err();
+    let error: Expected<RootContextStack> = trigger_expected_valid();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
-        format!("{}", error),
-        concat!(
-            "error attempting to take str while: expected utf-8 code point\n",
-            "> [31 32 33 c2 20]\n",
-            "            ^^    \n",
-            "additional:\n",
-            "  error offset: 3, input length: 5\n",
-            "backtrace:\n",
-            " 1. `take str while` (expected utf-8 code point)"
-        )
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to take str while: expected utf-8 code point
+            > [31 32 33 c2 20]
+                        ^^    
+            additional:
+              error offset: 3, input length: 5
+            backtrace:
+              1. `take str while` (expected utf-8 code point)
+        "#}
     );
 }
 
 #[test]
-#[cfg(feature = "full-context")]
 fn test_expected_valid_full() {
-    let error = input!(b"123\xC2 ")
-        .read_all::<_, _, Expected>(|r| r.context("hi", |r| r.take_str_while(|_| true)))
-        .unwrap_err();
+    let error: Expected = trigger_expected_valid();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
+    println!("{}\n", error);
     assert_eq!(
-        format!("{}", error),
-        concat!(
-            "error attempting to take str while: expected utf-8 code point\n",
-            "> [31 32 33 c2 20]\n",
-            "            ^^    \n",
-            "additional:\n",
-            "  error offset: 3, input length: 5\n",
-            "backtrace:\n",
-            " 1. `read all`\n",
-            " 2. `read` (expected hi)\n",
-            " 3. `take str while` (expected utf-8 code point)"
-        )
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to take str while: expected utf-8 code point
+            > [31 32 33 c2 20]
+                        ^^    
+            additional:
+              error offset: 3, input length: 5
+            backtrace:
+              1. `read all`
+              2. `read` (expected hi)
+              3. `take str while` (expected utf-8 code point)
+        "#}
     );
 }
 
 #[test]
-#[cfg(feature = "full-context")]
-fn test_expected_valid_full_debug_str_boxed() {
-    let error = input!(b"123\n\xC2 ")
-        .read_all::<_, _, Box<Expected>>(|r| r.context("hi", |r| r.take_str_while(|_| true)))
-        .unwrap_err();
+fn test_expected_valid_full_boxed() {
+    let error: Expected = trigger_expected_valid();
+    let error_boxed: Box<Expected> = trigger_expected_valid();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
-        format!("{:#?}", error),
-        concat!(
-            "\n-- INPUT ERROR ---------------------------------------------\n",
-            "error attempting to take str while: expected utf-8 code point\n",
-            "> ['1' '2' '3' '\\n' c2 20]\n",
-            "                    ^^    \n",
-            "additional:\n",
-            "  error line: 2, error offset: 4, input length: 6\n",
-            "backtrace:\n",
-            " 1. `read all`\n",
-            " 2. `read` (expected hi)\n",
-            " 3. `take str while` (expected utf-8 code point)\n",
-            "------------------------------------------------------------\n"
-        )
-    );
+    assert_eq!(format!("{:#?}", error), format!("{:#?}", error_boxed),);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expected length
 
 #[test]
-fn test_expected_length() {
-    let error = input!(b"123")
-        .read_all::<_, _, ExpectedKind>(|r| r.context("hi", |r| r.take(5)))
-        .unwrap_err();
+fn test_expected_length_variant() {
+    let error: ExpectedKind = trigger_expected_length();
 
     assert_eq!(
-        format!("{:?}", error),
-        "ExpectedLength { min: 5, max: None, input: Bytes([31 32 33]), span: Bytes([31 32 33]), context: ExpectedContext { operation: \"take\", expected: \"enough input\" } }"
+        format!("{:#?}\n", error),
+        indoc! {r#"
+            ExpectedLength {
+                min: 5,
+                max: None,
+                input: Bytes {
+                    bound: Start,
+                    bytes: "123",
+                },
+                span: Bytes {
+                    bound: Start,
+                    bytes: "123",
+                },
+                context: ExpectedContext {
+                    operation: "take",
+                    expected: "enough input",
+                },
+            }
+        "#}
     );
 }
 
 #[test]
 fn test_expected_length_root() {
-    let error = input!(b"123")
-        .read_all::<_, _, Expected<RootContextStack>>(|r| r.context("hi", |r| r.take(5)))
-        .unwrap_err();
+    let error: Expected<RootContextStack> = trigger_expected_length();
 
     assert!(!error.is_fatal());
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
     assert_eq!(
-        format!("{}", error),
-        concat!(
-            "error attempting to take: found 3 bytes when at least 5 bytes was expected\n",
-            "> [31 32 33]\n",
-            "   ^^ ^^ ^^ \n",
-            "additional:\n",
-            "  error offset: 0, input length: 3\n",
-            "backtrace:\n",
-            " 1. `take` (expected enough input)",
-        )
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to take: found 3 bytes when at least 5 bytes was expected
+            > [31 32 33]
+               ^^ ^^ ^^ 
+            additional:
+              error offset: 0, input length: 3
+            backtrace:
+              1. `take` (expected enough input)
+        "#}
     );
 }
 
 #[test]
-#[cfg(feature = "full-context")]
 fn test_expected_length_full() {
-    let error = input!(b"123")
-        .read_all::<_, _, Expected>(|r| r.context("hi", |r| r.take(5)))
-        .unwrap_err();
+    let error: Expected = trigger_expected_length();
 
     assert!(!error.is_fatal());
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
     assert_eq!(
-        format!("{}", error),
-        concat!(
-            "error attempting to take: found 3 bytes when at least 5 bytes was expected\n",
-            "> [31 32 33]\n",
-            "   ^^ ^^ ^^ \n",
-            "additional:\n",
-            "  error offset: 0, input length: 3\n",
-            "backtrace:\n",
-            " 1. `read all`\n",
-            " 2. `read` (expected hi)\n",
-            " 3. `take` (expected enough input)",
-        )
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to take: found 3 bytes when at least 5 bytes was expected
+            > [31 32 33]
+               ^^ ^^ ^^ 
+            additional:
+              error offset: 0, input length: 3
+            backtrace:
+              1. `read all`
+              2. `read` (expected hi)
+              3. `take` (expected enough input)
+        "#},
     );
 }
 
@@ -279,66 +293,79 @@ fn test_expected_length_full() {
 
 #[test]
 fn test_expected_value() {
-    let error = input!(b"123")
-        .read_all::<_, _, ExpectedKind>(|r| r.context("hi", |r| r.consume(b"124")))
-        .unwrap_err();
+    let error: ExpectedKind = trigger_expected_value();
 
     assert_eq!(
-        format!("{:?}", error),
-        "ExpectedValue { input: Bytes([31 32 33]), actual: Bytes([31 32 33]), expected: Bytes([31 32 34]), context: ExpectedContext { operation: \"consume\", expected: \"exact value\" } }"
+        format!("{:#?}\n", error),
+        indoc! {r#"
+            ExpectedValue {
+                input: Bytes {
+                    bound: Start,
+                    bytes: "123",
+                },
+                actual: Bytes {
+                    bound: Start,
+                    bytes: "123",
+                },
+                expected: Bytes {
+                    bound: Both,
+                    bytes: "124",
+                },
+                context: ExpectedContext {
+                    operation: "consume",
+                    expected: "exact value",
+                },
+            }
+        "#}
     );
 }
 
 #[test]
 fn test_expected_value_root() {
-    let error = input!(b"123")
-        .read_all::<_, _, Expected<RootContextStack>>(|r| r.context("hi", |r| r.consume(b"124")))
-        .unwrap_err();
+    let error: Expected<RootContextStack> = trigger_expected_value();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
+    println!("{}", error);
     assert_eq!(
-        format!("{}", error),
-        concat!(
-            "error attempting to consume: found a different value to the exact expected\n",
-            "expected:\n",
-            "> [31 32 34]\n",
-            "in:\n",
-            "> [31 32 33]\n",
-            "   ^^ ^^ ^^ \n",
-            "additional:\n",
-            "  error offset: 0, input length: 3\n",
-            "backtrace:\n",
-            " 1. `consume` (expected exact value)"
-        )
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to consume: found a different value to the exact expected
+            expected:
+            > [31 32 34]
+            in:
+            > [31 32 33]
+               ^^ ^^ ^^ 
+            additional:
+              error offset: 0, input length: 3
+            backtrace:
+              1. `consume` (expected exact value)
+        "#}
     );
 }
 
 #[test]
-#[cfg(feature = "full-context")]
 fn test_expected_value_full() {
-    let error = input!(b"123")
-        .read_all::<_, _, Expected>(|r| r.context("hi", |r| r.consume(b"124")))
-        .unwrap_err();
+    let error: Expected = trigger_expected_value();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
-        format!("{}", error),
-        concat!(
-            "error attempting to consume: found a different value to the exact expected\n",
-            "expected:\n",
-            "> [31 32 34]\n",
-            "in:\n",
-            "> [31 32 33]\n",
-            "   ^^ ^^ ^^ \n",
-            "additional:\n",
-            "  error offset: 0, input length: 3\n",
-            "backtrace:\n",
-            " 1. `read all`\n",
-            " 2. `read` (expected hi)\n",
-            " 3. `consume` (expected exact value)"
-        )
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to consume: found a different value to the exact expected
+            expected:
+            > [31 32 34]
+            in:
+            > [31 32 33]
+               ^^ ^^ ^^ 
+            additional:
+              error offset: 0, input length: 3
+            backtrace:
+              1. `read all`
+              2. `read` (expected hi)
+              3. `consume` (expected exact value)
+        "#},
     );
 }
 
@@ -382,18 +409,20 @@ fn test_invalid_error_details_span() {
     let error = input!(b"\xC2 ").to_dangerous_str::<MyError>().unwrap_err();
 
     assert_eq!(
+        // We split the end off as pointers change
         format!("{}", ErrorDisplay::new(&error))
             .splitn(2, "additional:")
             .next()
             .unwrap(),
-        concat!(
-            "error attempting to convert input to str: test\n",
-            "note: error span is not within the error input indicating the\n",
-            "      concrete error being used has a bug. Consider raising an\n",
-            "      issue with the maintainer!\n",
-            "span:\n",
-            "> [6e 6f 74 2d 61 2d 70 72 6f 70 65 72 2d 73 70 61 6e]\n",
-            "input:\n> [73 6f 6d 65 74 68 69 6e 67]\n",
-        )
+        indoc! {"
+            error attempting to convert input to str: test
+            note: error span is not within the error input indicating the
+                  concrete error being used has a bug. Consider raising an
+                  issue with the maintainer!
+            span:
+            > [6e 6f 74 2d 61 2d 70 72 6f 70 65 72 2d 73 70 61 6e]
+            input:
+            > [73 6f 6d 65 74 68 69 6e 67]
+        "}
     );
 }

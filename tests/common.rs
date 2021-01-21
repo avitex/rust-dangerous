@@ -1,5 +1,8 @@
 #![allow(unused_macros)]
 
+pub use dangerous::{error::*, *};
+pub use indoc::indoc;
+
 macro_rules! input {
     ($input:expr) => {
         dangerous::input(&$input)

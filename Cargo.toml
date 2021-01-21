@@ -36,6 +36,7 @@ unicode-width = { version = "0.1", optional = true }
 
 [dev-dependencies]
 zc = "0.3"
+indoc = "1.0"
 
 [[example]]
 name = "json"

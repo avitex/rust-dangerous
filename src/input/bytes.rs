@@ -661,7 +661,10 @@ impl<'i> PartialEq<Bytes<'i>> for [u8] {
 impl<'i> fmt::Debug for Bytes<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let display = InputDisplay::from_formatter(self, f);
-        f.debug_tuple("Bytes").field(&display).finish()
+        f.debug_struct("Bytes")
+            .field("bound", &self.bound())
+            .field("bytes", &display)
+            .finish()
     }
 }
 
