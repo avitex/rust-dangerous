@@ -56,6 +56,7 @@ impl Bound {
     /// An end is opened when it is detected a `take_consumed` reader could have
     /// continued.
     #[inline(always)]
+    #[cfg(feature = "retry")]
     pub(crate) fn open_end(self) -> Self {
         match self {
             // If at least the start is bound make sure the end is unbound.

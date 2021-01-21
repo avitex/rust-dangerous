@@ -14,7 +14,13 @@ macro_rules! impl_read_num {
         where
             E: From<ExpectedLength<'i>>,
         {
-            read_num!(self, E, $ty, concat!("little-endian ", $ty_str), from_le_bytes)
+            read_num!(
+                self,
+                E,
+                $ty,
+                concat!("little-endian ", $ty_str),
+                from_le_bytes
+            )
         }
 
         #[doc = "Read a big-endian encoded `"]

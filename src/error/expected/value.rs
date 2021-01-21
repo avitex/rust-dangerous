@@ -1,5 +1,7 @@
 use crate::fmt;
-use crate::input::{Bytes, Input, MaybeString};
+#[cfg(feature = "retry")]
+use crate::input::Input;
+use crate::input::{Bytes, MaybeString};
 
 use super::ExpectedContext;
 

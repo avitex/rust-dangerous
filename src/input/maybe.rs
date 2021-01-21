@@ -38,6 +38,7 @@ impl<'i> MaybeString<'i> {
         }
     }
 
+    #[cfg(feature = "retry")]
     pub(crate) fn is_bound(&self) -> bool {
         self.bound() == Bound::Both
     }
