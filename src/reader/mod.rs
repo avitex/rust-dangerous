@@ -33,7 +33,7 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// creating errors based off what was expected.
 ///
 /// [`try_expect_erased()`] is provided for reading a custom type that does not
-/// support a `&mut Reader<'i, E>` interface, for example a type implementing
+/// support a `&mut Reader<'i, E, I>` interface, for example a type implementing
 /// `FromStr`.
 ///
 /// [`recover()`] and [`recover_if()`] are provided as an escape hatch when you

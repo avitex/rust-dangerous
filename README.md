@@ -45,7 +45,7 @@ in production.
 ## Usage
 
 ```rust
-fn decode_message<'i, E>(r: &mut Reader<'i, E>) -> Result<Message<'i>, E>
+fn decode_message<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Message<'i>, E>
 where
     E: Error<'i>,
 {
