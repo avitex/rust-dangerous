@@ -62,17 +62,9 @@ unsafe impl<'i> Prefix<Bytes<'i>> for &str {
     }
 }
 
-macro_rules! impl_array_prefix {
-    ($($n:expr),*) => {
-        $(
-            unsafe impl<'i> Prefix<Bytes<'i>> for &[u8; $n] {
-                #[inline(always)]
-                fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-                    input.as_dangerous().starts_with(&self[..])
-                }
-            }
-        )*
-    };
+unsafe impl<'i, const N: usize> Prefix<Bytes<'i>> for &[u8; N] {
+    #[inline(always)]
+    fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
+        input.as_dangerous().starts_with(&self[..])
+    }
 }
-
-for_common_array_sizes!(impl_array_prefix);

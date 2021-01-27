@@ -79,17 +79,9 @@ impl<'i> From<&'i str> for Value<'i> {
     }
 }
 
-macro_rules! impl_array_into_value {
-    ($($n:expr),*) => {
-        $(
-            impl<'i> From<&'i [u8; $n]> for Value<'i> {
-                #[inline(always)]
-                fn from(v: &'i [u8; $n]) -> Self {
-                    Self(ValueInner::Bytes(v))
-                }
-            }
-        )*
-    };
+impl<'i, const N: usize> From<&'i [u8; N]> for Value<'i> {
+    #[inline(always)]
+    fn from(v: &'i [u8; N]) -> Self {
+        Self(ValueInner::Bytes(v))
+    }
 }
-
-for_common_array_sizes!(impl_array_into_value);

@@ -812,20 +812,12 @@ unsafe impl BytesLength for &str {
     }
 }
 
-macro_rules! impl_array_bytes_len {
-    ($($n:expr),*) => {
-        $(
-            unsafe impl BytesLength for &[u8; $n] {
-                #[inline(always)]
-                fn byte_len(self) -> usize {
-                    self.len()
-                }
-            }
-        )*
-    };
+unsafe impl<const N: usize> BytesLength for &[u8; N] {
+    #[inline(always)]
+    fn byte_len(self) -> usize {
+        self.len()
+    }
 }
-
-for_common_array_sizes!(impl_array_bytes_len);
 
 ///////////////////////////////////////////////////////////////////////////////
 // IntoInput
@@ -866,19 +858,11 @@ impl<'i> IntoInput<'i> for &'i str {
     }
 }
 
-macro_rules! impl_array_into_input {
-    ($($n:expr),*) => {
-        $(
-            impl<'i> IntoInput<'i> for &'i [u8; $n] {
-                type Input = Bytes<'i>;
+impl<'i, const N: usize> IntoInput<'i> for &'i [u8; N] {
+    type Input = Bytes<'i>;
 
-                #[inline(always)]
-                fn into_input(self) -> Self::Input {
-                    Bytes::new(self, Bound::Start)
-                }
-            }
-        )*
-    };
+    #[inline(always)]
+    fn into_input(self) -> Self::Input {
+        Bytes::new(self, Bound::Start)
+    }
 }
-
-for_common_array_sizes!(impl_array_into_input);

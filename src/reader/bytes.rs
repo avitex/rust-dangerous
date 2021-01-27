@@ -111,6 +111,18 @@ impl<'i, E> BytesReader<'i, E> {
         self.input.clone().split_token_opt().map(|(byte, _)| byte)
     }
 
+    /// Read an array from input.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the length requirement to read could not be met.
+    pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_array(CoreOperation::ReadArray))
+    }
+
     /// Read a byte.
     ///
     /// # Errors

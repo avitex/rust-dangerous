@@ -265,6 +265,7 @@ pub enum CoreOperation {
     ReadF64Le,
     ReadF64Be,
     ReadChar,
+    ReadArray,
     // Errors
     RecoverIf,
     Verify,
@@ -331,6 +332,7 @@ impl CoreOperation {
             Self::ReadF64Le => "read a little-endian encoded f64",
             Self::ReadF64Be => "read a big-endian encoded f64",
             Self::ReadChar => "read a char",
+            Self::ReadArray => "read an array of bytes",
             Self::RecoverIf => "recover if a condition returns true",
             Self::Verify => "read and verify input",
             Self::Expect => "read and expect a value",
