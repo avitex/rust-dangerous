@@ -6,8 +6,6 @@ pub use self::length::ExpectedLength;
 pub use self::valid::ExpectedValid;
 pub use self::value::ExpectedValue;
 
-pub(crate) use self::length::Length;
-
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 

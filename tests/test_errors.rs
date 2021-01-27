@@ -229,8 +229,9 @@ fn test_expected_length_variant() {
         format!("{:#?}\n", error),
         indoc! {r#"
             ExpectedLength {
-                min: 5,
-                max: None,
+                len: AtLeast(
+                    5,
+                ),
                 input: Bytes {
                     bound: Start,
                     bytes: "123",
