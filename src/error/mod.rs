@@ -24,6 +24,7 @@ mod expected;
 mod fatal;
 #[cfg(feature = "retry")]
 mod invalid;
+mod length;
 #[cfg(feature = "retry")]
 mod retry;
 mod traits;
@@ -41,6 +42,7 @@ pub use self::fatal::Fatal;
 #[cfg(feature = "retry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::invalid::Invalid;
+pub use self::length::Length;
 #[cfg(feature = "retry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
@@ -48,4 +50,3 @@ pub use self::traits::{Details, Error, FromExpected, WithContext};
 pub use self::value::Value;
 
 pub(crate) use self::context::{with_context, OperationContext};
-pub(crate) use self::expected::Length;

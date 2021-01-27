@@ -1,17 +1,11 @@
 use crate::display::byte_count;
+use crate::error::Length;
 use crate::fmt;
 use crate::input::{Bytes, MaybeString};
 
 use super::ExpectedContext;
-
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
-
-// FIXME: consider making this public
-pub(crate) enum Length {
-    AtLeast(usize),
-    Exactly(usize),
-}
 
 /// An error representing a failed requirement for a length of
 /// [`Input`](crate::Input).
@@ -23,6 +17,7 @@ pub struct ExpectedLength<'i> {
     pub(crate) context: ExpectedContext,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<'i> ExpectedLength<'i> {
     /// The [`Input`](crate::Input) provided in the context when the error occurred.
     #[inline(always)]
@@ -44,62 +39,22 @@ impl<'i> ExpectedLength<'i> {
         Bytes::new(self.span, self.input.bound())
     }
 
-    /// The minimum length that was expected in a context.
+    /// The length that was expected in a context.
     ///
     /// This doesn't not take into account the section of input being processed
     /// when this error occurred. If you wish to work out the requirement to
     /// continue processing input use
     /// [`ToRetryRequirement::to_retry_requirement()`].
-    #[must_use]
     #[inline(always)]
-    pub fn min(&self) -> usize {
-        match self.len {
-            Length::AtLeast(min) | Length::Exactly(min) => min,
-        }
-    }
-
-    /// The maximum length that was expected in a context, if applicable.
-    ///
-    /// If max has a value, this signifies the [`Input`] exceeded it in some
-    /// way. An example of this would be [`Input::read_all()`], where there was
-    /// [`Input`] left over.
-    ///
-    /// [`Input`]: crate::Input
-    /// [`Input::read_all()`]: crate::Input::read_all()
-    #[must_use]
-    #[inline(always)]
-    pub fn max(&self) -> Option<usize> {
-        match self.len {
-            Length::AtLeast(_) => None,
-            Length::Exactly(max) => Some(max),
-        }
-    }
-
-    /// Returns `true` if an exact length was expected in a context.
-    #[inline]
-    #[must_use]
-    pub fn is_exact(&self) -> bool {
-        self.exact().is_some()
-    }
-
-    /// The exact length that was expected in a context, if applicable.
-    ///
-    /// Will return a value if `is_exact()` returns `true`.
-    #[inline]
-    #[must_use]
-    pub fn exact(&self) -> Option<usize> {
-        match self.len {
-            Length::AtLeast(_) => None,
-            Length::Exactly(exact) => Some(exact),
-        }
+    pub fn len(&self) -> Length {
+        self.len
     }
 }
 
 impl<'i> fmt::Debug for ExpectedLength<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExpectedLength")
-            .field("min", &self.min())
-            .field("max", &self.max())
+            .field("len", &self.len())
             .field("input", &self.input())
             .field("span", &self.span())
             .field("context", &self.context())
@@ -112,16 +67,7 @@ impl<'i> fmt::DisplayBase for ExpectedLength<'i> {
         w.write_str("found ")?;
         byte_count(w, self.span().len())?;
         w.write_str(" when ")?;
-        match self.len {
-            Length::AtLeast(min) => {
-                w.write_str("at least ")?;
-                byte_count(w, min)?;
-            }
-            Length::Exactly(exact) => {
-                w.write_str("exactly ")?;
-                byte_count(w, exact)?;
-            }
-        }
+        self.len.fmt(w)?;
         w.write_str(" was expected")
     }
 }
@@ -140,7 +86,7 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
             None
         } else {
             let had = self.span().len();
-            let needed = self.min();
+            let needed = self.len().min();
             RetryRequirement::from_had_and_needed(had, needed)
         }
     }
@@ -148,7 +94,7 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     /// Returns `true` if `max()` has a value.
     #[inline]
     fn is_fatal(&self) -> bool {
-        self.input.is_bound() || self.max().is_some()
+        self.input.is_bound() || self.len().max().is_some()
     }
 }
 
