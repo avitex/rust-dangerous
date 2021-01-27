@@ -7,12 +7,17 @@ use super::ExpectedContext;
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
 
+// FIXME: consider making this public
+pub(crate) enum Length {
+    AtLeast(usize),
+    Exactly(usize),
+}
+
 /// An error representing a failed requirement for a length of
 /// [`Input`](crate::Input).
 #[must_use = "error must be handled"]
 pub struct ExpectedLength<'i> {
-    pub(crate) min: usize,
-    pub(crate) max: Option<usize>,
+    pub(crate) len: Length,
     pub(crate) span: &'i [u8],
     pub(crate) input: MaybeString<'i>,
     pub(crate) context: ExpectedContext,
@@ -48,7 +53,10 @@ impl<'i> ExpectedLength<'i> {
     #[must_use]
     #[inline(always)]
     pub fn min(&self) -> usize {
-        self.min
+        match self.len {
+            Length::AtLeast(min) => min,
+            Length::Exactly(min) => min,
+        }
     }
 
     /// The maximum length that was expected in a context, if applicable.
@@ -62,14 +70,17 @@ impl<'i> ExpectedLength<'i> {
     #[must_use]
     #[inline(always)]
     pub fn max(&self) -> Option<usize> {
-        self.max
+        match self.len {
+            Length::AtLeast(_) => None,
+            Length::Exactly(max) => Some(max),
+        }
     }
 
     /// Returns `true` if an exact length was expected in a context.
     #[inline]
     #[must_use]
     pub fn is_exact(&self) -> bool {
-        Some(self.min) == self.max
+        self.exact().is_some()
     }
 
     /// The exact length that was expected in a context, if applicable.
@@ -78,10 +89,9 @@ impl<'i> ExpectedLength<'i> {
     #[inline]
     #[must_use]
     pub fn exact(&self) -> Option<usize> {
-        if self.is_exact() {
-            self.max
-        } else {
-            None
+        match self.len {
+            Length::AtLeast(_) => None,
+            Length::Exactly(exact) => Some(exact),
         }
     }
 }
@@ -103,26 +113,16 @@ impl<'i> fmt::DisplayBase for ExpectedLength<'i> {
         w.write_str("found ")?;
         byte_count(w, self.span().len())?;
         w.write_str(" when ")?;
-        match (self.min(), self.max()) {
-            (0, Some(max)) => {
-                w.write_str("at most ")?;
-                byte_count(w, max)
-            }
-            (min, None) => {
-                w.write_str("at least ")?;
-                byte_count(w, min)
-            }
-            (min, Some(max)) if min == max => {
-                w.write_str("exactly ")?;
-                byte_count(w, min)
-            }
-            (min, Some(max)) => {
+        match self.len {
+            Length::AtLeast(min) => {
                 w.write_str("at least ")?;
                 byte_count(w, min)?;
-                w.write_str(" and at most ")?;
-                byte_count(w, max)
             }
-        }?;
+            Length::Exactly(exact) => {
+                w.write_str("exactly ")?;
+                byte_count(w, exact)?;
+            }
+        }
         w.write_str(" was expected")
     }
 }
@@ -149,7 +149,7 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     /// Returns `true` if `max()` has a value.
     #[inline]
     fn is_fatal(&self) -> bool {
-        self.input.is_bound() || self.max.is_some()
+        self.input.is_bound() || self.max().is_some()
     }
 }
 
