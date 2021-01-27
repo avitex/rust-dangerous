@@ -48,3 +48,4 @@ pub use self::traits::{Details, Error, FromExpected, WithContext};
 pub use self::value::Value;
 
 pub(crate) use self::context::{with_context, OperationContext};
+pub(crate) use self::expected::Length;

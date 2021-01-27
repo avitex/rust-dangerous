@@ -1,7 +1,7 @@
 use core::str;
 
 use crate::display::InputDisplay;
-use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid};
+use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, Length};
 use crate::fmt;
 use crate::util::{slice, utf8};
 
@@ -67,8 +67,7 @@ impl<'i> String<'i> {
     {
         if self.is_empty() {
             Err(E::from(ExpectedLength {
-                min: 1,
-                max: None,
+                len: Length::AtLeast(1),
                 span: self.as_dangerous().as_bytes(),
                 input: self.clone().into_maybe_string(),
                 context: ExpectedContext {

@@ -5,8 +5,8 @@ use crate::display::InputDisplay;
 #[cfg(feature = "retry")]
 use crate::error::ToRetryRequirement;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, OperationContext,
-    Value, WithContext,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, Length,
+    OperationContext, Value, WithContext,
 };
 use crate::fmt::{Debug, Display, DisplayBase};
 use crate::reader::Reader;
@@ -152,8 +152,7 @@ pub trait Input<'i>: Private<'i> {
         match r.context(OperationContext("read all"), f) {
             Ok(ok) if r.at_end() => Ok(ok),
             Ok(_) => Err(E::from(ExpectedLength {
-                min: 0,
-                max: Some(0),
+                len: Length::Exactly(0),
                 span: r.take_remaining().as_dangerous_bytes(),
                 input: self.into_maybe_string(),
                 context: ExpectedContext {
@@ -246,8 +245,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     {
         self.clone().split_at_opt(mid).ok_or_else(|| {
             E::from(ExpectedLength {
-                min: mid,
-                max: None,
+                len: Length::AtLeast(mid),
                 span: self.as_dangerous_bytes(),
                 input: self.into_maybe_string(),
                 context: ExpectedContext {
@@ -278,8 +276,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     {
         self.clone().split_first_opt().ok_or_else(|| {
             E::from(ExpectedLength {
-                min: 1,
-                max: None,
+                len: Length::AtLeast(1),
                 span: self.as_dangerous_bytes(),
                 input: self.into_maybe_string(),
                 context: ExpectedContext {

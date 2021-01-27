@@ -5,7 +5,8 @@ use core::{iter, str};
 
 use crate::display::InputDisplay;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext, WithContext,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, Length, OperationContext,
+    WithContext,
 };
 use crate::fmt;
 use crate::util::{slice, utf8};
@@ -107,8 +108,7 @@ impl<'i> Bytes<'i> {
     {
         if self.is_empty() {
             Err(E::from(ExpectedLength {
-                min: 1,
-                max: None,
+                len: Length::AtLeast(1),
                 span: self.as_dangerous(),
                 input: self.clone().into_maybe_string(),
                 context: ExpectedContext {
@@ -136,8 +136,7 @@ impl<'i> Bytes<'i> {
     {
         if self.is_empty() {
             Err(E::from(ExpectedLength {
-                min: 1,
-                max: None,
+                len: Length::AtLeast(1),
                 span: self.as_dangerous(),
                 input: self.clone().into_maybe_string(),
                 context: ExpectedContext {
@@ -266,8 +265,7 @@ impl<'i> Bytes<'i> {
                         // get without checking bounds.
                         let first_invalid = unsafe { slice::first_unchecked(invalid) };
                         return Err(E::from(ExpectedLength {
-                            min: utf8::char_len(first_invalid),
-                            max: None,
+                            len: Length::AtLeast(utf8::char_len(first_invalid)),
                             span: invalid,
                             input: self.into_maybe_string(),
                             context: ExpectedContext {
