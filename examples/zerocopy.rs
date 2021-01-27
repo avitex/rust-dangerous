@@ -25,7 +25,7 @@ where
     loop {
         let s = r.take_while(|b| b != b',').to_dangerous_str::<E>()?;
         parts.push(s);
-        if !r.consume_u8_opt(b',') {
+        if !r.consume_opt(b',') {
             return Ok(parts);
         }
     }
