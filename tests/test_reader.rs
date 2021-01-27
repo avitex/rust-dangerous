@@ -119,28 +119,20 @@ fn test_skip() {
 
 #[test]
 fn test_skip_while() {
-    assert_eq!(
-        read_all!(b"hello!", |r| {
-            let v = r.skip_while(|c| c.is_ascii_alphabetic());
-            r.skip(1)?;
-            Ok(v)
-        })
-        .unwrap(),
-        5
-    );
+    read_all!(b"hello!", |r| {
+        r.skip_while(|c| c.is_ascii_alphabetic());
+        r.skip(1)
+    })
+    .unwrap();
 }
 
 #[test]
 fn test_try_skip_while() {
-    assert_eq!(
-        read_all!(b"hello!", |r| {
-            let v = r.try_skip_while(|c| Ok(c.is_ascii_alphabetic()))?;
-            r.skip(1)?;
-            Ok(v)
-        })
-        .unwrap(),
-        5
-    );
+    read_all!(b"hello!", |r| {
+        r.try_skip_while(|c| Ok(c.is_ascii_alphabetic()))?;
+        r.skip(1)
+    })
+    .unwrap()
 }
 
 #[test]
@@ -400,16 +392,16 @@ fn test_consume_opt() {
 #[test]
 fn test_consume_u8() {
     // Valid
-    read_all!(b"1", |r| { r.consume_u8(b'1') }).unwrap();
+    read_all!(b"1", |r| { r.consume(b'1') }).unwrap();
     // Invalid
     assert_eq!(
-        read_all!(b"1", |r| { r.consume_u8(b'2') })
+        read_all!(b"1", |r| { r.consume(b'2') })
             .unwrap_err()
             .to_retry_requirement(),
         None
     );
     assert_eq!(
-        read_all!(b"", |r| { r.consume_u8(b'1') })
+        read_all!(b"", |r| { r.consume(b'1') })
             .unwrap_err()
             .to_retry_requirement(),
         RetryRequirement::new(1)
@@ -419,10 +411,10 @@ fn test_consume_u8() {
 #[test]
 fn test_consume_u8_opt() {
     // Valid
-    assert!(read_all!(b"1", |r| { Ok(r.consume_u8_opt(b'1')) }).unwrap());
+    assert!(read_all!(b"1", |r| { Ok(r.consume_opt(b'1')) }).unwrap());
     // Invalid
     assert!(!read_all!(b"1", |r| {
-        let v = r.consume_u8_opt(b'2');
+        let v = r.consume_opt(b'2');
         r.skip(1)?;
         Ok(v)
     })

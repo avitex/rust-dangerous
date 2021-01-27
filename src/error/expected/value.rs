@@ -1,6 +1,5 @@
+use crate::error::Value;
 use crate::fmt;
-#[cfg(feature = "retry")]
-use crate::input::Input;
 use crate::input::{Bytes, MaybeString};
 
 use super::ExpectedContext;
@@ -8,17 +7,18 @@ use super::ExpectedContext;
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
 
-/// An error representing a failed exact value requirement of [`Input`].
+/// An error representing a failed exact value requirement of
+/// [`Input`](crate::Input).
 #[must_use = "error must be handled"]
 pub struct ExpectedValue<'i> {
     pub(crate) input: MaybeString<'i>,
     pub(crate) actual: &'i [u8],
-    pub(crate) expected: MaybeString<'i>,
+    pub(crate) expected: Value<'i>,
     pub(crate) context: ExpectedContext,
 }
 
 impl<'i> ExpectedValue<'i> {
-    /// The [`Input`] provided in the context when the error occurred.
+    /// The [`Input`](crate::Input) provided in the context when the error occurred.
     #[inline(always)]
     pub fn input(&self) -> MaybeString<'i> {
         self.input.clone()
@@ -31,16 +31,16 @@ impl<'i> ExpectedValue<'i> {
         self.context
     }
 
-    /// The [`Input`] that was found.
+    /// The [`Input`](crate::Input) that was found.
     #[inline(always)]
     pub fn found(&self) -> Bytes<'i> {
         Bytes::new(self.actual, self.input.bound())
     }
 
-    /// The [`Input`] value that was expected.
+    /// The [`Input`](crate::Input) value that was expected.
     #[inline(always)]
-    pub fn expected(&self) -> MaybeString<'i> {
-        self.expected.clone()
+    pub fn expected(&self) -> Value<'i> {
+        self.expected
     }
 }
 
@@ -74,7 +74,7 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
         if self.is_fatal() {
             None
         } else {
-            let needed = self.expected().into_bytes().len();
+            let needed = self.expected().as_bytes().len();
             let had = self.found().len();
             RetryRequirement::from_had_and_needed(had, needed)
         }
@@ -87,9 +87,8 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
         self.input.is_bound()
             || !self
                 .expected()
-                .into_bytes()
-                .as_dangerous()
-                .starts_with(self.found().into_bytes().as_dangerous())
+                .as_bytes()
+                .starts_with(self.found().as_dangerous())
     }
 }
 

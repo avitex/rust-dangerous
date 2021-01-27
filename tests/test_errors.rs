@@ -310,10 +310,9 @@ fn test_expected_value() {
                     bound: Start,
                     bytes: "123",
                 },
-                expected: Bytes {
-                    bound: Both,
-                    bytes: "124",
-                },
+                expected: Bytes(
+                    "124",
+                ),
                 context: ExpectedContext {
                     operation: "consume",
                     expected: "exact value",
@@ -399,7 +398,7 @@ fn test_invalid_error_details_span() {
         fn span(&self) -> Bytes<'i> {
             input!(b"not-a-proper-span")
         }
-        fn expected(&self) -> Option<MaybeString<'_>> {
+        fn expected(&self) -> Option<Value<'_>> {
             None
         }
         fn description(&self, w: &mut dyn Write) -> fmt::Result {

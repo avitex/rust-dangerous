@@ -5,13 +5,14 @@ use crate::display::InputDisplay;
 #[cfg(feature = "retry")]
 use crate::error::ToRetryRequirement;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext, WithContext,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, OperationContext,
+    Value, WithContext,
 };
 use crate::fmt::{Debug, Display, DisplayBase};
 use crate::reader::Reader;
 use crate::util::slice;
 
-use super::{Bound, Bytes, MaybeString};
+use super::{Bound, Bytes, MaybeString, Prefix, String};
 
 /// An [`Input`] is an immutable wrapper around bytes to be processed.
 ///
@@ -199,8 +200,19 @@ pub trait Input<'i>: Private<'i> {
 // Private requirements for any `Input`
 
 pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
+    /// Smallest unit that can be consumed.
+    type Token: Token;
+
+    /// Iterator of tokens.
+    ///
+    /// Returns the byte index of the token and the token itself.
+    type TokenIter: Iterator<Item = (usize, Self::Token)>;
+
     /// Returns an empty `Input` pointing the end of `self`.
     fn end(self) -> Self;
+
+    /// Returns a token iterator.
+    fn tokens(self) -> Self::TokenIter;
 
     // Return self with its end bound removed.
     fn into_unbound_end(self) -> Self;
@@ -220,6 +232,149 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     #[inline(always)]
     fn as_dangerous_bytes(&self) -> &'i [u8] {
         self.clone().into_bytes().as_dangerous()
+    }
+
+    /// Splits the input into two at `mid`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `mid > self.len()`.
+    #[inline(always)]
+    fn split_at<E>(self, mid: usize, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.clone().split_at_opt(mid).ok_or_else(|| {
+            E::from(ExpectedLength {
+                min: mid,
+                max: None,
+                span: self.as_dangerous_bytes(),
+                input: self.into_maybe_string(),
+                context: ExpectedContext {
+                    operation,
+                    expected: "enough input",
+                },
+            })
+        })
+    }
+
+    #[inline(always)]
+    fn split_first_opt(self) -> Option<(Self::Token, Self)> {
+        self.clone().tokens().next().map(|(_, t)| {
+            let (_, tail) = unsafe { self.split_at_byte_unchecked(t.byte_len()) };
+            (t, tail)
+        })
+    }
+
+    /// Splits the input into the first byte and whatever remains.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is empty.
+    #[inline(always)]
+    fn split_first<E>(self, operation: &'static str) -> Result<(Self::Token, Self), E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.clone().split_first_opt().ok_or_else(|| {
+            E::from(ExpectedLength {
+                min: 1,
+                max: None,
+                span: self.as_dangerous_bytes(),
+                input: self.into_maybe_string(),
+                context: ExpectedContext {
+                    operation,
+                    expected: "enough input",
+                },
+            })
+        })
+    }
+
+    #[inline(always)]
+    fn split_prefix_opt<P>(self, prefix: P) -> (Option<Self>, Self)
+    where
+        P: Prefix<Self>,
+    {
+        if prefix.is_prefix_of(&self) {
+            // SAFETY: we just validated that prefix is within the input so its
+            // length is a valid index.
+            let (head, tail) = unsafe { self.split_at_byte_unchecked(prefix.byte_len()) };
+            (Some(head), tail)
+        } else {
+            (None, self)
+        }
+    }
+
+    #[inline(always)]
+    fn split_prefix<P, E>(self, prefix: P, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Prefix<Self> + Into<Value<'i>>,
+    {
+        match self.clone().split_prefix_opt(&prefix) {
+            (Some(head), tail) => Ok((head, tail)),
+            (None, unmatched) => {
+                let bytes = unmatched.as_dangerous_bytes();
+                let prefix_len = prefix.byte_len();
+                let actual = if bytes.len() > prefix_len {
+                    &bytes[..prefix_len]
+                } else {
+                    &bytes
+                };
+                Err(E::from(ExpectedValue {
+                    actual,
+                    expected: prefix.into(),
+                    input: self.into_maybe_string(),
+                    context: ExpectedContext {
+                        operation,
+                        expected: "exact value",
+                    },
+                }))
+            }
+        }
+    }
+
+    /// Splits the input when the provided function returns `false`.
+    #[inline(always)]
+    fn split_while<F>(self, mut pred: F) -> (Self, Self)
+    where
+        F: FnMut(Self::Token) -> bool,
+    {
+        // For each token, lets make sure it matches the predicate.
+        for (i, token) in self.clone().tokens() {
+            // Check if the token doesn't match the predicate.
+            if !pred(token) {
+                // Split the input up to, but not including the token. SAFETY:
+                // `i` derived from the token iterator is always a valid index
+                // for the input.
+                let (head, tail) = unsafe { self.split_at_byte_unchecked(i) };
+                // Return the split input parts.
+                return (head, tail);
+            }
+        }
+        (self.clone(), self.end())
+    }
+
+    /// Tries to split the input while the provided function returns `false`.
+    #[inline(always)]
+    fn try_split_while<F, E>(self, mut f: F, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: WithContext<'i>,
+        F: FnMut(Self::Token) -> Result<bool, E>,
+    {
+        // For each token, lets make sure it matches the predicate.
+        for (i, token) in self.clone().tokens() {
+            // Check if the token doesn't match the predicate.
+            if !with_context(self.clone(), OperationContext(operation), || f(token))? {
+                // Split the input up to, but not including the token.
+                // `i` derived from the token iterator is always a valid index
+                // for the input.
+                let (head, tail) = unsafe { self.split_at_byte_unchecked(i) };
+                // Return the split input parts.
+                return Ok((head, tail));
+            }
+        }
+        Ok((self.clone(), self.end()))
     }
 
     #[inline(always)]
@@ -360,3 +515,95 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 }
 
 impl<'i, T> PrivateExt<'i> for T where T: Input<'i> {}
+
+///////////////////////////////////////////////////////////////////////////////
+// Token
+
+pub unsafe trait Token: Copy + 'static {
+    fn byte_len(self) -> usize;
+}
+
+unsafe impl Token for u8 {
+    #[inline(always)]
+    fn byte_len(self) -> usize {
+        1
+    }
+}
+
+unsafe impl Token for char {
+    #[inline(always)]
+    fn byte_len(self) -> usize {
+        self.len_utf8()
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// IntoInput
+
+pub trait IntoInput<'i>: Copy {
+    type Input: Input<'i>;
+
+    fn into_input(self) -> Self::Input;
+}
+
+impl<'i, T> IntoInput<'i> for &T
+where
+    T: IntoInput<'i>,
+{
+    type Input = T::Input;
+
+    #[inline(always)]
+    fn into_input(self) -> Self::Input {
+        (*self).into_input()
+    }
+}
+
+impl<'i> IntoInput<'i> for &'i [u8] {
+    type Input = Bytes<'i>;
+
+    #[inline(always)]
+    fn into_input(self) -> Self::Input {
+        Bytes::new(self, Bound::Start)
+    }
+}
+
+impl<'i> IntoInput<'i> for &'i str {
+    type Input = String<'i>;
+
+    #[inline(always)]
+    fn into_input(self) -> Self::Input {
+        String::new(self, Bound::Start)
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// IntoInput: array impl
+
+#[cfg(feature = "unstable-const-generics")]
+impl<'i, const N: usize> IntoInput<'i> for &'i [u8; N] {
+    type Input = Bytes<'i>;
+
+    #[inline(always)]
+    fn into_input(self) -> Self::Input {
+        Bytes::new(self, Bound::Start)
+    }
+}
+
+#[cfg(not(feature = "unstable-const-generics"))]
+macro_rules! impl_array_into_input {
+    ($($n:expr),*) => {
+        $(
+            impl<'i> IntoInput<'i> for &'i [u8; $n] {
+                type Input = Bytes<'i>;
+
+                #[inline(always)]
+                fn into_input(self) -> Self::Input {
+                    Bytes::new(self, Bound::Start)
+                }
+            }
+        )*
+    };
+}
+
+#[cfg(not(feature = "unstable-const-generics"))]
+for_common_array_sizes!(impl_array_into_input);

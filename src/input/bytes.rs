@@ -1,16 +1,16 @@
 #[cfg(not(feature = "unstable-const-generics"))]
 use core::convert::TryInto;
-use core::str;
+use core::slice::Iter as SliceIter;
+use core::{iter, str};
 
 use crate::display::InputDisplay;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, OperationContext,
-    WithContext,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, OperationContext, WithContext,
 };
 use crate::fmt;
-use crate::util::{byte, slice, utf8};
+use crate::util::{slice, utf8};
 
-use super::{Bound, Input, MaybeString, Private, String};
+use super::{Bound, Input, MaybeString, Private, PrivateExt, String};
 
 /// Raw [`Input`].
 #[must_use = "input must be consumed"]
@@ -210,202 +210,6 @@ impl<'i> Input<'i> for Bytes<'i> {
 
 impl<'i> Bytes<'i> {
     #[inline(always)]
-    pub(crate) fn has_prefix(&self, prefix: &[u8]) -> bool {
-        self.as_dangerous().starts_with(prefix)
-    }
-
-    /// Returns the first byte in the input.
-    #[inline(always)]
-    pub(crate) fn first_opt(&self) -> Option<u8> {
-        self.as_dangerous().first().copied()
-    }
-
-    /// Returns the first byte in the input.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the input is empty.
-    #[inline(always)]
-    pub(crate) fn first<E>(self, operation: &'static str) -> Result<u8, E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.first_opt().ok_or_else(|| {
-            E::from(ExpectedLength {
-                min: 1,
-                max: None,
-                span: self.as_dangerous(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
-                    operation,
-                    expected: "a byte",
-                },
-            })
-        })
-    }
-
-    /// Splits the input into two at `mid`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if `mid > self.len()`.
-    #[inline(always)]
-    pub(crate) fn split_at<E>(
-        self,
-        mid: usize,
-        operation: &'static str,
-    ) -> Result<(Bytes<'i>, Bytes<'i>), E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.clone().split_at_opt(mid).ok_or_else(|| {
-            E::from(ExpectedLength {
-                min: mid,
-                max: None,
-                span: self.as_dangerous(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
-                    operation,
-                    expected: "enough input",
-                },
-            })
-        })
-    }
-
-    #[inline(always)]
-    pub(crate) fn split_prefix<E>(
-        self,
-        prefix: &'i [u8],
-        operation: &'static str,
-    ) -> Result<(Bytes<'i>, Bytes<'i>), E>
-    where
-        E: From<ExpectedValue<'i>>,
-    {
-        let actual = match self.clone().split_at_opt(prefix.len()) {
-            Some((head, tail)) if head == prefix => return Ok((head, tail)),
-            Some((head, _)) => head.as_dangerous(),
-            None => self.as_dangerous(),
-        };
-        Err(E::from(ExpectedValue {
-            actual,
-            expected: MaybeString::from_bound_bytes(prefix),
-            input: self.into_maybe_string(),
-            context: ExpectedContext {
-                operation,
-                expected: "exact value",
-            },
-        }))
-    }
-
-    #[inline(always)]
-    pub(crate) fn split_prefix_u8<E>(
-        self,
-        prefix: u8,
-        operation: &'static str,
-    ) -> Result<(Bytes<'i>, Bytes<'i>), E>
-    where
-        E: From<ExpectedValue<'i>>,
-    {
-        let actual = match self.clone().split_at_opt(1) {
-            Some((head, tail)) if head == [prefix][..] => return Ok((head, tail)),
-            Some((head, _)) => head.as_dangerous(),
-            None => self.as_dangerous(),
-        };
-        Err(E::from(ExpectedValue {
-            actual,
-            expected: MaybeString::from_bound_bytes(byte::to_slice(prefix)),
-            input: self.into_maybe_string(),
-            context: ExpectedContext {
-                operation,
-                expected: "exact value",
-            },
-        }))
-    }
-
-    #[inline(always)]
-    pub(crate) fn split_prefix_opt(self, prefix: &[u8]) -> (Option<Bytes<'i>>, Bytes<'i>) {
-        match self.clone().split_at_opt(prefix.len()) {
-            Some((head, tail)) if head == prefix => (Some(head), tail),
-            _ => (None, self),
-        }
-    }
-
-    /// Splits the input into the first byte and whatever remains.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the input is empty.
-    #[inline(always)]
-    pub(crate) fn split_first<E>(self, operation: &'static str) -> Result<(u8, Bytes<'i>), E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        match self.split_at(1, operation) {
-            Ok((head, tail)) => Ok((head.as_dangerous()[0], tail)),
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Splits the input when the provided function returns `false`.
-    #[inline(always)]
-    pub(crate) fn split_while<F>(self, mut pred: F) -> (Bytes<'i>, Bytes<'i>)
-    where
-        F: FnMut(u8) -> bool,
-    {
-        let bytes = self.as_dangerous();
-        // For each byte, lets make sure it matches the predicate.
-        for (i, byte) in bytes.iter().enumerate() {
-            // Check if the byte doesn't match the predicate.
-            if !pred(*byte) {
-                // Split the input up to, but not including the byte.
-                // SAFETY: `i` is always a valid index for bytes, derived from the enumerate iterator.
-                let (head, tail) = unsafe { slice::split_at_unchecked(bytes, i) };
-                // Because we hit the predicate it doesn't matter if we
-                // have more input, this will always return the same.
-                // This means we know the input has a bound.
-                let head = Bytes::new(head, self.bound().close_end());
-                // For the tail we derive the bound constaint from self.
-                let tail = Bytes::new(tail, self.bound());
-                // Return the split input parts.
-                return (head, tail);
-            }
-        }
-        (self.clone(), self.end())
-    }
-
-    /// Tries to split the input while the provided function returns `false`.
-    #[inline(always)]
-    pub(crate) fn try_split_while<F, E>(
-        self,
-        mut f: F,
-        operation: &'static str,
-    ) -> Result<(Bytes<'i>, Bytes<'i>), E>
-    where
-        E: WithContext<'i>,
-        F: FnMut(u8) -> Result<bool, E>,
-    {
-        let bytes = self.as_dangerous();
-        // For each byte, lets make sure it matches the predicate.
-        for (i, byte) in bytes.iter().enumerate() {
-            // Check if the byte doesn't match the predicate.
-            if !with_context(self.clone(), OperationContext(operation), || f(*byte))? {
-                // Split the input up to, but not including the byte.
-                // SAFETY: `i` is always a valid index for bytes, derived from the enumerate iterator.
-                let (head, tail) = unsafe { slice::split_at_unchecked(bytes, i) };
-                // Because we hit the predicate it doesn't matter if we
-                // have more input, this will always return the same.
-                // This means we know the head input has a bound.
-                let head = Bytes::new(head, self.bound().close_end());
-                // For the tail we derive the bound constaint from self.
-                let tail = Bytes::new(tail, self.bound());
-                // Return the split input parts.
-                return Ok((head, tail));
-            }
-        }
-        Ok((self.clone(), self.end()))
-    }
-
-    #[inline(always)]
     pub(crate) fn split_str_while<F, E>(
         self,
         mut f: F,
@@ -565,9 +369,17 @@ impl<'i> Bytes<'i> {
 }
 
 impl<'i> Private<'i> for Bytes<'i> {
+    type Token = u8;
+    type TokenIter = iter::Enumerate<iter::Copied<SliceIter<'i, u8>>>;
+
     #[inline(always)]
     fn end(self) -> Self {
         Self::new(slice::end(self.as_dangerous()), self.bound().for_end())
+    }
+
+    #[inline(always)]
+    fn tokens(self) -> Self::TokenIter {
+        self.as_dangerous().iter().copied().enumerate()
     }
 
     #[cfg(feature = "retry")]

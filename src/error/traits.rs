@@ -1,7 +1,7 @@
 use crate::fmt;
 use crate::input::{Bytes, Input, MaybeString};
 
-use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue};
+use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue, Value};
 
 /// Convenience trait requiring [`WithContext`], [`FromExpected`].
 pub trait Error<'i>: WithContext<'i> + FromExpected<'i> {}
@@ -50,7 +50,7 @@ pub trait Details<'i> {
     fn span(&self) -> Bytes<'i>;
 
     /// The expected value, if applicable.
-    fn expected(&self) -> Option<MaybeString<'_>>;
+    fn expected(&self) -> Option<Value<'_>>;
 
     /// The description of what went wrong while processing the input.
     ///

@@ -61,14 +61,14 @@ where
     skip_whitespace(r);
     r.context("json array", |r| {
         let mut items = Vec::new();
-        r.consume_u8(b'[')?;
+        r.consume(b'[')?;
         skip_whitespace(r);
-        if !r.peek_u8_eq(b']') {
+        if !r.peek_eq(b']') {
             loop {
                 let val = read_value(r)?;
                 skip_whitespace(r);
                 items.push(val);
-                if !r.at_end() && r.peek_u8_eq(b',') {
+                if !r.at_end() && r.peek_eq(b',') {
                     r.skip(1)?;
                     continue;
                 } else {
@@ -77,7 +77,7 @@ where
             }
         }
         skip_whitespace(r);
-        r.consume_u8(b']')?;
+        r.consume(b']')?;
         Ok(items)
     })
 }
@@ -89,18 +89,18 @@ where
     skip_whitespace(r);
     r.context("json object", |r| {
         let mut items = Vec::new();
-        r.consume_u8(b'{')?;
+        r.consume(b'{')?;
         skip_whitespace(r);
-        if !r.peek_u8_eq(b'}') {
+        if !r.peek_eq(b'}') {
             loop {
                 let key = r.context("json object key", read_str)?;
                 skip_whitespace(r);
-                r.consume_u8(b':')?;
+                r.consume(b':')?;
                 skip_whitespace(r);
                 let val = read_value(r)?;
                 skip_whitespace(r);
                 items.push((key, val));
-                if !r.at_end() && r.peek_u8_eq(b',') {
+                if !r.at_end() && r.peek_eq(b',') {
                     r.skip(1)?;
                     continue;
                 } else {
@@ -108,7 +108,7 @@ where
                 }
             }
         }
-        r.consume_u8(b'}')?;
+        r.consume(b'}')?;
         Ok(items)
     })
 }
@@ -119,7 +119,7 @@ where
 {
     skip_whitespace(r);
     r.context("json string", |r| {
-        r.consume_u8(b'"')?;
+        r.consume(b'"')?;
         let mut last_was_escape = false;
         let s = r.take_while(|c| match c {
             b'\\' => {
@@ -136,7 +136,7 @@ where
                 true
             }
         });
-        r.consume_u8(b'"')?;
+        r.consume(b'"')?;
         s.to_dangerous_str()
     })
 }
