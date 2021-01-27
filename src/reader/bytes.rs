@@ -1,50 +1,9 @@
-use crate::error::{ExpectedLength, ExpectedValid, ExpectedValue, WithContext};
-use crate::input::{Bytes, Input, Private, String};
+use crate::error::{ExpectedLength, ExpectedValid, WithContext};
+use crate::input::{Input, PrivateExt, String};
 
 use super::BytesReader;
 
 impl<'i, E> BytesReader<'i, E> {
-    /// Skip `len` number of bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the length requirement to skip could not be met.
-    #[inline]
-    pub fn skip(&mut self, len: usize) -> Result<(), E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.try_advance(|input| input.split_at(len, "skip"))
-            .map(drop)
-    }
-
-    /// Skip a length of input while a predicate check remains true.
-    ///
-    /// Returns the total length of input skipped.
-    pub fn skip_while<F>(&mut self, pred: F) -> usize
-    where
-        F: FnMut(u8) -> bool,
-    {
-        self.advance(|input| input.split_while(pred)).len()
-    }
-
-    /// Try skip a length of input while a predicate check remains successful
-    /// and true.
-    ///
-    /// Returns the total length of input skipped.
-    ///
-    /// # Errors
-    ///
-    /// Returns any error the provided function does.
-    pub fn try_skip_while<F>(&mut self, pred: F) -> Result<usize, E>
-    where
-        E: WithContext<'i>,
-        F: FnMut(u8) -> Result<bool, E>,
-    {
-        self.try_advance(|input| input.try_split_while(pred, "try skip while"))
-            .map(|head| head.len())
-    }
-
     /// Skip a length of string input while a predicate check remains true.
     ///
     /// Returns the total length of input skipped in bytes.
@@ -85,18 +44,6 @@ impl<'i, E> BytesReader<'i, E> {
             .map(|head| head.byte_len())
     }
 
-    /// Read a length of input.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the length requirement to read could not be met.
-    pub fn take(&mut self, len: usize) -> Result<Bytes<'i>, E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.try_advance(|input| input.split_at(len, "take"))
-    }
-
     /// Read all of the remaining string input.
     ///
     /// # Errors
@@ -111,28 +58,6 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
     {
         self.try_advance(|input| input.split_str_while(|_| true, "try take remaining str"))
-    }
-
-    /// Read a length of input while a predicate check remains true.
-    pub fn take_while<F>(&mut self, pred: F) -> Bytes<'i>
-    where
-        F: FnMut(u8) -> bool,
-    {
-        self.advance(|input| input.split_while(pred))
-    }
-
-    /// Try read a length of input while a predicate check remains successful
-    /// and true.
-    ///
-    /// # Errors
-    ///
-    /// Returns any error the provided function does.
-    pub fn try_take_while<F>(&mut self, pred: F) -> Result<Bytes<'i>, E>
-    where
-        E: WithContext<'i>,
-        F: FnMut(u8) -> Result<bool, E>,
-    {
-        self.try_advance(|input| input.try_split_while(pred, "try take while"))
     }
 
     /// Read a length of string input while a predicate check remains true.
@@ -168,41 +93,6 @@ impl<'i, E> BytesReader<'i, E> {
         self.try_advance(|input| input.try_split_str_while(pred, "try take str while"))
     }
 
-    /// Peek a length of input.
-    ///
-    /// The function lifetime is to prevent the peeked `Input` being used as a
-    /// value in a parsed structure. Peeked values should only be used in
-    /// choosing a correct parse path.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the length requirement to peek could not be met.
-    pub fn peek<'p>(&'p self, len: usize) -> Result<Bytes<'p>, E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        match self.input.clone().split_at(len, "peek") {
-            Ok((head, _)) => Ok(head),
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Peek a length of input.
-    ///
-    /// This is equivalent to `peek` but does not return an error. Don't use
-    /// this function if you want an error if there isn't enough input.
-    #[must_use = "peek result must be used"]
-    pub fn peek_opt(&self, len: usize) -> Option<Bytes<'_>> {
-        self.input.clone().split_at_opt(len).map(|(head, _)| head)
-    }
-
-    /// Returns `true` if `bytes` is next in the `Reader`.
-    #[inline]
-    #[must_use = "peek result must be used"]
-    pub fn peek_eq(&self, bytes: &[u8]) -> bool {
-        self.input.has_prefix(bytes)
-    }
-
     /// Peek the next byte in the input without mutating the `Reader`.
     ///
     /// # Errors
@@ -213,7 +103,10 @@ impl<'i, E> BytesReader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.input.clone().first("peek u8")
+        self.input
+            .clone()
+            .split_first("peek u8")
+            .map(|(byte, _)| byte)
     }
 
     /// Peek the next byte in the input without mutating the `Reader`.
@@ -223,69 +116,7 @@ impl<'i, E> BytesReader<'i, E> {
     #[inline]
     #[must_use = "peek result must be used"]
     pub fn peek_u8_opt(&self) -> Option<u8> {
-        self.input.first_opt()
-    }
-
-    /// Returns `true` if `byte` is next in the `Reader`.
-    #[inline]
-    #[must_use = "peek result must be used"]
-    pub fn peek_u8_eq(&self, byte: u8) -> bool {
-        self.peek_eq(&[byte])
-    }
-
-    /// Consume expected bytes.
-    ///
-    /// Doesn't effect the internal state of the `Reader` if the bytes couldn't
-    /// be consumed.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the bytes could not be consumed.
-    pub fn consume(&mut self, bytes: &'i [u8]) -> Result<(), E>
-    where
-        E: From<ExpectedValue<'i>>,
-    {
-        self.try_advance(|input| input.split_prefix(bytes, "consume"))
-            .map(drop)
-    }
-
-    /// Consume optional bytes.
-    ///
-    /// Returns `true` if the bytes were consumed, `false` if not.
-    ///
-    /// Doesn't effect the internal state of the `Reader` if the bytes couldn't
-    /// be consumed.
-    pub fn consume_opt(&mut self, bytes: &[u8]) -> bool {
-        self.advance(|input| {
-            let (prefix, next) = input.split_prefix_opt(bytes);
-            (prefix.is_some(), next)
-        })
-    }
-
-    /// Consume an expected byte.
-    ///
-    /// Doesn't effect the internal state of the `Reader` if the byte couldn't
-    /// be consumed.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the byte could not be consumed.
-    pub fn consume_u8(&mut self, byte: u8) -> Result<(), E>
-    where
-        E: From<ExpectedValue<'i>>,
-    {
-        self.try_advance(|input| input.split_prefix_u8(byte, "consume u8"))
-            .map(drop)
-    }
-
-    /// Consume an optional byte.
-    ///
-    /// Returns `true` if the byte was consumed, `false` if not.
-    ///
-    /// Doesn't effect the internal state of the `Reader` if the byte couldn't
-    /// be consumed.
-    pub fn consume_u8_opt(&mut self, byte: u8) -> bool {
-        self.consume_opt(&[byte])
+        self.input.clone().split_first_opt().map(|(byte, _)| byte)
     }
 
     /// Read an array from input.

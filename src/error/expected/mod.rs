@@ -13,7 +13,9 @@ use crate::display::ErrorDisplay;
 use crate::fmt;
 use crate::input::{Bytes, Input, MaybeString};
 
-use super::{Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, WithContext};
+use super::{
+    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, Value, WithContext,
+};
 
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
@@ -29,7 +31,7 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///   stacks.
 /// - It is generally recommended for better performance to box `Expected` if
 ///   the structures being returned from parsing are smaller than or equal to
-///   `~128 bytes`. This is because the `Expected` structure is `184 - 208
+///   `~128 bytes`. This is because the `Expected` structure is `176 - 200
 ///   bytes` large on 64 bit systems and successful parses may be hindered by
 ///   the time to move the `Result<T, Expected>` value. By boxing `Expected` the
 ///   size becomes only `8 bytes`. When in doubt, write a benchmark.
@@ -103,7 +105,7 @@ where
         }
     }
 
-    fn expected(&self) -> Option<MaybeString<'i>> {
+    fn expected(&self) -> Option<Value<'i>> {
         match &self.kind {
             ExpectedKind::Value(err) => Some(err.expected()),
             ExpectedKind::Valid(_) | ExpectedKind::Length(_) => None,
@@ -263,13 +265,13 @@ mod tests {
     #[cfg(all(target_pointer_width = "64", not(feature = "full-context")))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 184);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 176);
     }
 
     #[test]
     #[cfg(all(target_pointer_width = "64", feature = "full-context"))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 208);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 200);
     }
 }

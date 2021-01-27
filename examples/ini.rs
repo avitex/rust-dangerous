@@ -79,7 +79,7 @@ where
     }
 
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
-    while !(r.at_end() || r.peek_u8_eq(b'[')) {
+    while !(r.at_end() || r.peek_eq(b'[')) {
         r.context("property", |r| {
             skip_whitespace_or_comment(r, ConsumeTo::NextToken);
             let name = r.context("name", |r| {
@@ -87,7 +87,7 @@ where
             })?;
             skip_whitespace_or_comment(r, ConsumeTo::EndOfLine);
 
-            r.consume_u8(b'=')?;
+            r.consume(b'=')?;
 
             skip_whitespace_or_comment(r, ConsumeTo::EndOfLine);
             let value = r.context("value", |r| {
@@ -108,13 +108,13 @@ where
     E: Error<'i>,
 {
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
-    r.consume_u8(b'[')?;
+    r.consume(b'[')?;
     let name = r.context("section name", |r| {
         r.take_while(|c| c != b']' && c != b'\n')
             .to_dangerous_non_empty_str()
             .map(str::trim)
     })?;
-    r.consume_u8(b']')?;
+    r.consume(b']')?;
 
     r.verify("newline after section", |r| {
         r.take_while(|c| c.is_ascii_whitespace())
@@ -133,8 +133,8 @@ enum ConsumeTo {
 
 fn skip_whitespace_or_comment<E>(r: &mut BytesReader<'_, E>, to_where: ConsumeTo) {
     fn skip_comment<E>(r: &mut BytesReader<E>) -> usize {
-        if r.peek_u8_eq(b';') {
-            r.skip_while(|c| c != b'\n')
+        if r.peek_eq(b';') {
+            r.take_while(|c| c != b'\n').len()
         } else {
             0
         }
@@ -143,13 +143,15 @@ fn skip_whitespace_or_comment<E>(r: &mut BytesReader<'_, E>, to_where: ConsumeTo
     let (mut last, mut current) = (0, 0);
     loop {
         current += skip_comment(r);
-        current += r.skip_while(|c| {
-            let iwb = c.is_ascii_whitespace();
-            iwb && match to_where {
-                ConsumeTo::NextToken => true,
-                ConsumeTo::EndOfLine => c != b'\n',
-            }
-        });
+        current += r
+            .take_while(|c| {
+                let iwb = c.is_ascii_whitespace();
+                iwb && match to_where {
+                    ConsumeTo::NextToken => true,
+                    ConsumeTo::EndOfLine => c != b'\n',
+                }
+            })
+            .len();
         if last == current {
             break;
         }

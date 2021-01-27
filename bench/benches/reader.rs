@@ -6,14 +6,14 @@ fn bench_consume(c: &mut Criterion) {
     c.bench_function("consume_u8_ok", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 1]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.consume_u8(1))
+                .read_all(|r: &mut BytesReader<'_, Invalid>| r.consume(1))
                 .unwrap();
         })
     });
     c.bench_function("consume_u8_err", |b| {
         b.iter(|| {
             let _ = input(black_box(&[1u8; 1]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.consume_u8(2))
+                .read_all(|r: &mut BytesReader<'_, Invalid>| r.consume(2))
                 .unwrap_err();
         })
     });
@@ -78,7 +78,7 @@ fn bench_peek_eq(c: &mut Criterion) {
         b.iter(|| {
             input(black_box(&[1u8; 2]))
                 .read_all(|r: &mut BytesReader<'_, Invalid>| {
-                    if r.peek_u8_eq(1) {
+                    if r.peek_eq(1) {
                         r.skip(2)
                     } else {
                         r.skip(0)

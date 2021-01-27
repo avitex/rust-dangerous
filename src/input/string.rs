@@ -155,11 +155,19 @@ impl<'i> Input<'i> for String<'i> {
 }
 
 impl<'i> Private<'i> for String<'i> {
+    type Token = char;
+    type TokenIter = str::CharIndices<'i>;
+
     #[inline(always)]
     fn end(self) -> Self {
         Self {
             utf8: self.utf8.end(),
         }
+    }
+
+    #[inline(always)]
+    fn tokens(self) -> Self::TokenIter {
+        self.as_dangerous().char_indices()
     }
 
     #[inline(always)]

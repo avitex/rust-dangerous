@@ -27,6 +27,7 @@ mod invalid;
 #[cfg(feature = "retry")]
 mod retry;
 mod traits;
+mod value;
 
 #[cfg(feature = "full-context")]
 #[cfg_attr(docsrs, doc(cfg(feature = "full-context")))]
@@ -44,5 +45,6 @@ pub use self::invalid::Invalid;
 #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
 pub use self::traits::{Details, Error, FromExpected, WithContext};
+pub use self::value::Value;
 
 pub(crate) use self::context::{with_context, OperationContext};

@@ -105,7 +105,7 @@ where
 {
     r.context("message", |r| {
         // Expect version 1
-        r.context("version", |r| r.consume_u8(0x01))?;
+        r.context("version", |r| r.consume(0x01))?;
         // Read the body length
         let body_len = r.context("body len", |r| r.read_u8())?;
         // Take the body input

@@ -49,10 +49,6 @@ impl<'i> MaybeString<'i> {
             Self::String(v) => v.bound(),
         }
     }
-
-    pub(crate) fn from_bound_bytes(bytes: &'i [u8]) -> Self {
-        Self::Bytes(Bytes::new(bytes, Bound::Both))
-    }
 }
 
 impl<'i> Clone for MaybeString<'i> {
