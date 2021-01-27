@@ -42,6 +42,14 @@ impl Invalid {
             retry_requirement: None,
         }
     }
+
+    /// Create a retryable `Invalid` error.
+    #[inline(always)]
+    pub fn retry(requirement: RetryRequirement) -> Self {
+        Self {
+            retry_requirement: Some(requirement),
+        }
+    }
 }
 
 impl fmt::Debug for Invalid {
