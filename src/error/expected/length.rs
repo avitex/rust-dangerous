@@ -54,8 +54,7 @@ impl<'i> ExpectedLength<'i> {
     #[inline(always)]
     pub fn min(&self) -> usize {
         match self.len {
-            Length::AtLeast(min) => min,
-            Length::Exactly(min) => min,
+            Length::AtLeast(min) | Length::Exactly(min) => min,
         }
     }
 
