@@ -5,7 +5,7 @@ use crate::input::{Bytes, Input, Private};
 use super::{InputDisplay, PreferredFormat};
 
 const DEFAULT_MAX_WIDTH: usize = 80;
-const INVALID_SPAN_ERROR: &'static str = "\
+const INVALID_SPAN_ERROR: &str = "\
 note: error span is not within the error input indicating the
       concrete error being used has a bug. Consider raising an
       issue with the maintainer!
