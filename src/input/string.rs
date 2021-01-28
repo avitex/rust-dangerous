@@ -8,6 +8,7 @@ use crate::util::{slice, utf8};
 use super::{Bound, Bytes, Input, MaybeString, Private};
 
 /// UTF-8 [`Input`].
+#[derive(Clone)]
 #[must_use = "input must be consumed"]
 pub struct String<'i> {
     utf8: Bytes<'i>,
@@ -198,15 +199,6 @@ impl<'i> Private<'i> for String<'i> {
             String::new(head, self.bound().close_end()),
             String::new(tail, self.bound()),
         )
-    }
-}
-
-impl<'i> Clone for String<'i> {
-    #[inline(always)]
-    fn clone(&self) -> Self {
-        Self {
-            utf8: self.utf8.clone(),
-        }
     }
 }
 

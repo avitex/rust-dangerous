@@ -106,6 +106,7 @@ impl InvalidChar {
 // CharIter
 
 /// Char iterator over unvalidated bytes.
+#[derive(Clone)]
 pub(crate) struct CharIter<'i> {
     forward: usize,
     backward: usize,
@@ -204,12 +205,6 @@ impl<'i> DoubleEndedIterator for CharIter<'i> {
             };
             Some(result)
         }
-    }
-}
-
-impl<'i> Clone for CharIter<'i> {
-    fn clone(&self) -> Self {
-        Self { ..*self }
     }
 }
 

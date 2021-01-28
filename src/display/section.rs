@@ -62,6 +62,7 @@ enum Visible<'a> {
     BytesAsciiPair(&'a [u8], &'a [u8]),
 }
 
+#[derive(Clone)]
 pub(super) struct Section<'a> {
     full: &'a [u8],
     visible: Visible<'a>,
@@ -217,15 +218,6 @@ impl<'a> Section<'a> {
             Visible::BytesAsciiPair(left, right) => writer.write_bytes_sides(left, right, true),
             Visible::StrPair(left, right) => writer.write_str_sides(left, right, false),
             Visible::StrCjkPair(left, right) => writer.write_str_sides(left, right, true),
-        }
-    }
-}
-
-impl<'a> Clone for Section<'a> {
-    fn clone(&self) -> Self {
-        Self {
-            visible: self.visible.clone(),
-            ..*self
         }
     }
 }

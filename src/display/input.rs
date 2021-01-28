@@ -57,6 +57,7 @@ impl fmt::Debug for PreferredFormat {
 ///     .to_string();
 /// assert_eq!(formatted, "[68 65 .. 99 a5]");
 /// ```
+#[derive(Clone)]
 #[must_use = "input displays must be written"]
 pub struct InputDisplay<'i> {
     input: &'i [u8],
@@ -233,15 +234,6 @@ impl<'i> fmt::Debug for InputDisplay<'i> {
 impl<'i> fmt::Display for InputDisplay<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::DisplayBase::fmt(self, f)
-    }
-}
-
-impl<'i> Clone for InputDisplay<'i> {
-    fn clone(&self) -> Self {
-        Self {
-            section: self.section.clone(),
-            ..*self
-        }
     }
 }
 

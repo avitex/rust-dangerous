@@ -7,6 +7,7 @@ use super::{InputDisplay, PreferredFormat};
 const DEFAULT_MAX_WIDTH: usize = 80;
 
 /// Provides configurable [`error::Details`] formatting.
+#[derive(Clone)]
 #[must_use = "error displays must be written"]
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
@@ -149,12 +150,6 @@ where
 
     fn configure_input_display<'b>(&self, display: InputDisplay<'b>) -> InputDisplay<'b> {
         display.format(self.format)
-    }
-}
-
-impl<'a, 'i, T> Clone for ErrorDisplay<'a, T> {
-    fn clone(&self) -> Self {
-        Self { ..*self }
     }
 }
 

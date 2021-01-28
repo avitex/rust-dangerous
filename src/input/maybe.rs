@@ -4,7 +4,8 @@ use crate::fmt;
 use super::{Bound, Bytes, Input, String};
 
 /// [`String`] if known UTF-8, [`Bytes`] if not.
-#[must_use]
+#[derive(Clone)]
+#[must_use = "input must be consumed"]
 pub enum MaybeString<'i> {
     /// The [`Input`] is not known to be UTF-8.
     Bytes(Bytes<'i>),
@@ -47,15 +48,6 @@ impl<'i> MaybeString<'i> {
         match self {
             Self::Bytes(v) => v.bound(),
             Self::String(v) => v.bound(),
-        }
-    }
-}
-
-impl<'i> Clone for MaybeString<'i> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Bytes(v) => Self::Bytes(v.clone()),
-            Self::String(v) => Self::String(v.clone()),
         }
     }
 }

@@ -14,6 +14,7 @@ use crate::util::{slice, utf8};
 use super::{Bound, Input, MaybeString, Private, PrivateExt, String};
 
 /// Raw [`Input`].
+#[derive(Clone)]
 #[must_use = "input must be consumed"]
 pub struct Bytes<'i> {
     bytes: &'i [u8],
@@ -412,13 +413,6 @@ impl<'i> Private<'i> for Bytes<'i> {
             Bytes::new(head, self.bound().close_end()),
             Bytes::new(tail, self.bound()),
         )
-    }
-}
-
-impl<'i> Clone for Bytes<'i> {
-    #[inline(always)]
-    fn clone(&self) -> Self {
-        Self::new(self.bytes, self.bound())
     }
 }
 
