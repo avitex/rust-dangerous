@@ -214,6 +214,12 @@ impl<'i> InputDisplay<'i> {
         self.section = Some(computed);
         self
     }
+
+    /// Returns the preferred format.
+    #[must_use]
+    pub fn get_format(&self) -> PreferredFormat {
+        self.format
+    }
 }
 
 impl<'i> fmt::DisplayBase for InputDisplay<'i> {

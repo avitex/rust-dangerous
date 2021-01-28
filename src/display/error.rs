@@ -17,7 +17,7 @@ note: error span is not within the error input indicating the
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
     banner: bool,
-    format: PreferredFormat,
+    format: Option<PreferredFormat>,
     input_max_width: usize,
 }
 
@@ -29,8 +29,8 @@ where
     pub fn new(error: &'a T) -> Self {
         Self {
             error,
+            format: None,
             banner: false,
-            format: PreferredFormat::Bytes,
             input_max_width: DEFAULT_MAX_WIDTH,
         }
     }
@@ -63,7 +63,7 @@ where
 
     /// Set the preferred way to format the [`Input`].
     pub fn format(mut self, format: PreferredFormat) -> Self {
-        self.format = format;
+        self.format = Some(format);
         self
     }
 
@@ -79,6 +79,7 @@ where
         // Write inputs
         let input_display = self.configure_input_display(input.display());
         let span_display = self.configure_input_display(span.display());
+        let format = input_display.get_format();
         let input = input.into_bytes();
         if let Some(expected_value) = self.error.expected() {
             let expected_display = self.configure_input_display(expected_value.display());
@@ -101,7 +102,7 @@ where
             let input_bounds = input.as_dangerous().as_ptr_range();
             let span_bounds = span.as_dangerous().as_ptr_range();
             let span_offset = span_bounds.start as usize - input_bounds.start as usize;
-            match self.format {
+            match format {
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
                     w.write_str("error line: ")?;
                     w.write_usize(line_offset(&input, span_offset))?;
@@ -150,7 +151,11 @@ where
     }
 
     fn configure_input_display<'b>(&self, display: InputDisplay<'b>) -> InputDisplay<'b> {
-        display.format(self.format)
+        if let Some(format) = self.format {
+            display.format(format)
+        } else {
+            display
+        }
     }
 }
 
