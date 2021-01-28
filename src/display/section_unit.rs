@@ -27,24 +27,59 @@ impl SectionUnit {
     }
 }
 
-pub(super) trait SectionUnitIter<E>:
-    DoubleEndedIterator<Item = Result<SectionUnit, E>> + Clone
-{
+pub(super) trait UnitIterBase: Clone {
+    type Error;
+
+    fn has_next(&self) -> bool;
+
+    fn next_front(&mut self) -> Option<Result<SectionUnit, Self::Error>>;
+
+    fn next_back(&mut self) -> Option<Result<SectionUnit, Self::Error>>;
+}
+
+pub(super) trait UnitIter: UnitIterBase {
     fn as_slice(&self) -> &[u8];
 
     fn skip_head_bytes(self, len: usize) -> Self;
 
     fn skip_tail_bytes(self, len: usize) -> Self;
+
+    fn rev(self) -> Rev<Self> {
+        Rev(self)
+    }
+}
+
+#[derive(Clone)]
+pub struct Rev<T>(pub T);
+
+impl<T> UnitIterBase for Rev<T>
+where
+    T: UnitIterBase,
+{
+    type Error = T::Error;
+
+    fn has_next(&self) -> bool {
+        self.0.has_next()
+    }
+
+    fn next_front(&mut self) -> Option<Result<SectionUnit, Self::Error>> {
+        self.0.next_back()
+    }
+
+    fn next_back(&mut self) -> Option<Result<SectionUnit, Self::Error>> {
+        self.0.next_front()
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub(super) struct ByteSectionUnitIter<'a> {
+#[derive(Clone)]
+pub(super) struct ByteUnitIter<'a> {
     iter: slice::Iter<'a, u8>,
     show_ascii: bool,
 }
 
-impl<'a> ByteSectionUnitIter<'a> {
+impl<'a> ByteUnitIter<'a> {
     pub(super) fn new(bytes: &'a [u8], show_ascii: bool) -> Self {
         Self {
             iter: bytes.iter(),
@@ -53,29 +88,31 @@ impl<'a> ByteSectionUnitIter<'a> {
     }
 }
 
-impl<'a> Iterator for ByteSectionUnitIter<'a> {
-    type Item = Result<SectionUnit, Infallible>;
+impl<'a> UnitIterBase for ByteUnitIter<'a> {
+    type Error = Infallible;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn has_next(&self) -> bool {
+        !self.as_slice().is_empty()
+    }
+
+    fn next_front(&mut self) -> Option<Result<SectionUnit, Self::Error>> {
         self.iter
             .next()
             .map(|b| Ok(SectionUnit::byte(*b, self.show_ascii)))
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-impl<'a> DoubleEndedIterator for ByteSectionUnitIter<'a> {
-    fn next_back(&mut self) -> Option<Self::Item> {
+    fn next_back(&mut self) -> Option<Result<SectionUnit, Self::Error>> {
         self.iter
             .next_back()
             .map(|b| Ok(SectionUnit::byte(*b, self.show_ascii)))
     }
 }
 
-impl<'a> SectionUnitIter<Infallible> for ByteSectionUnitIter<'a> {
+impl<'a> UnitIter for ByteUnitIter<'a> {
+    fn as_slice(&self) -> &[u8] {
+        self.iter.as_slice()
+    }
+
     fn skip_head_bytes(mut self, len: usize) -> Self {
         if len > 0 {
             let _ = self.iter.nth(len - 1);
@@ -89,29 +126,17 @@ impl<'a> SectionUnitIter<Infallible> for ByteSectionUnitIter<'a> {
         }
         self
     }
-
-    fn as_slice(&self) -> &[u8] {
-        self.iter.as_slice()
-    }
-}
-
-impl<'a> Clone for ByteSectionUnitIter<'a> {
-    fn clone(&self) -> Self {
-        Self {
-            iter: self.iter.clone(),
-            show_ascii: self.show_ascii,
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub(super) struct CharSectionUnitIter<'a> {
+#[derive(Clone)]
+pub(super) struct CharUnitIter<'a> {
     iter: CharIter<'a>,
     cjk: bool,
 }
 
-impl<'a> CharSectionUnitIter<'a> {
+impl<'a> CharUnitIter<'a> {
     pub(super) fn new(bytes: &'a [u8], cjk: bool) -> Self {
         Self {
             iter: CharIter::new(bytes),
@@ -120,29 +145,31 @@ impl<'a> CharSectionUnitIter<'a> {
     }
 }
 
-impl<'a> Iterator for CharSectionUnitIter<'a> {
-    type Item = Result<SectionUnit, InvalidChar>;
+impl<'a> UnitIterBase for CharUnitIter<'a> {
+    type Error = InvalidChar;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn has_next(&self) -> bool {
+        !self.as_slice().is_empty()
+    }
+
+    fn next_front(&mut self) -> Option<Result<SectionUnit, Self::Error>> {
         self.iter
             .next()
             .map(|r| r.map(|c| SectionUnit::unicode(c, self.cjk)))
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-impl<'a> DoubleEndedIterator for CharSectionUnitIter<'a> {
-    fn next_back(&mut self) -> Option<Self::Item> {
+    fn next_back(&mut self) -> Option<Result<SectionUnit, Self::Error>> {
         self.iter
             .next_back()
             .map(|r| r.map(|c| SectionUnit::unicode(c, self.cjk)))
     }
 }
 
-impl<'a> SectionUnitIter<InvalidChar> for CharSectionUnitIter<'a> {
+impl<'a> UnitIter for CharUnitIter<'a> {
+    fn as_slice(&self) -> &[u8] {
+        self.iter.as_slice()
+    }
+
     fn skip_head_bytes(mut self, len: usize) -> Self {
         let bytes = self.iter.as_slice();
         let bytes = if bytes.len() > len {
@@ -163,18 +190,5 @@ impl<'a> SectionUnitIter<InvalidChar> for CharSectionUnitIter<'a> {
         };
         self.iter = CharIter::new(bytes);
         self
-    }
-
-    fn as_slice(&self) -> &[u8] {
-        self.iter.as_slice()
-    }
-}
-
-impl<'a> Clone for CharSectionUnitIter<'a> {
-    fn clone(&self) -> Self {
-        Self {
-            iter: self.iter.clone(),
-            cjk: self.cjk,
-        }
     }
 }
