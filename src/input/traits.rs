@@ -267,6 +267,9 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     #[inline(always)]
     fn split_first_opt(self) -> Option<(Self::Token, Self)> {
         self.clone().tokens().next().map(|(_, t)| {
+            // SAFETY: ByteLength guarantees a correct implementation for
+            // returning the length of a token. The token iterator returned a
+            // token for us, so we know we can split it off safely.
             let (_, tail) = unsafe { self.split_at_byte_unchecked(t.byte_len()) };
             (t, tail)
         })
