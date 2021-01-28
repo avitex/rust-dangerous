@@ -1,4 +1,4 @@
-use crate::input::{Input, Prefix, PrivateExt};
+use crate::input::{Input, Pattern, Prefix, PrivateExt};
 
 #[cfg(feature = "retry")]
 use crate::error::ToRetryRequirement;
@@ -371,6 +371,14 @@ where
         F: FnMut(I::Token) -> bool,
     {
         self.advance(|input| input.split_while(pred))
+    }
+
+    /// Read a length of input until a pattern matches.
+    pub fn take_until<P>(&mut self, pattern: P) -> I
+    where
+        P: Pattern<I>,
+    {
+        self.advance(|input| input.split_until(pattern))
     }
 
     /// Try read a length of input while a predicate check remains successful

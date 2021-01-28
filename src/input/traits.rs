@@ -12,7 +12,7 @@ use crate::fmt::{Debug, Display, DisplayBase};
 use crate::reader::Reader;
 use crate::util::slice;
 
-use super::{Bound, Bytes, MaybeString, Prefix, String};
+use super::{Bound, Bytes, MaybeString, Pattern, Prefix, String};
 
 /// An [`Input`] is an immutable wrapper around bytes to be processed.
 ///
@@ -348,7 +348,46 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         }
     }
 
-    /// Splits the input when the provided function returns `false`.
+    /// Splits at a pattern in the input if it is present.
+    #[inline(always)]
+    fn split_pattern_opt<P>(self, pattern: P) -> Option<(Self, Self)>
+    where
+        P: Pattern<Self>,
+    {
+        pattern.find(&self).map(|(index, len)| {
+            // SAFETY: Pattern guarantees it returns valid indexes.
+            let (head, tail) = unsafe { self.split_at_byte_unchecked(index) };
+            let (_, tail) = unsafe { tail.split_at_byte_unchecked(len) };
+            (head, tail)
+        })
+    }
+
+    /// Splits at a pattern in the input if it is present.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input does not have the pattern.
+    #[inline(always)]
+    fn split_pattern<P, E>(self, pattern: P, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<Self> + Into<Value<'i>>,
+    {
+        self.clone().split_pattern_opt(pattern).ok_or_else(|| {
+            let bytes = self.as_dangerous_bytes();
+            E::from(ExpectedValue {
+                actual: bytes,
+                expected: pattern.into(),
+                input: self.into_maybe_string(),
+                context: ExpectedContext {
+                    operation,
+                    expected: "pattern",
+                },
+            })
+        })
+    }
+
+    /// Splits the input up to when the provided function returns `false`.
     #[inline(always)]
     fn split_while<F>(self, mut pred: F) -> (Self, Self)
     where
@@ -369,7 +408,8 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         (self.clone(), self.end())
     }
 
-    /// Tries to split the input while the provided function returns `false`.
+    /// Tries to split the input up to when the provided function returns
+    /// `false`.
     ///
     /// # Errors
     ///
@@ -393,6 +433,17 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             }
         }
         Ok((self.clone(), self.end()))
+    }
+
+    /// Splits the input up to when the pattern matches.
+    #[inline(always)]
+    fn split_until<P>(self, pattern: P) -> (Self, Self)
+    where
+        P: Pattern<Self>,
+    {
+        self.clone()
+            .split_pattern_opt(pattern)
+            .unwrap_or_else(|| (self.clone(), self.end()))
     }
 
     /// Splits the input at what was read and what was remaining.
