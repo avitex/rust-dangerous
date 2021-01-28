@@ -600,7 +600,7 @@ unsafe impl BytesLength for &str {
 }
 
 #[cfg(feature = "unstable-const-generics")]
-unsafe impl<'i, const N: usize> BytesLength for &[u8; N] {
+unsafe impl<const N: usize> BytesLength for &[u8; N] {
     #[inline(always)]
     fn byte_len(self) -> usize {
         self.len()
@@ -611,7 +611,7 @@ unsafe impl<'i, const N: usize> BytesLength for &[u8; N] {
 macro_rules! impl_array_bytes_len {
     ($($n:expr),*) => {
         $(
-            unsafe impl<'i> BytesLength for &[u8; $n] {
+            unsafe impl BytesLength for &[u8; $n] {
                 #[inline(always)]
                 fn byte_len(self) -> usize {
                     self.len()
@@ -662,9 +662,6 @@ impl<'i> IntoInput<'i> for &'i str {
         String::new(self, Bound::Start)
     }
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// IntoInput: array impl
 
 #[cfg(feature = "unstable-const-generics")]
 impl<'i, const N: usize> IntoInput<'i> for &'i [u8; N] {

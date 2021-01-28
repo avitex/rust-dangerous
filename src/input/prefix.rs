@@ -61,9 +61,6 @@ unsafe impl<'i> Prefix<Bytes<'i>> for &str {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Prefix: array impl
-
 #[cfg(feature = "unstable-const-generics")]
 unsafe impl<'i, const N: usize> Prefix<Bytes<'i>> for &[u8; N] {
     #[inline(always)]
