@@ -1,22 +1,23 @@
 use core::str;
 
-// Source: <rust-source>/core/str/mod.rs
+// Source: https://github.com/rust-lang/rust/blob/master/library/core/src/str/validations.rs
 // https://tools.ietf.org/html/rfc3629
+#[rustfmt::skip]
 static UTF8_CHAR_LENGTH: [u8; 256] = [
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, // 0x1F
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, // 0x3F
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, // 0x5F
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, // 0x7F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, // 0x9F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, // 0xBF
-    0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, // 0xDF
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x0F
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x1F
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x2F
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x3F
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x4F
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x5F
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x6F
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x7F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x7F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x9F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xAF
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xBF
+    0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // 0xCF
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // 0xDF
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, // 0xEF
     4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xFF
 ];
@@ -33,6 +34,8 @@ fn is_cont_byte(byte: u8) -> bool {
     (byte & !CONT_MASK) == TAG_CONT_U8
 }
 
+/// Returns a str slice from a byte slice without validation.
+#[inline]
 pub(crate) unsafe fn from_unchecked(bytes: &[u8]) -> &str {
     debug_assert!(str::from_utf8(bytes).is_ok());
     str::from_utf8_unchecked(bytes)
@@ -44,9 +47,65 @@ pub(crate) fn char_len(b: u8) -> usize {
     UTF8_CHAR_LENGTH[b as usize] as usize
 }
 
+/// Returns the first UTF-8 codepoint if valid within bytes.
+#[inline(always)]
+fn first_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
+    if let Some(first_byte) = bytes.first() {
+        let len = char_len(*first_byte);
+        if bytes.len() >= len {
+            return parse_char(&bytes[..len]);
+        }
+    }
+    Err(InvalidChar { error_len: None })
+}
+
+/// Returns the last UTF-8 codepoint if valid within bytes.
+#[inline(always)]
+fn last_codepoint(bytes: &[u8]) -> Result<char, InvalidChar> {
+    if bytes.is_empty() {
+        return Err(InvalidChar { error_len: None });
+    }
+    for (i, byte) in (1..=4).zip(bytes.iter().rev().copied()) {
+        if !is_cont_byte(byte) && char_len(byte) == i {
+            let last_index = bytes.len() - i;
+            return parse_char(&bytes[last_index..]);
+        }
+    }
+    Err(InvalidChar { error_len: None })
+}
+
+/// Parses a single char from bytes.
+#[inline(always)]
+fn parse_char(bytes: &[u8]) -> Result<char, InvalidChar> {
+    match str::from_utf8(bytes) {
+        Ok(s) => match s.chars().next() {
+            Some(c) => Ok(c),
+            None => Err(InvalidChar { error_len: None }),
+        },
+        Err(e) => Err(InvalidChar {
+            error_len: e.error_len(),
+        }),
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// InvalidChar
+
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct InvalidChar {
+    error_len: Option<usize>,
+}
+
+impl InvalidChar {
+    pub(crate) fn error_len(&self) -> Option<usize> {
+        self.error_len
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // CharIter
 
+/// Char iterator over unvalidated bytes.
 pub(crate) struct CharIter<'i> {
     forward: usize,
     backward: usize,
@@ -54,6 +113,7 @@ pub(crate) struct CharIter<'i> {
 }
 
 impl<'i> CharIter<'i> {
+    /// Creates a new char iterator from a byte slice.
     pub(crate) fn new(bytes: &'i [u8]) -> Self {
         Self {
             bytes,
@@ -62,17 +122,19 @@ impl<'i> CharIter<'i> {
         }
     }
 
-    pub(crate) fn is_done(&self) -> bool {
-        self.forward == self.backward
-    }
-
+    /// Returns the remaining slice.
     pub(crate) fn as_slice(&self) -> &'i [u8] {
         &self.bytes[self.forward..self.backward]
     }
 
-    pub(crate) fn forward_valid(&self) -> &'i str {
+    /// Returns the `str` consumed from the front.
+    pub(crate) fn as_forward(&self) -> &'i str {
         // SAFETY: bytes before this forward increasing index is valid UTF-8.
         unsafe { str::from_utf8_unchecked(&self.bytes[..self.forward]) }
+    }
+
+    fn is_done(&self) -> bool {
+        self.forward == self.backward
     }
 
     fn head(&self) -> &'i [u8] {
@@ -98,13 +160,13 @@ impl<'i> Iterator for CharIter<'i> {
                     // If the parsing of the character goes over the reader's
                     // backward bound raise an error.
                     if forward > self.backward {
-                        Err(InvalidChar(None))
+                        Err(InvalidChar { error_len: None })
                     } else {
                         self.forward = forward;
                         Ok(c)
                     }
                 }
-                Err(error_len) => Err(InvalidChar(error_len)),
+                Err(err) => Err(err),
             };
             Some(result)
         }
@@ -132,13 +194,13 @@ impl<'i> DoubleEndedIterator for CharIter<'i> {
                     // If the parsing of the character goes over the reader's
                     // forward bound raise an error.
                     if backward < self.forward {
-                        Err(InvalidChar(None))
+                        Err(InvalidChar { error_len: None })
                     } else {
                         self.backward = backward;
                         Ok(c)
                     }
                 }
-                Err(error_len) => Err(InvalidChar(error_len)),
+                Err(err) => Err(err),
             };
             Some(result)
         }
@@ -148,51 +210,6 @@ impl<'i> DoubleEndedIterator for CharIter<'i> {
 impl<'i> Clone for CharIter<'i> {
     fn clone(&self) -> Self {
         Self { ..*self }
-    }
-}
-
-#[cfg_attr(test, derive(Debug))]
-pub(crate) struct InvalidChar(Option<usize>);
-
-impl InvalidChar {
-    pub(crate) fn error_len(&self) -> Option<usize> {
-        self.0
-    }
-}
-
-#[inline(always)]
-fn first_codepoint(bytes: &[u8]) -> Result<char, Option<usize>> {
-    if let Some(first_byte) = bytes.first() {
-        let len = char_len(*first_byte);
-        if bytes.len() >= len {
-            return parse_char(&bytes[..len]);
-        }
-    }
-    Err(None)
-}
-
-#[inline(always)]
-fn last_codepoint(bytes: &[u8]) -> Result<char, Option<usize>> {
-    if bytes.is_empty() {
-        return Err(None);
-    }
-    for (i, byte) in (1..=4).zip(bytes.iter().rev().copied()) {
-        if !is_cont_byte(byte) && char_len(byte) == i {
-            let last_index = bytes.len() - i;
-            return parse_char(&bytes[last_index..]);
-        }
-    }
-    Err(None)
-}
-
-#[inline(always)]
-fn parse_char(bytes: &[u8]) -> Result<char, Option<usize>> {
-    match str::from_utf8(bytes) {
-        Ok(s) => match s.chars().next() {
-            Some(c) => Ok(c),
-            None => Err(None),
-        },
-        Err(e) => Err(e.error_len()),
     }
 }
 

@@ -237,14 +237,14 @@ impl<'i> Bytes<'i> {
     {
         let bytes = self.as_dangerous();
         let mut chars = utf8::CharIter::new(bytes);
-        let mut consumed = chars.forward_valid();
+        let mut consumed = chars.as_forward();
         // For each char, lets make sure it matches the predicate.
         while let Some(result) = chars.next() {
             match result {
                 Ok(c) => {
                     // Check if the char doesn't match the predicate.
                     if with_context(self.clone(), OperationContext(operation), || f(c))? {
-                        consumed = chars.forward_valid();
+                        consumed = chars.as_forward();
                     } else {
                         // Because we hit the predicate it doesn't matter if we
                         // have more input, this will always return the same.
