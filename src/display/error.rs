@@ -5,6 +5,11 @@ use crate::input::{Bytes, Input, Private};
 use super::{InputDisplay, PreferredFormat};
 
 const DEFAULT_MAX_WIDTH: usize = 80;
+const INVALID_SPAN_ERROR: &'static str = "\
+note: error span is not within the error input indicating the
+      concrete error being used has a bug. Consider raising an
+      issue with the maintainer!
+";
 
 /// Provides configurable [`error::Details`] formatting.
 #[derive(Clone)]
@@ -84,11 +89,7 @@ where
         if span.is_within(&input) {
             write_input(w, input_display.span(&span, self.input_max_width), true)?;
         } else {
-            w.write_str(concat!(
-                "note: error span is not within the error input indicating the\n",
-                "      concrete error being used has a bug. Consider raising an\n",
-                "      issue with the maintainer!\n",
-            ))?;
+            w.write_str(INVALID_SPAN_ERROR)?;
             w.write_str("span:\n")?;
             write_input(w, span_display, false)?;
             w.write_str("input:\n")?;
