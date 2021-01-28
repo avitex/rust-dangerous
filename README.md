@@ -24,6 +24,7 @@ dangerous = "0.6"
 - Zero heap-allocations on success paths \[3].
 - Primitive type support.
 - Optional verbose errors.
+- Optional SIMD optimisations where possible.
 
 **\[1]** Panics due to OOM are out-of-scope. Disable heap-allocations if this is
 a concern.  
