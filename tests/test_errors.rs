@@ -403,6 +403,32 @@ fn test_error_max_input_len() {
 }
 
 #[test]
+#[cfg(feature = "full-context")]
+fn test_error_display_str() {
+    let error: Expected = trigger_expected_value();
+
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
+    assert_eq!(
+        format!("{:#}\n", error),
+        indoc! {r#"
+            error attempting to consume: found a different value to the exact expected
+            expected:
+            > "123"
+            in:
+            > "hello world"
+               ^^^         
+            additional:
+              error line: 1, error offset: 0, input length: 11
+            backtrace:
+              1. `read all`
+              2. `read` (expected hi)
+              3. `consume` (expected exact value)
+        "#},
+    );
+}
+
+#[test]
 fn test_invalid_error_details_span() {
     use dangerous::display::{ErrorDisplay, Write};
     use dangerous::error::{
