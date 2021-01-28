@@ -1,6 +1,7 @@
+use core::convert::Infallible;
 use core::slice;
 
-use crate::util::utf8::CharIter;
+use crate::util::utf8::{CharIter, InvalidChar};
 
 use super::unit::{byte_display_width, char_display_width};
 
@@ -26,8 +27,8 @@ impl SectionUnit {
     }
 }
 
-pub(super) trait SectionUnitIter:
-    Clone + DoubleEndedIterator<Item = Result<SectionUnit, ()>>
+pub(super) trait SectionUnitIter<E>:
+    DoubleEndedIterator<Item = Result<SectionUnit, E>> + Clone
 {
     fn as_slice(&self) -> &[u8];
 
@@ -53,7 +54,7 @@ impl<'a> ByteSectionUnitIter<'a> {
 }
 
 impl<'a> Iterator for ByteSectionUnitIter<'a> {
-    type Item = Result<SectionUnit, ()>;
+    type Item = Result<SectionUnit, Infallible>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
@@ -74,7 +75,7 @@ impl<'a> DoubleEndedIterator for ByteSectionUnitIter<'a> {
     }
 }
 
-impl<'a> SectionUnitIter for ByteSectionUnitIter<'a> {
+impl<'a> SectionUnitIter<Infallible> for ByteSectionUnitIter<'a> {
     fn skip_head_bytes(mut self, len: usize) -> Self {
         if len > 0 {
             let _ = self.iter.nth(len - 1);
@@ -120,12 +121,12 @@ impl<'a> CharSectionUnitIter<'a> {
 }
 
 impl<'a> Iterator for CharSectionUnitIter<'a> {
-    type Item = Result<SectionUnit, ()>;
+    type Item = Result<SectionUnit, InvalidChar>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|r| r.map(|c| SectionUnit::unicode(c, self.cjk)).map_err(drop))
+            .map(|r| r.map(|c| SectionUnit::unicode(c, self.cjk)))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -137,11 +138,11 @@ impl<'a> DoubleEndedIterator for CharSectionUnitIter<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter
             .next_back()
-            .map(|r| r.map(|c| SectionUnit::unicode(c, self.cjk)).map_err(drop))
+            .map(|r| r.map(|c| SectionUnit::unicode(c, self.cjk)))
     }
 }
 
-impl<'a> SectionUnitIter for CharSectionUnitIter<'a> {
+impl<'a> SectionUnitIter<InvalidChar> for CharSectionUnitIter<'a> {
     fn skip_head_bytes(mut self, len: usize) -> Self {
         let bytes = self.iter.as_slice();
         let bytes = if bytes.len() > len {
