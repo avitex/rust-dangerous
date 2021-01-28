@@ -395,11 +395,6 @@ impl<'i> Private<'i> for Bytes<'i> {
 
     #[inline(always)]
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
-        self.split_bytes_at_opt(mid)
-    }
-
-    #[inline(always)]
-    fn split_bytes_at_opt(self, mid: usize) -> Option<(Bytes<'i>, Bytes<'i>)> {
         slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
             // We split at a known length making the head input bound.
             let head = Bytes::new(head, self.bound().close_end());

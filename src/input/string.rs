@@ -192,11 +192,6 @@ impl<'i> Private<'i> for String<'i> {
     }
 
     #[inline(always)]
-    fn split_bytes_at_opt(self, mid: usize) -> Option<(Bytes<'i>, Bytes<'i>)> {
-        self.utf8.split_bytes_at_opt(mid)
-    }
-
-    #[inline(always)]
     unsafe fn split_at_byte_unchecked(self, mid: usize) -> (Self, Self) {
         let (head, tail) = slice::split_str_at_unchecked(self.as_dangerous(), mid);
         (

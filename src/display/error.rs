@@ -192,7 +192,7 @@ where
 }
 
 fn line_offset(input: &Bytes<'_>, span_offset: usize) -> usize {
-    match input.clone().split_bytes_at_opt(span_offset) {
+    match input.clone().split_at_opt(span_offset) {
         Some((before_span, _)) => before_span.count(b'\n') + 1,
         // Will never be reached in practical usage but we handle to avoid
         // unwrapping.

@@ -216,11 +216,16 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     // Return self with its end bound removed.
     fn into_unbound_end(self) -> Self;
 
+    /// Split the input at the token index `mid`.
+    ///
+    /// Return `Some` if mid is a valid index, `None` if not.
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)>;
 
-    fn split_bytes_at_opt(self, mid: usize) -> Option<(Bytes<'i>, Bytes<'i>)>;
-
-    /// Splits at a byte index without any validation.
+    /// Splits the input at the byte index `mid` without any validation.
+    ///
+    /// # Safety
+    ///
+    /// Caller must guarantee that it is valid to split the structure at `mid`.
     unsafe fn split_at_byte_unchecked(self, mid: usize) -> (Self, Self);
 }
 
