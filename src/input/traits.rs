@@ -233,6 +233,7 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
 // Private extensions to any `Input`
 
 pub(crate) trait PrivateExt<'i>: Input<'i> {
+    /// Returns the underlying byte slice of the input.
     #[inline(always)]
     fn as_dangerous_bytes(&self) -> &'i [u8] {
         self.clone().into_bytes().as_dangerous()
@@ -261,6 +262,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         })
     }
 
+    /// Splits the input into the first token and whatever remains.
     #[inline(always)]
     fn split_first_opt(self) -> Option<(Self::Token, Self)> {
         self.clone().tokens().next().map(|(_, t)| {
@@ -269,7 +271,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         })
     }
 
-    /// Splits the input into the first byte and whatever remains.
+    /// Splits the input into the first token and whatever remains.
     ///
     /// # Errors
     ///
@@ -292,6 +294,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         })
     }
 
+    /// Splits a prefix from the input if it is present.
     #[inline(always)]
     fn split_prefix_opt<P>(self, prefix: P) -> (Option<Self>, Self)
     where
@@ -307,6 +310,11 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         }
     }
 
+    /// Splits a prefix from the input if it is present.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input does not have the prefix.
     #[inline(always)]
     fn split_prefix<P, E>(self, prefix: P, operation: &'static str) -> Result<(Self, Self), E>
     where
@@ -358,6 +366,10 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     }
 
     /// Tries to split the input while the provided function returns `false`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error from the provided function if it fails.
     #[inline(always)]
     fn try_split_while<F, E>(self, mut f: F, operation: &'static str) -> Result<(Self, Self), E>
     where
@@ -379,6 +391,71 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         Ok((self.clone(), self.end()))
     }
 
+    /// Splits the input at what was read and what was remaining.
+    #[inline(always)]
+    fn split_consumed<F, E>(self, f: F) -> (Self, Self)
+    where
+        E: WithContext<'i>,
+        F: FnOnce(&mut Reader<'i, E, Self>),
+    {
+        let mut reader = Reader::new(self.clone());
+        f(&mut reader);
+        // We take the remaining input.
+        let tail = reader.take_remaining();
+        // For the head, we take what we consumed.
+        let mid = self.byte_len() - tail.byte_len();
+        // SAFETY: we take mid as the difference between the parent slice and
+        // the remaining slice left over from the reader. This means the index
+        // can only ever be valid.
+        let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
+        // We derive the bound constraint from self. If the tail start is
+        // undetermined this means the last bit of input consumed could be
+        // longer if there was more available and as such makes the end of input
+        // we return unbounded.
+        if tail.bound() == Bound::None {
+            (head.into_unbound_end(), tail)
+        } else {
+            (head, tail)
+        }
+    }
+
+    /// Tries to split the input at what was read and what was remaining.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error from the provided function if it fails.
+    #[inline(always)]
+    fn try_split_consumed<F, E>(self, f: F, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: WithContext<'i>,
+        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<(), E>,
+    {
+        let mut reader = Reader::new(self.clone());
+        with_context(self.clone(), OperationContext(operation), || f(&mut reader))?;
+        // We take the remaining input.
+        let tail = reader.take_remaining();
+        // For the head, we take what we consumed.
+        let mid = self.byte_len() - tail.byte_len();
+        // SAFETY: we take mid as the difference between the parent slice and
+        // the remaining slice left over from the reader. This means the index
+        // can only ever be valid.
+        let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
+        // We derive the bound constraint from self. If the tail start is
+        // undetermined this means the last bit of input consumed could be
+        // longer if there was more available and as such makes the end of input
+        // we return unbounded.
+        if tail.bound() == Bound::None {
+            Ok((head.into_unbound_end(), tail))
+        } else {
+            Ok((head, tail))
+        }
+    }
+
+    /// Splits the input from the value expected to be read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the expected value was not present.
     #[inline(always)]
     fn split_expect<F, T, E>(
         self,
@@ -394,6 +471,12 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self.try_split_expect(|r| Ok(f(r)), expected, operation)
     }
 
+    /// Tries to split the input from the value expected to be read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error from the provided function if it fails or if the
+    /// expected value was not present.
     #[inline(always)]
     fn try_split_expect<F, T, E>(
         self,
@@ -428,6 +511,12 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         }
     }
 
+    /// Tries to split the input from the value expected to be read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an erased error from the provided function if it fails or if the
+    /// expected value was not present.
     #[cfg(feature = "retry")]
     #[inline(always)]
     fn try_split_expect_erased<F, T, R, E>(
@@ -458,60 +547,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                     retry_requirement: err.to_retry_requirement(),
                 }))
             }
-        }
-    }
-
-    #[inline(always)]
-    fn split_consumed<F, E>(self, f: F) -> (Self, Self)
-    where
-        E: WithContext<'i>,
-        F: FnOnce(&mut Reader<'i, E, Self>),
-    {
-        let mut reader = Reader::new(self.clone());
-        f(&mut reader);
-        // We take the remaining input.
-        let tail = reader.take_remaining();
-        // For the head, we take what we consumed.
-        let mid = self.byte_len() - tail.byte_len();
-        // SAFETY: we take mid as the difference between the parent slice and
-        // the remaining slice left over from the reader. This means the index
-        // can only ever be valid.
-        let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
-        // We derive the bound constraint from self. If the tail start is
-        // undetermined this means the last bit of input consumed could be
-        // longer if there was more available and as such makes the end of input
-        // we return unbounded.
-        if tail.bound() == Bound::None {
-            (head.into_unbound_end(), tail)
-        } else {
-            (head, tail)
-        }
-    }
-
-    #[inline(always)]
-    fn try_split_consumed<F, E>(self, f: F, operation: &'static str) -> Result<(Self, Self), E>
-    where
-        E: WithContext<'i>,
-        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<(), E>,
-    {
-        let mut reader = Reader::new(self.clone());
-        with_context(self.clone(), OperationContext(operation), || f(&mut reader))?;
-        // We take the remaining input.
-        let tail = reader.take_remaining();
-        // For the head, we take what we consumed.
-        let mid = self.byte_len() - tail.byte_len();
-        // SAFETY: we take mid as the difference between the parent slice and
-        // the remaining slice left over from the reader. This means the index
-        // can only ever be valid.
-        let (head, _) = unsafe { self.split_at_byte_unchecked(mid) };
-        // We derive the bound constraint from self. If the tail start is
-        // undetermined this means the last bit of input consumed could be
-        // longer if there was more available and as such makes the end of input
-        // we return unbounded.
-        if tail.bound() == Bound::None {
-            Ok((head.into_unbound_end(), tail))
-        } else {
-            Ok((head, tail))
         }
     }
 }
