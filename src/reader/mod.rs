@@ -100,6 +100,7 @@ where
         }
     }
 
+    /// Advances the reader's input given an operation.
     #[inline(always)]
     fn advance<F, O>(&mut self, f: F) -> O
     where
@@ -110,6 +111,7 @@ where
         ok
     }
 
+    /// Tries to advance the reader's input given an operation.
     #[inline(always)]
     fn try_advance<F, SE, O>(&mut self, f: F) -> Result<O, SE>
     where
