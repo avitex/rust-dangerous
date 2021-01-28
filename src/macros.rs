@@ -104,7 +104,11 @@ macro_rules! split_arr {
 #[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! for_common_array_sizes {
     ($impl:ident) => {
-        for_common_array_sizes!($impl: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 32, 64, 128, 256, 512, 1024, 2048, 4096);
+        for_common_array_sizes!($impl:
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 32, 64, 128, 256,
+            512, 1024, 2048, 4096
+        );
     };
     ($impl:ident: $($n:expr),*) => {
         $(
