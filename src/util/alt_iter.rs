@@ -3,6 +3,8 @@ pub(crate) enum Alternate<T> {
     Front(T),
 }
 
+/// Iterator that alternates between the inner iterators front and back item
+/// starting with the front.
 pub(crate) struct AlternatingIter<I> {
     inner: I,
     front: bool,

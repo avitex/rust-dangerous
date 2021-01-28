@@ -9,7 +9,7 @@ use core::str;
 
 use crate::fmt::{self, Write};
 use crate::util::alt_iter::{Alternate, AlternatingIter};
-use crate::util::{slice, unwrap_ok_unchecked, utf8};
+use crate::util::{slice, unwrap_ok_infallible, utf8};
 
 use super::input::{InputWriter, PreferredFormat};
 use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
@@ -262,12 +262,8 @@ fn take_bytes_span(
     show_ascii: bool,
 ) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-
     let result = take_span(iter, span_offset, width, true);
-    // SAFETY: byte iterators never return an error, so it is impossible to have
-    // one bubble up here.
-    let (start, end) = unsafe { unwrap_ok_unchecked(result) };
-
+    let (start, end) = unwrap_ok_infallible(result);
     if show_ascii {
         Visible::BytesAscii(&bytes[start..end])
     } else {
@@ -293,9 +289,7 @@ fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
     let result = take_head(iter, width, true);
-    // SAFETY: byte iterators never return an error, so it is impossible to have
-    // one bubble up here.
-    let (len, _) = unsafe { unwrap_ok_unchecked(result) };
+    let (len, _) = unwrap_ok_infallible(result);
     if show_ascii {
         Visible::BytesAscii(&bytes[..len])
     } else {
@@ -322,9 +316,7 @@ fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
     let result = take_tail(iter, width, true);
-    // SAFETY: byte iterators never return an error, so it is impossible to have
-    // one bubble up here.
-    let (len, _) = unsafe { unwrap_ok_unchecked(result) };
+    let (len, _) = unwrap_ok_infallible(result);
     let offset = bytes.len() - len;
     if show_ascii {
         Visible::BytesAscii(&bytes[offset..])
@@ -359,9 +351,7 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
     let iter = ByteSectionUnitIter::new(bytes, show_ascii);
     let result = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST);
-    // SAFETY: byte iterators never return an error, so it is impossible to have
-    // one bubble up here.
-    let (start, end) = unsafe { unwrap_ok_unchecked(result) };
+    let (start, end) = unwrap_ok_infallible(result);
     if start == end {
         if show_ascii {
             Visible::BytesAscii(&bytes[..])
@@ -382,25 +372,25 @@ fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Returns `Result<(length, remaining), ()>`
-fn take_head<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), ()>
+fn take_head<I, E>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), E>
 where
-    I: SectionUnitIter,
+    I: SectionUnitIter<E>,
 {
     take_side(iter, width, space_separated)
 }
 
 /// Returns `Result<(length, remaining), ()>`
-fn take_tail<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), ()>
+fn take_tail<I, E>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), E>
 where
-    I: SectionUnitIter,
+    I: SectionUnitIter<E>,
 {
     take_side(iter.rev(), width, space_separated)
 }
 
 /// Returns `Result<(length, remaining), ()>`
-fn take_side<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), ()>
+fn take_side<I, E>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), E>
 where
-    I: Iterator<Item = Result<SectionUnit, ()>>,
+    I: Iterator<Item = Result<SectionUnit, E>>,
 {
     elements_to_fit_width(
         iter,
@@ -410,20 +400,20 @@ where
         SIDE_HAS_MORE_COST,
         |len, element_result| match element_result {
             Ok(element) => Ok((len + element.len_utf8, element.display_cost)),
-            Err(()) => Err(()),
+            Err(e) => Err(e),
         },
     )
 }
 
 /// Returns `Result<(start, end), ()>`
-fn take_head_tail<I>(
+fn take_head_tail<I, E>(
     iter: I,
     width: usize,
     space_separated: bool,
     has_more_cost: usize,
-) -> Result<(usize, usize), ()>
+) -> Result<(usize, usize), E>
 where
-    I: SectionUnitIter,
+    I: SectionUnitIter<E>,
 {
     let total_len = iter.as_slice().len();
     let ((front_len, back_offset), _) = elements_to_fit_width(
@@ -441,21 +431,21 @@ where
                 (front_len, back_offset - element.len_utf8),
                 element.display_cost,
             )),
-            _ => Err(()),
+            Alternate::Front(Err(err)) | Alternate::Back(Err(err)) => Err(err),
         },
     )?;
     Ok((front_len, back_offset))
 }
 
 /// Returns `Result<(start, end), ()>`
-fn take_span<I>(
+fn take_span<I, E>(
     iter: I,
     span_offset: usize,
     width: usize,
     space_separated: bool,
-) -> Result<(usize, usize), ()>
+) -> Result<(usize, usize), E>
 where
-    I: SectionUnitIter,
+    I: SectionUnitIter<E>,
 {
     // Attempt to get 1/3 of the total width before the span.
     let init_backward_width = width / 3 + SIDE_HAS_MORE_COST;
@@ -485,18 +475,18 @@ where
 
 ///////////////////////////////////////////////////////////////////////////////
 
-fn elements_to_fit_width<A, I, F>(
+fn elements_to_fit_width<A, I, F, E>(
     mut iter: I,
     mut acc: A,
     width: usize,
     space_separated: bool,
     has_more_cost: usize,
     mut element_fn: F,
-) -> Result<(A, usize), ()>
+) -> Result<(A, usize), E>
 where
     A: Copy,
     I: Iterator,
-    F: FnMut(A, I::Item) -> Result<(A, usize), ()>,
+    F: FnMut(A, I::Item) -> Result<(A, usize), E>,
 {
     let mut is_first = true;
     let mut budget = width;
@@ -504,7 +494,7 @@ where
         // Try to get the next element
         let (next_acc, display_cost) = match element_fn(acc, item) {
             Ok((next_acc, display_cost)) => (next_acc, display_cost),
-            Err(()) => return Err(()),
+            Err(err) => return Err(err),
         };
         // Handle the next element
         let has_next = iter.size_hint().0 > 0;
