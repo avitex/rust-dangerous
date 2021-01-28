@@ -1,5 +1,6 @@
 mod bytes;
 mod maybe;
+mod pattern;
 mod prefix;
 mod string;
 mod traits;
@@ -8,6 +9,7 @@ use crate::fmt;
 
 pub use self::bytes::Bytes;
 pub use self::maybe::MaybeString;
+pub use self::pattern::Pattern;
 pub use self::string::String;
 pub use self::traits::Input;
 

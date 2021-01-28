@@ -79,7 +79,7 @@ pub use self::error::{Invalid, ToRetryRequirement};
 #[cfg(feature = "retry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::input::Bound;
-pub use self::input::{input, Bytes, Input, MaybeString, String};
+pub use self::input::{input, Bytes, Input, MaybeString, Pattern, String};
 pub use self::reader::{BytesReader, Peek, Reader, StringReader};
 
 // Re-exported types from core::fmt along with `DisplayBase` and `Write`.

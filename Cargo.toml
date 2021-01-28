@@ -22,7 +22,7 @@ alloc = []
 # Enables retry support.
 retry = []
 # Enables all supported SIMD optimisations.
-simd = ["bytecount"]
+simd = ["memchr", "bytecount"]
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
 # Enables full context backtraces.
@@ -30,6 +30,7 @@ full-context = ["alloc"]
 
 [dependencies]
 zc = { version = "0.3", optional = true, default-features = false }
+memchr = { version = "2.3", optional = true }
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
