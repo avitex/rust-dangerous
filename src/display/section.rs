@@ -8,11 +8,10 @@
 use core::str;
 
 use crate::fmt::{self, Write};
-use crate::util::alt_iter::{Alternate, AlternatingIter};
-use crate::util::{slice, unwrap_ok_infallible, utf8};
+use crate::util::{slice, utf8};
 
 use super::input::{InputWriter, PreferredFormat};
-use super::section_unit::{ByteSectionUnitIter, CharSectionUnitIter, SectionUnit, SectionUnitIter};
+use super::section_unit::{ByteUnitIter, CharUnitIter, UnitIter, UnitIterBase};
 
 const MIN_WIDTH: usize = 16;
 const SPACE_COST: usize = 1;
@@ -241,7 +240,7 @@ fn init_width(width: usize) -> usize {
 }
 
 fn take_str_span(bytes: &[u8], span_offset: usize, width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharSectionUnitIter::new(bytes, cjk);
+    let iter = CharUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_span(iter, span_offset, width, false) {
         // SAFETY: all chars are checked from the char iterator
         let s = unsafe { utf8::from_unchecked(&bytes[start..end]) };
@@ -261,9 +260,8 @@ fn take_bytes_span(
     width: usize,
     show_ascii: bool,
 ) -> Visible<'_> {
-    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let result = take_span(iter, span_offset, width, true);
-    let (start, end) = unwrap_ok_infallible(result);
+    let iter = ByteUnitIter::new(bytes, show_ascii);
+    let (start, end) = take_span(iter, span_offset, width, true).unwrap();
     if show_ascii {
         Visible::BytesAscii(&bytes[start..end])
     } else {
@@ -272,7 +270,7 @@ fn take_bytes_span(
 }
 
 fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharSectionUnitIter::new(bytes, cjk);
+    let iter = CharUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_head(iter, width, false) {
         // SAFETY: all chars are checked from the char iterator
         let s = unsafe { utf8::from_unchecked(&bytes[..len]) };
@@ -287,9 +285,8 @@ fn take_str_head(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 }
 
 fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
-    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let result = take_head(iter, width, true);
-    let (len, _) = unwrap_ok_infallible(result);
+    let iter = ByteUnitIter::new(bytes, show_ascii);
+    let (len, _) = take_head(iter, width, true).unwrap();
     if show_ascii {
         Visible::BytesAscii(&bytes[..len])
     } else {
@@ -298,7 +295,7 @@ fn take_bytes_head(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
 }
 
 fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharSectionUnitIter::new(bytes, cjk);
+    let iter = CharUnitIter::new(bytes, cjk);
     if let Ok((len, _)) = take_tail(iter, width, false) {
         let offset = bytes.len() - len;
         // SAFETY: all chars are checked from the char iterator
@@ -314,9 +311,8 @@ fn take_str_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 }
 
 fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
-    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let result = take_tail(iter, width, true);
-    let (len, _) = unwrap_ok_infallible(result);
+    let iter = ByteUnitIter::new(bytes, show_ascii);
+    let (len, _) = take_tail(iter, width, true).unwrap();
     let offset = bytes.len() - len;
     if show_ascii {
         Visible::BytesAscii(&bytes[offset..])
@@ -326,7 +322,7 @@ fn take_bytes_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> 
 }
 
 fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
-    let iter = CharSectionUnitIter::new(bytes, cjk);
+    let iter = CharUnitIter::new(bytes, cjk);
     if let Ok((start, end)) = take_head_tail(iter, width, false, STR_HEAD_TAIL_HAS_MORE_COST) {
         // SAFETY: all chars are checked from the char iterator
         unsafe {
@@ -349,9 +345,8 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
 }
 
 fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible<'_> {
-    let iter = ByteSectionUnitIter::new(bytes, show_ascii);
-    let result = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST);
-    let (start, end) = unwrap_ok_infallible(result);
+    let iter = ByteUnitIter::new(bytes, show_ascii);
+    let (start, end) = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST).unwrap();
     if start == end {
         if show_ascii {
             Visible::BytesAscii(&bytes[..])
@@ -372,80 +367,97 @@ fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Returns `Result<(length, remaining), ()>`
-fn take_head<I, E>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), E>
+fn take_head<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), I::Error>
 where
-    I: SectionUnitIter<E>,
+    I: UnitIter,
 {
     take_side(iter, width, space_separated)
 }
 
 /// Returns `Result<(length, remaining), ()>`
-fn take_tail<I, E>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), E>
+fn take_tail<I>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), I::Error>
 where
-    I: SectionUnitIter<E>,
+    I: UnitIter,
 {
     take_side(iter.rev(), width, space_separated)
 }
 
 /// Returns `Result<(length, remaining), ()>`
-fn take_side<I, E>(iter: I, width: usize, space_separated: bool) -> Result<(usize, usize), E>
+fn take_side<I>(
+    mut iter: I,
+    width: usize,
+    space_separated: bool,
+) -> Result<(usize, usize), I::Error>
 where
-    I: Iterator<Item = Result<SectionUnit, E>>,
+    I: UnitIterBase,
 {
-    elements_to_fit_width(
-        iter,
-        0,
-        width,
-        space_separated,
-        SIDE_HAS_MORE_COST,
-        |len, element_result| match element_result {
-            Ok(element) => Ok((len + element.len_utf8, element.display_cost)),
-            Err(e) => Err(e),
-        },
-    )
+    let mut calc = Calculator::new(width, SIDE_HAS_MORE_COST, space_separated);
+    let mut len = 0;
+    while let Some(unit_result) = iter.next_front() {
+        match unit_result {
+            Ok(unit) => {
+                if calc.next(unit.display_cost, iter.has_next()) {
+                    len += unit.len_utf8
+                } else {
+                    break;
+                }
+            }
+            Err(err) => return Err(err),
+        }
+    }
+    Ok((len, calc.budget()))
 }
 
 /// Returns `Result<(start, end), ()>`
-fn take_head_tail<I, E>(
-    iter: I,
+fn take_head_tail<I>(
+    mut iter: I,
     width: usize,
     space_separated: bool,
     has_more_cost: usize,
-) -> Result<(usize, usize), E>
+) -> Result<(usize, usize), I::Error>
 where
-    I: SectionUnitIter<E>,
+    I: UnitIter,
 {
-    let total_len = iter.as_slice().len();
-    let ((front_len, back_offset), _) = elements_to_fit_width(
-        AlternatingIter::front(iter),
-        (0, total_len),
-        width,
-        space_separated,
-        has_more_cost,
-        |(front_len, back_offset), alt_element| match alt_element {
-            Alternate::Front(Ok(element)) => Ok((
-                (front_len + element.len_utf8, back_offset),
-                element.display_cost,
-            )),
-            Alternate::Back(Ok(element)) => Ok((
-                (front_len, back_offset - element.len_utf8),
-                element.display_cost,
-            )),
-            Alternate::Front(Err(err)) | Alternate::Back(Err(err)) => Err(err),
-        },
-    )?;
+    let mut front = true;
+    let mut front_len = 0;
+    let mut back_offset = iter.as_slice().len();
+    let mut calc = Calculator::new(width, has_more_cost, space_separated);
+    loop {
+        let section_result = if front {
+            iter.next_front()
+        } else {
+            iter.next_back()
+        };
+        match section_result {
+            Some(Ok(unit)) => {
+                if calc.next(unit.display_cost, iter.has_next()) {
+                    if front {
+                        front = false;
+                        front_len += unit.len_utf8;
+                    } else {
+                        front = true;
+                        back_offset -= unit.len_utf8;
+                    }
+                } else {
+                    break;
+                }
+            }
+            Some(Err(err)) => return Err(err),
+            None => break,
+        }
+    }
     Ok((front_len, back_offset))
 }
 
 /// Returns `Result<(start, end), ()>`
-fn take_span<I, E>(
+fn take_span<I>(
     iter: I,
     span_offset: usize,
     width: usize,
     space_separated: bool,
-) -> Result<(usize, usize), E>
+) -> Result<(usize, usize), I::Error>
 where
-    I: SectionUnitIter<E>,
+    I: UnitIter,
 {
     // Attempt to get 1/3 of the total width before the span.
     let init_backward_width = width / 3 + SIDE_HAS_MORE_COST;
@@ -475,33 +487,32 @@ where
 
 ///////////////////////////////////////////////////////////////////////////////
 
-fn elements_to_fit_width<A, I, F, E>(
-    mut iter: I,
-    mut acc: A,
-    width: usize,
-    space_separated: bool,
+struct Calculator {
+    budget: usize,
+    is_first: bool,
     has_more_cost: usize,
-    mut element_fn: F,
-) -> Result<(A, usize), E>
-where
-    A: Copy,
-    I: Iterator,
-    F: FnMut(A, I::Item) -> Result<(A, usize), E>,
-{
-    let mut is_first = true;
-    let mut budget = width;
-    while let Some(item) = iter.next() {
-        // Try to get the next element
-        let (next_acc, display_cost) = match element_fn(acc, item) {
-            Ok((next_acc, display_cost)) => (next_acc, display_cost),
-            Err(err) => return Err(err),
-        };
-        // Handle the next element
-        let has_next = iter.size_hint().0 > 0;
+    space_separated: bool,
+}
+
+impl Calculator {
+    fn new(budget: usize, has_more_cost: usize, space_separated: bool) -> Self {
+        Self {
+            budget,
+            has_more_cost,
+            space_separated,
+            is_first: true,
+        }
+    }
+
+    fn budget(&self) -> usize {
+        self.budget
+    }
+
+    fn next(&mut self, display_cost: usize, has_next: bool) -> bool {
         // Make sure we have room for the separator if any
-        let element_cost = if space_separated {
-            if is_first {
-                is_first = false;
+        let unit_cost = if self.space_separated {
+            if self.is_first {
+                self.is_first = false;
                 display_cost
             } else {
                 SPACE_COST + display_cost
@@ -511,24 +522,23 @@ where
         };
         // Make sure we have room for the has more
         let required = if has_next {
-            element_cost + has_more_cost
+            unit_cost + self.has_more_cost
         } else {
-            element_cost
+            unit_cost
         };
-        // Check that we have enough room for the this element, and if so
+        // Check that we have enough room for the this unit, and if so
         // subtract it.
-        if budget >= required {
+        if self.budget >= required {
             // We did, update the budget and commit the accumulator.
-            budget -= element_cost;
-            acc = next_acc;
+            self.budget -= unit_cost;
         } else {
             if has_next {
-                budget = budget.saturating_sub(has_more_cost)
+                self.budget = self.budget.saturating_sub(self.has_more_cost)
             }
-            break;
+            return false;
         }
+        true
     }
-    Ok((acc, budget))
 }
 
 ///////////////////////////////////////////////////////////////////////////////
