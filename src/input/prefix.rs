@@ -1,8 +1,6 @@
-use super::{Bytes, String};
+use super::{Bytes, BytesLength, String};
 
-pub unsafe trait Prefix<I>: Copy {
-    fn byte_len(self) -> usize;
-
+pub unsafe trait Prefix<I>: BytesLength {
     fn is_prefix_of(self, input: &I) -> bool;
 }
 
@@ -11,11 +9,6 @@ where
     T: Prefix<I>,
 {
     #[inline(always)]
-    fn byte_len(self) -> usize {
-        (*self).byte_len()
-    }
-
-    #[inline(always)]
     fn is_prefix_of(self, input: &I) -> bool {
         (*self).is_prefix_of(input)
     }
@@ -23,22 +16,12 @@ where
 
 unsafe impl<'i> Prefix<Bytes<'i>> for u8 {
     #[inline(always)]
-    fn byte_len(self) -> usize {
-        1
-    }
-
-    #[inline(always)]
     fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
         input.as_dangerous().starts_with(&[self])
     }
 }
 
 unsafe impl<'i> Prefix<String<'i>> for char {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len_utf8()
-    }
-
     #[inline(always)]
     fn is_prefix_of(self, input: &String<'i>) -> bool {
         match input.as_dangerous().chars().next() {
@@ -50,11 +33,6 @@ unsafe impl<'i> Prefix<String<'i>> for char {
 
 unsafe impl<'i> Prefix<Bytes<'i>> for char {
     #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len_utf8()
-    }
-
-    #[inline(always)]
     fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
         let mut arr = [0_u8; 4];
         let prefix = self.encode_utf8(&mut arr);
@@ -64,11 +42,6 @@ unsafe impl<'i> Prefix<Bytes<'i>> for char {
 
 unsafe impl<'i> Prefix<Bytes<'i>> for &[u8] {
     #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len()
-    }
-
-    #[inline(always)]
     fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
         input.as_dangerous().starts_with(self)
     }
@@ -76,22 +49,12 @@ unsafe impl<'i> Prefix<Bytes<'i>> for &[u8] {
 
 unsafe impl<'i> Prefix<String<'i>> for &str {
     #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.as_bytes().len()
-    }
-
-    #[inline(always)]
     fn is_prefix_of(self, input: &String<'i>) -> bool {
         input.as_dangerous().starts_with(self)
     }
 }
 
 unsafe impl<'i> Prefix<Bytes<'i>> for &str {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.as_bytes().len()
-    }
-
     #[inline(always)]
     fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
         input.as_dangerous().starts_with(self.as_bytes())
@@ -104,11 +67,6 @@ unsafe impl<'i> Prefix<Bytes<'i>> for &str {
 #[cfg(feature = "unstable-const-generics")]
 unsafe impl<'i, const N: usize> Prefix<Bytes<'i>> for &[u8; N] {
     #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len()
-    }
-
-    #[inline(always)]
     fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
         input.as_dangerous().starts_with(&self[..])
     }
@@ -119,11 +77,6 @@ macro_rules! impl_array_prefix {
     ($($n:expr),*) => {
         $(
             unsafe impl<'i> Prefix<Bytes<'i>> for &[u8; $n] {
-                #[inline(always)]
-                fn byte_len(self) -> usize {
-                    self.len()
-                }
-
                 #[inline(always)]
                 fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
                     input.as_dangerous().starts_with(&self[..])

@@ -17,7 +17,8 @@ use super::{Bound, Bytes, MaybeString, Prefix, String};
 /// An [`Input`] is an immutable wrapper around bytes to be processed.
 ///
 /// It can only be created via [`dangerous::input()`] as so to clearly point out
-/// where untrusted / dangerous input is consumed.
+/// where untrusted / dangerous input is consumed and takes the form of either
+/// [`Bytes`] or [`String`].
 ///
 /// It is used along with [`Reader`] to process the input.
 ///
@@ -200,7 +201,7 @@ pub trait Input<'i>: Private<'i> {
 
 pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     /// Smallest unit that can be consumed.
-    type Token: Token;
+    type Token: BytesLength + Copy + 'static;
 
     /// Iterator of tokens.
     ///
@@ -554,25 +555,74 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 impl<'i, T> PrivateExt<'i> for T where T: Input<'i> {}
 
 ///////////////////////////////////////////////////////////////////////////////
-// Token
+// BytesLength
 
-pub unsafe trait Token: Copy + 'static {
+pub unsafe trait BytesLength: Copy {
     fn byte_len(self) -> usize;
 }
 
-unsafe impl Token for u8 {
+unsafe impl<T> BytesLength for &T
+where
+    T: BytesLength,
+{
+    #[inline(always)]
+    fn byte_len(self) -> usize {
+        (*self).byte_len()
+    }
+}
+
+unsafe impl BytesLength for u8 {
     #[inline(always)]
     fn byte_len(self) -> usize {
         1
     }
 }
 
-unsafe impl Token for char {
+unsafe impl BytesLength for char {
     #[inline(always)]
     fn byte_len(self) -> usize {
         self.len_utf8()
     }
 }
+
+unsafe impl BytesLength for &[u8] {
+    #[inline(always)]
+    fn byte_len(self) -> usize {
+        self.len()
+    }
+}
+
+unsafe impl BytesLength for &str {
+    #[inline(always)]
+    fn byte_len(self) -> usize {
+        self.as_bytes().len()
+    }
+}
+
+#[cfg(feature = "unstable-const-generics")]
+unsafe impl<'i, const N: usize> BytesLength for &[u8; N] {
+    #[inline(always)]
+    fn byte_len(self) -> usize {
+        self.len()
+    }
+}
+
+#[cfg(not(feature = "unstable-const-generics"))]
+macro_rules! impl_array_bytes_len {
+    ($($n:expr),*) => {
+        $(
+            unsafe impl<'i> BytesLength for &[u8; $n] {
+                #[inline(always)]
+                fn byte_len(self) -> usize {
+                    self.len()
+                }
+            }
+        )*
+    };
+}
+
+#[cfg(not(feature = "unstable-const-generics"))]
+for_common_array_sizes!(impl_array_bytes_len);
 
 ///////////////////////////////////////////////////////////////////////////////
 // IntoInput

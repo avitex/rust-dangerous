@@ -12,7 +12,7 @@ pub use self::string::String;
 pub use self::traits::Input;
 
 pub(crate) use self::prefix::Prefix;
-pub(crate) use self::traits::{IntoInput, Private, PrivateExt};
+pub(crate) use self::traits::{BytesLength, IntoInput, Private, PrivateExt};
 
 /// Creates a new `Input` from a byte or string slice.
 ///
