@@ -95,7 +95,10 @@ impl<'i> Bytes<'i> {
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        self.clone().into_string().map(|s| s.as_dangerous())
+        str::from_utf8(self.as_dangerous()).map_err(|err| {
+            self.clone()
+                .map_utf8_error(err.error_len(), err.valid_up_to(), "convert input to str")
+        })
     }
 
     /// Returns the underlying byte slice if it is not empty.
@@ -164,11 +167,8 @@ impl<'i> Bytes<'i> {
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        str::from_utf8(self.as_dangerous())
+        self.to_dangerous_str()
             .map(|s| String::new(s, self.bound()))
-            .map_err(|err| {
-                self.map_utf8_error(err.error_len(), err.valid_up_to(), "convert input to str")
-            })
     }
 }
 
