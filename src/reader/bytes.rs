@@ -14,7 +14,6 @@ impl<'i, E> BytesReader<'i, E> {
     /// [`ExpectedLength`] if a UTF-8 code point was cut short.
     pub fn skip_str_while<F>(&mut self, pred: F) -> Result<usize, E>
     where
-        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
@@ -53,7 +52,6 @@ impl<'i, E> BytesReader<'i, E> {
     #[inline]
     pub fn take_remaining_str(&mut self) -> Result<String<'i>, E>
     where
-        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
@@ -68,7 +66,6 @@ impl<'i, E> BytesReader<'i, E> {
     /// [`ExpectedLength`] if a UTF-8 code point was cut short.
     pub fn take_str_while<F>(&mut self, pred: F) -> Result<String<'i>, E>
     where
-        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,

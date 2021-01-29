@@ -399,7 +399,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     #[inline(always)]
     fn split_consumed<F, E>(self, f: F) -> (Self, Self)
     where
-        E: WithContext<'i>,
         F: FnOnce(&mut Reader<'i, E, Self>),
     {
         let mut reader = Reader::new(self.clone());
@@ -468,11 +467,27 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         operation: &'static str,
     ) -> Result<(T, Self), E>
     where
-        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Reader<'i, E, Self>) -> Option<T>,
     {
-        self.try_split_expect(|r| Ok(f(r)), expected, operation)
+        let context = ExpectedContext {
+            expected,
+            operation,
+        };
+        let mut reader = Reader::new(self.clone());
+        if let Some(ok) = f(&mut reader) {
+            Ok((ok, reader.take_remaining()))
+        } else {
+            let tail = reader.take_remaining();
+            let span = &self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()];
+            Err(E::from(ExpectedValid {
+                span,
+                input: self.into_maybe_string(),
+                context,
+                #[cfg(feature = "retry")]
+                retry_requirement: None,
+            }))
+        }
     }
 
     /// Tries to split the input from the value expected to be read.
