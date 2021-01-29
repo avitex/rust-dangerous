@@ -12,9 +12,9 @@
 //!
 //! assert_eq!(result, Ok((b'h', dangerous::input(b"ello"))));
 //! ```
-//! 
+//!
 //! # Feature flags
-//! 
+//!
 //! | Feature        | Default     | Description
 //! | -------------- | ----------- | ------------------------------------------ |
 //! | `std`          | _Disabled_  | Enables `std::error::Error` support.       |

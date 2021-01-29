@@ -28,8 +28,7 @@ dangerous = "0.6"
 
 **\[1]** Panics due to OOM are out-of-scope. Disable heap-allocations if this is
 a concern.  
-**\[2]** Zero dependencies when both `unicode` and `bytecount`
-features are disabled.  
+**\[2]** Zero dependencies when both `unicode` and `simd` features are disabled.  
 **\[3]** Zero heap-allocations when the `full-context` feature is disabled.
 
 This library's intentions are to provide a simple interface for explicitly
