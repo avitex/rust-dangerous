@@ -164,8 +164,11 @@ impl<'i> Bytes<'i> {
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        self.split_str_while(|_| true, "convert input to str")
-            .map(|(s, _)| s)
+        str::from_utf8(self.as_dangerous())
+            .map(|s| String::new(s, self.bound()))
+            .map_err(|err| {
+                self.map_utf8_error(err.error_len(), err.valid_up_to(), "convert input to str")
+            })
     }
 }
 
@@ -231,20 +234,18 @@ impl<'i> Bytes<'i> {
         // For each char, lets make sure it matches the predicate.
         while let Some(result) = chars.next() {
             match result {
-                Ok(c) => {
-                    // Check if the char doesn't match the predicate.
-                    if f(c) {
-                        consumed = chars.as_forward();
-                    } else {
-                        // Because we hit the predicate it doesn't matter if we
-                        // have more input, this will always return the same.
-                        // This means we know the head input has a bound.
-                        let head = String::new(consumed, self.bound().close_end());
-                        // For the tail we derive the bound constaint from self.
-                        let tail = Bytes::new(&bytes[consumed.as_bytes().len()..], self.bound());
-                        // Return the split input parts.
-                        return Ok((head, tail));
-                    }
+                Ok(c) if f(c) => {
+                    consumed = chars.as_forward();
+                }
+                Ok(_) => {
+                    // Because we hit the predicate it doesn't matter if we
+                    // have more input, this will always return the same.
+                    // This means we know the head input has a bound.
+                    let head = String::new(consumed, self.bound().close_end());
+                    // For the tail we derive the bound constaint from self.
+                    let tail = Bytes::new(&bytes[consumed.as_bytes().len()..], self.bound());
+                    // Return the split input parts.
+                    return Ok((head, tail));
                 }
                 Err(utf8_err) => {
                     return Err(self.map_utf8_error(

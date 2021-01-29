@@ -59,7 +59,6 @@ where
     /// Read a length of input that was successfully consumed from a sub-parse.
     pub fn take_consumed<F>(&mut self, consumer: F) -> I
     where
-        E: WithContext<'i>,
         F: FnOnce(&mut Self),
     {
         self.advance(|input| input.split_consumed(consumer))
@@ -152,7 +151,6 @@ where
     pub fn expect<F, T>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         F: FnOnce(&mut Self) -> Option<T>,
-        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
         self.try_advance(|input| input.split_expect(f, expected, "expect"))
