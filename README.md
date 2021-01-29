@@ -9,7 +9,7 @@
 Documentation hosted on [docs.rs](https://docs.rs/dangerous).
 
 ```toml
-dangerous = "0.6"
+dangerous = "0.7"
 ```
 
 ## Goals
