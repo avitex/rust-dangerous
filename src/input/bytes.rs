@@ -92,6 +92,7 @@ impl<'i> Bytes<'i> {
     pub fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
     where
         E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
         self.clone().into_string().map(|s| s.as_dangerous())
     }
@@ -159,8 +160,10 @@ impl<'i> Bytes<'i> {
     pub fn into_string<E>(self) -> Result<String<'i>, E>
     where
         E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
-        String::from_utf8(self)
+        self.split_str_while(|_| true, "convert input to str")
+            .map(|(s, _)| s)
     }
 }
 
@@ -216,12 +219,41 @@ impl<'i> Bytes<'i> {
         operation: &'static str,
     ) -> Result<(String<'i>, Bytes<'i>), E>
     where
-        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
     {
-        self.try_split_str_while(|c| Ok(f(c)), operation)
+        let bytes = self.as_dangerous();
+        let mut chars = utf8::CharIter::new(bytes);
+        let mut consumed = chars.as_forward();
+        // For each char, lets make sure it matches the predicate.
+        while let Some(result) = chars.next() {
+            match result {
+                Ok(c) => {
+                    // Check if the char doesn't match the predicate.
+                    if f(c) {
+                        consumed = chars.as_forward();
+                    } else {
+                        // Because we hit the predicate it doesn't matter if we
+                        // have more input, this will always return the same.
+                        // This means we know the head input has a bound.
+                        let head = String::new(consumed, self.bound().close_end());
+                        // For the tail we derive the bound constaint from self.
+                        let tail = Bytes::new(&bytes[consumed.as_bytes().len()..], self.bound());
+                        // Return the split input parts.
+                        return Ok((head, tail));
+                    }
+                }
+                Err(utf8_err) => {
+                    return Err(self.map_utf8_error(
+                        utf8_err.error_len(),
+                        consumed.as_bytes().len(),
+                        operation,
+                    ))
+                }
+            }
+        }
+        Ok((String::new(consumed, self.bound()), self.end()))
     }
 
     #[inline(always)]
@@ -257,39 +289,13 @@ impl<'i> Bytes<'i> {
                         return Ok((head, tail));
                     }
                 }
-                Err(utf8_err) => match utf8_err.error_len() {
-                    None => {
-                        let valid_up_to = consumed.as_bytes().len();
-                        let invalid = &bytes[valid_up_to..];
-                        // SAFETY: For an error to occur there must be a cause (at
-                        // least one byte in an invalid codepoint) so it is safe to
-                        // get without checking bounds.
-                        let first_invalid = unsafe { slice::first_unchecked(invalid) };
-                        return Err(E::from(ExpectedLength {
-                            len: Length::AtLeast(utf8::char_len(first_invalid)),
-                            span: invalid,
-                            input: self.into_maybe_string(),
-                            context: ExpectedContext {
-                                operation,
-                                expected: "complete utf-8 code point",
-                            },
-                        }));
-                    }
-                    Some(error_len) => {
-                        let valid_up_to = consumed.as_bytes().len();
-                        let error_end = valid_up_to + error_len;
-                        return Err(E::from(ExpectedValid {
-                            span: &bytes[valid_up_to..error_end],
-                            input: self.into_maybe_string(),
-                            context: ExpectedContext {
-                                operation,
-                                expected: "utf-8 code point",
-                            },
-                            #[cfg(feature = "retry")]
-                            retry_requirement: None,
-                        }));
-                    }
-                },
+                Err(utf8_err) => {
+                    return Err(self.map_utf8_error(
+                        utf8_err.error_len(),
+                        consumed.as_bytes().len(),
+                        operation,
+                    ))
+                }
             }
         }
         Ok((String::new(consumed, self.bound()), self.end()))
@@ -363,6 +369,50 @@ impl<'i> Bytes<'i> {
         match self.split_at(16, operation) {
             Ok((head, tail)) => Ok((head.as_dangerous().try_into().unwrap(), tail)),
             Err(err) => Err(err),
+        }
+    }
+
+    fn map_utf8_error<E>(
+        self,
+        error_len: Option<usize>,
+        valid_up_to: usize,
+        operation: &'static str,
+    ) -> E
+    where
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        let bytes = self.as_dangerous();
+        match error_len {
+            None => {
+                let invalid = &bytes[valid_up_to..];
+                // SAFETY: For an error to occur there must be a cause (at
+                // least one byte in an invalid codepoint) so it is safe to
+                // get without checking bounds.
+                let first_invalid = unsafe { slice::first_unchecked(invalid) };
+                E::from(ExpectedLength {
+                    len: Length::AtLeast(utf8::char_len(first_invalid)),
+                    span: invalid,
+                    input: self.into_maybe_string(),
+                    context: ExpectedContext {
+                        operation,
+                        expected: "complete utf-8 code point",
+                    },
+                })
+            }
+            Some(error_len) => {
+                let error_end = valid_up_to + error_len;
+                E::from(ExpectedValid {
+                    span: &bytes[valid_up_to..error_end],
+                    input: self.into_maybe_string(),
+                    context: ExpectedContext {
+                        operation,
+                        expected: "utf-8 code point",
+                    },
+                    #[cfg(feature = "retry")]
+                    retry_requirement: None,
+                })
+            }
         }
     }
 }
