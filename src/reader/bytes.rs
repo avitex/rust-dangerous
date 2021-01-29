@@ -55,7 +55,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_str_while(|_| true, "try take remaining str"))
+        self.try_advance(|input| input.split_str_while(|_| true, "take remaining str"))
     }
 
     /// Read a length of string input while a predicate check remains true.

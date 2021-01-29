@@ -16,7 +16,7 @@ impl<'i, E> StringReader<'i, E> {
     {
         self.input
             .clone()
-            .split_first("peek u8")
+            .split_first("peek char")
             .map(|(byte, _)| byte)
     }
 

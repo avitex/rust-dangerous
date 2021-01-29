@@ -101,7 +101,6 @@ where
     pub fn verify<F>(&mut self, expected: &'static str, verifier: F) -> Result<(), E>
     where
         F: FnOnce(&mut Self) -> bool,
-        E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
     {
         self.try_advance(|input| {
