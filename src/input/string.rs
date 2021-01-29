@@ -89,31 +89,9 @@ impl<'i> String<'i> {
     pub fn from_utf8<E>(utf8: Bytes<'i>) -> Result<String<'i>, E>
     where
         E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
     {
-        let bytes = utf8.as_dangerous();
-        match str::from_utf8(bytes) {
-            Ok(s) => Ok(String::new(s, utf8.bound())),
-            Err(utf8_err) => {
-                let valid_up_to = utf8_err.valid_up_to();
-                let span = match utf8_err.error_len() {
-                    Some(error_len) => {
-                        let error_end = valid_up_to + error_len;
-                        &bytes[valid_up_to..error_end]
-                    }
-                    None => &bytes[valid_up_to..],
-                };
-                Err(E::from(ExpectedValid {
-                    span,
-                    input: utf8.into_maybe_string(),
-                    context: ExpectedContext {
-                        operation: "convert input to str",
-                        expected: "utf-8 code point",
-                    },
-                    #[cfg(feature = "retry")]
-                    retry_requirement: None,
-                }))
-            }
-        }
+        utf8.into_string()
     }
 
     /// Construct a `String` from unchecked [`Bytes`].

@@ -444,6 +444,12 @@ fn test_invalid_error_details_span() {
         }
     }
 
+    impl<'i> From<ExpectedLength<'i>> for MyError {
+        fn from(err: ExpectedLength<'i>) -> Self {
+            Self(RootContextStack::from_root(err.context()))
+        }
+    }
+
     impl<'i> Details<'i> for MyError {
         fn input(&self) -> MaybeString<'i> {
             input!(b"something").into_maybe_string()
