@@ -2,7 +2,7 @@ use crate::display::byte_count;
 use crate::fmt;
 
 /// Length that was expected in an operation.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[must_use]
 pub enum Length {
     /// A minimum length was expected.

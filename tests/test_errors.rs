@@ -139,8 +139,15 @@ fn trigger_expected_value<E: Error<'static>>() -> E {
 
 #[test]
 fn test_expected_valid_variant() {
-    let error: ExpectedKind = trigger_expected_valid();
-
+    let error = match trigger_expected_valid() {
+        ExpectedKind::Valid(error) => error,
+        other => panic!("unexpected error kind: {:?}", other),
+    };
+    assert_eq!(error.input().into_bytes(), b"hello world\xC2 "[..]);
+    assert_eq!(error.expected(), "utf-8 code point");
+    assert_eq!(error.span(), b"\xC2"[..]);
+    assert_eq!(error.context().operation(), "take str while");
+    assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
         format!("{:#?}\n", error),
         indoc! {r#"
@@ -223,8 +230,15 @@ fn test_expected_valid_full_boxed() {
 
 #[test]
 fn test_expected_length_variant() {
-    let error: ExpectedKind = trigger_expected_length();
-
+    let error = match trigger_expected_length() {
+        ExpectedKind::Length(error) => error,
+        other => panic!("unexpected error kind: {:?}", other),
+    };
+    assert_eq!(error.input().into_bytes(), b"hello world"[..]);
+    assert_eq!(error.len(), Length::AtLeast(13));
+    assert_eq!(error.span(), b"hello world"[..]);
+    assert_eq!(error.context().operation(), "take");
+    assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
     assert_eq!(
         format!("{:#?}\n", error),
         indoc! {r#"
@@ -296,9 +310,16 @@ fn test_expected_length_full() {
 // Expected value
 
 #[test]
-fn test_expected_value() {
-    let error: ExpectedKind = trigger_expected_value();
-
+fn test_expected_value_variant() {
+    let error = match trigger_expected_value() {
+        ExpectedKind::Value(error) => error,
+        other => panic!("unexpected error kind: {:?}", other),
+    };
+    assert_eq!(error.input().into_bytes(), b"hello world"[..]);
+    assert_eq!(error.found(), b"hel"[..]);
+    assert_eq!(error.expected().as_bytes(), &b"123"[..]);
+    assert_eq!(error.context().operation(), "consume");
+    assert_eq!(error.to_retry_requirement(), None);
     assert_eq!(
         format!("{:#?}\n", error),
         indoc! {r#"
