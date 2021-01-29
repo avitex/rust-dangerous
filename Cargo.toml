@@ -15,7 +15,7 @@ keywords = ["parsing", "untrusted"]
 
 [features]
 default = ["retry", "full-context", "simd", "unicode"]
-# Enables both `std::error::Error` impls and allocations.
+# Enables `std::error::Error` support.
 std = ["alloc"]
 # Enables allocations.
 alloc = []

@@ -12,6 +12,18 @@
 //!
 //! assert_eq!(result, Ok((b'h', dangerous::input(b"ello"))));
 //! ```
+//! 
+//! # Feature flags
+//! 
+//! | Feature        | Default     | Description
+//! | -------------- | ----------- | ------------------------------------------ |
+//! | `std`          | _Disabled_  | Enables `std::error::Error` support.       |
+//! | `alloc`        | **Enabled** | Enables allocations.                       |
+//! | `retry`        | **Enabled** | Enables retry support.                     |
+//! | `simd`         | **Enabled** | Enables all supported SIMD optimisations.  |
+//! | `unicode`      | **Enabled** | Enables improved unicode printing support. |
+//! | `full-context` | **Enabled** | Enables full context backtraces.           |
+//! | `zc`           | _Disabled_  | Enables `zc` crate support.                |
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
