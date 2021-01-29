@@ -402,6 +402,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         F: FnOnce(&mut Reader<'i, E, Self>),
     {
         let mut reader = Reader::new(self.clone());
+        // Consume input.
         f(&mut reader);
         // We take the remaining input.
         let tail = reader.take_remaining();
@@ -434,7 +435,8 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         F: FnOnce(&mut Reader<'i, E, Self>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self.clone());
-        with_context(self.clone(), OperationContext(operation), || f(&mut reader))?;
+        // Consume input.
+        reader.context(OperationContext(operation), f)?;
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
@@ -513,7 +515,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             operation,
         };
         let mut reader = Reader::new(self.clone());
-        match with_context(self.clone(), context, || f(&mut reader)) {
+        match reader.context(context, f) {
             Ok(Some(ok)) => Ok((ok, reader.take_remaining())),
             Ok(None) => {
                 let tail = reader.take_remaining();
