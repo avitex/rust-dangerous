@@ -85,7 +85,8 @@ impl<'i> String<'i> {
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
+    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
     pub fn from_utf8<E>(utf8: Bytes<'i>) -> Result<String<'i>, E>
     where
         E: From<ExpectedValid<'i>>,
