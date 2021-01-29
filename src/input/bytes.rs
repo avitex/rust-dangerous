@@ -87,7 +87,8 @@ impl<'i> Bytes<'i> {
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
+    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
     #[inline(always)]
     pub fn to_dangerous_str<E>(&self) -> Result<&'i str, E>
     where
@@ -155,7 +156,8 @@ impl<'i> Bytes<'i> {
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedValid`] if the input is not valid UTF-8.
+    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
     #[inline(always)]
     pub fn into_string<E>(self) -> Result<String<'i>, E>
     where
