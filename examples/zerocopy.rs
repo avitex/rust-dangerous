@@ -1,5 +1,5 @@
 use core::convert::TryFrom;
-use dangerous::{BytesReader, Expected, Input};
+use dangerous::{BytesReader, Error, Expected, Input};
 use zc::Dependant;
 
 #[derive(Dependant, Debug)]
@@ -24,7 +24,7 @@ fn main() {
 
 fn parse<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Vec<&'i str>, E>
 where
-    E: dangerous::Error<'i>,
+    E: Error<'i>,
 {
     let mut parts = Vec::new();
     loop {
