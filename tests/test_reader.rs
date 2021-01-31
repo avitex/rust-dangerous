@@ -283,7 +283,7 @@ fn test_try_take_consumed() {
 fn test_peek() {
     assert_eq!(
         read_all!(b"hello", |r| {
-            let v = r.peek(4)? == b"hell"[..];
+            let v = *r.peek(4)? == b"hell"[..];
             r.skip(5)?;
             Ok(v)
         })
@@ -301,7 +301,7 @@ fn test_peek() {
 fn test_peek_opt() {
     assert_eq!(
         read_all!(b"hello", |r| {
-            let v = r.peek_opt(4).map_or(false, |v| v == b"hell"[..]);
+            let v = r.peek_opt(4).map_or(false, |v| *v == b"hell"[..]);
             r.skip(5)?;
             Ok(v)
         })

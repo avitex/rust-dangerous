@@ -1,11 +1,14 @@
 mod bytes;
 mod input;
+mod peek;
 mod string;
 
 use core::marker::PhantomData;
 
 use crate::fmt;
 use crate::input::{Bytes, Input, String};
+
+pub use self::peek::Peek;
 
 /// [`Bytes`] specific [`Reader`].
 pub type BytesReader<'i, E> = Reader<'i, E, Bytes<'i>>;

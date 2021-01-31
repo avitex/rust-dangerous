@@ -7,7 +7,7 @@ use crate::error::{
     WithContext,
 };
 
-use super::Reader;
+use super::{Peek, Reader};
 
 impl<'i, E, I> Reader<'i, E, I>
 where
@@ -389,19 +389,33 @@ where
 
     /// Peek a length of input.
     ///
-    /// The function lifetime is to prevent the peeked `Input` being used as a
+    /// The function lifetime is to prevent the peeked [`Input`] being used as a
     /// value in a parsed structure. Peeked values should only be used in
     /// choosing a correct parse path.
+    ///
+    /// Below is an example of what this function prevents:
+    ///
+    /// ```compile_fail
+    /// use dangerous::{BytesReader, Error};
+    ///
+    /// fn parse<'i, E>(r: &mut BytesReader<'i, E>) -> Result<&'i [u8], E>
+    /// where
+    ///    E: Error<'i>
+    /// {
+    ///     let peeked = r.peek(2)?;
+    ///     Ok(peeked.as_dangerous())
+    /// }
+    /// ```
     ///
     /// # Errors
     ///
     /// Returns an error if the length requirement to peek could not be met.
-    pub fn peek<'p>(&'p self, len: usize) -> Result<I, E>
+    pub fn peek<'p>(&'p self, len: usize) -> Result<Peek<'p, I>, E>
     where
         E: From<ExpectedLength<'i>>,
     {
         match self.input.clone().split_at(len, "peek") {
-            Ok((head, _)) => Ok(head),
+            Ok((head, _)) => Ok(Peek::new(head)),
             Err(err) => Err(err),
         }
     }
@@ -411,8 +425,12 @@ where
     /// This is equivalent to `peek` but does not return an error. Don't use
     /// this function if you want an error if there isn't enough input.
     #[must_use = "peek result must be used"]
-    pub fn peek_opt(&self, len: usize) -> Option<I> {
-        self.input.clone().split_at_opt(len).map(|(head, _)| head)
+    #[allow(clippy::needless_lifetimes)]
+    pub fn peek_opt<'p>(&'p self, len: usize) -> Option<Peek<'p, I>> {
+        self.input
+            .clone()
+            .split_at_opt(len)
+            .map(|(head, _)| Peek::new(head))
     }
 
     /// Returns `true` if `prefix` is next in the `Reader`.
