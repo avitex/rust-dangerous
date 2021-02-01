@@ -14,7 +14,7 @@ fn main() {
         .read_to_end(&mut input_data)
         .expect("read input");
     let input = dangerous::input(input_data.as_slice());
-    match input.read_all::<_, _, Expected>(read_ini) {
+    match input.read_all::<_, _, Expected<'_>>(read_ini) {
         Ok(ini) => println!("{:#?}", ini),
         Err(e) => eprintln!("{:#}", e),
     };
@@ -132,7 +132,7 @@ enum ConsumeTo {
 }
 
 fn skip_whitespace_or_comment<E>(r: &mut BytesReader<'_, E>, to_where: ConsumeTo) {
-    fn skip_comment<E>(r: &mut BytesReader<E>) -> usize {
+    fn skip_comment<E>(r: &mut BytesReader<'_, E>) -> usize {
         if r.peek_eq(b';') {
             r.take_while(|c| c != b'\n').len()
         } else {

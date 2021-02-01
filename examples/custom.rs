@@ -4,7 +4,7 @@ use dangerous::{BytesReader, Error, Expected, Input, Invalid};
 
 fn main() {
     let input = dangerous::input(b"192.168.1.x");
-    let error: Expected = input.read_all(read_ipv4_addr).unwrap_err();
+    let error: Expected<'_> = input.read_all(read_ipv4_addr).unwrap_err();
 
     println!("{:#}", error);
 }
