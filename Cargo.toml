@@ -30,6 +30,7 @@ full-context = ["alloc"]
 
 [dependencies]
 zc = { version = "0.3", optional = true, default-features = false }
+regex = { version = "1.4", optional = true }
 memchr = { version = "2.3", optional = true }
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
