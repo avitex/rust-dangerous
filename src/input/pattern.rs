@@ -71,7 +71,7 @@ unsafe impl<'i> Pattern<Bytes<'i>> for u8 {
         memchr::memchr(self, input.as_dangerous()).map(|index| (index, 1))
     }
     #[cfg(not(feature = "memchr"))]
-    fn find(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
+    fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
         input
             .as_dangerous()
             .iter()
