@@ -7,10 +7,12 @@ use crate::input::{Bytes, String};
 /// The implementation must returned valid indexes and lengths for splitting
 /// input as these are not checked.
 pub unsafe trait Pattern<I> {
-    /// Returns the byte index and byte length of the first match.
+    /// Returns the byte index and byte length of the first match and `None` if
+    /// there was no match.
     fn find_match(self, input: &I) -> Option<(usize, usize)>;
 
-    /// Returns the byte index of the first reject.
+    /// Returns the byte index of the first reject and `None` if there was no
+    /// reject.
     fn find_reject(self, input: &I) -> Option<usize>;
 }
 
