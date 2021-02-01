@@ -11,7 +11,7 @@ use crate::fmt::{self, Write};
 use crate::util::{slice, utf8};
 
 use super::input::{InputWriter, PreferredFormat};
-use super::section_unit::UnitIter;
+use super::unit::UnitIter;
 
 const MIN_WIDTH: usize = 16;
 const SPACE_COST: usize = 1;

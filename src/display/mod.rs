@@ -3,7 +3,6 @@
 mod error;
 mod input;
 mod section;
-mod section_unit;
 mod unit;
 
 use core::fmt::{Formatter, Result};
