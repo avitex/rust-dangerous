@@ -389,23 +389,9 @@ where
 
     /// Peek a length of input.
     ///
-    /// The function lifetime is to prevent the peeked [`Input`] being used as a
-    /// value in a parsed structure. Peeked values should only be used in
+    /// The function lifetime `'p` helps prevent the peeked [`Input`] being used
+    /// as a value in a parsed structure. Peeked values should only be used in
     /// choosing a correct parse path.
-    ///
-    /// Below is an example of what this function prevents:
-    ///
-    /// ```compile_fail
-    /// use dangerous::{BytesReader, Error};
-    ///
-    /// fn parse<'i, E>(r: &mut BytesReader<'i, E>) -> Result<&'i [u8], E>
-    /// where
-    ///    E: Error<'i>
-    /// {
-    ///     let peeked = r.peek(2)?;
-    ///     Ok(peeked.as_dangerous())
-    /// }
-    /// ```
     ///
     /// # Errors
     ///

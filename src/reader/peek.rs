@@ -3,10 +3,24 @@ use core::ops::Deref;
 
 use crate::input::Input;
 
-/// Peeked [`Input`].
+/// Peek of [`Input`].
+///
+/// Below is an example of what this structure prevents:
+///
+/// ```compile_fail
+/// use dangerous::{BytesReader, Error};
+///
+/// fn parse<'i, E>(r: &mut BytesReader<'i, E>) -> Result<&'i [u8], E>
+/// where
+///    E: Error<'i>
+/// {
+///     let peeked = r.peek(2)?;
+///     Ok(peeked.as_dangerous())
+/// }
+/// ```
 pub struct Peek<'p, I> {
     input: I,
-    _life: PhantomData<&'p ()>,
+    lifetime: PhantomData<&'p ()>,
 }
 
 impl<'p, I> Peek<'p, I> {
@@ -14,7 +28,7 @@ impl<'p, I> Peek<'p, I> {
     pub(super) fn new(input: I) -> Self {
         Self {
             input,
-            _life: PhantomData,
+            lifetime: PhantomData,
         }
     }
 }
