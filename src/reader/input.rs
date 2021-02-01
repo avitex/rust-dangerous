@@ -516,6 +516,10 @@ where
 
     /// Read a length of input until a pattern optionally matches.
     ///
+    /// If you want to know whether the pattern was consumed or not, check
+    /// [`Reader::at_end()`]. If the reader is at the end, then the pattern was
+    /// not consumed.
+    ///
     /// Returns the input leading up to the pattern match if any.
     pub fn take_until_opt<P>(&mut self, pattern: P) -> I
     where
