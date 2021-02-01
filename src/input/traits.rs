@@ -383,14 +383,13 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         P: Pattern<Self> + Into<Value<'i>>,
     {
         self.clone().split_until_opt(pattern).ok_or_else(|| {
-            let bytes = self.as_dangerous_bytes();
             E::from(ExpectedValue {
-                actual: bytes,
+                actual: self.as_dangerous_bytes(),
                 expected: pattern.into(),
                 input: self.into_maybe_string(),
                 context: ExpectedContext {
                     operation,
-                    expected: "pattern",
+                    expected: "pattern match",
                 },
             })
         })
@@ -414,14 +413,13 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self.clone()
             .split_until_consume_opt(pattern)
             .ok_or_else(|| {
-                let bytes = self.as_dangerous_bytes();
                 E::from(ExpectedValue {
-                    actual: bytes,
+                    actual: self.as_dangerous_bytes(),
                     expected: pattern.into(),
                     input: self.into_maybe_string(),
                     context: ExpectedContext {
                         operation,
-                        expected: "pattern",
+                        expected: "pattern match",
                     },
                 })
             })
