@@ -1,4 +1,5 @@
-use crate::input::{Input, Pattern, Prefix, PrivateExt};
+use crate::input::pattern::{self, Pattern};
+use crate::input::{Input, Prefix, PrivateExt};
 
 #[cfg(feature = "retry")]
 use crate::error::ToRetryRequirement;
@@ -375,6 +376,15 @@ where
 
     /// Read a length of input until a pattern matches.
     pub fn take_until<P>(&mut self, pattern: P) -> I
+    where
+        P: Pattern<I>,
+    {
+        self.advance(|input| input.split_until(pattern::Start(pattern)))
+    }
+
+    /// Read a length of input until a pattern matches and consumes the matched
+    /// input.
+    pub fn take_until_consume<P>(&mut self, pattern: P) -> I
     where
         P: Pattern<I>,
     {
