@@ -196,7 +196,7 @@ where
     /// }
     ///
     /// let input = dangerous::input(b"192.168.1.x");
-    /// let error: Expected = input.read_all(read_ipv4_addr).unwrap_err();
+    /// let error: Expected<'_> = input.read_all(read_ipv4_addr).unwrap_err();
     ///
     /// // Prefer string input formatting
     /// println!("{:#}", error);
@@ -294,9 +294,9 @@ where
     /// }
     ///
     /// let input = dangerous::input(b"world");
-    /// let result: Result<_, Expected> = input.read_all(|r| {
+    /// let result: Result<_, Expected<'_>> = input.read_all(|r| {
     ///     r.expect("valid branch", |r| {
-    ///         r.error(|r: &mut BytesReader<Fatal>| {
+    ///         r.error(|r: &mut BytesReader<'_, Fatal>| {
     ///             r.recover(branch_a).or_else(|| r.recover(branch_b))
     ///         })
     ///     })

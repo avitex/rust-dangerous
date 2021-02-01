@@ -152,14 +152,6 @@ fn test_take_remaining() {
 }
 
 #[test]
-fn test_take_remaining_str() {
-    assert_eq!(
-        read_all!(b"hello!", |r| { r.take_remaining_str() }).unwrap(),
-        "hello!"[..]
-    );
-}
-
-#[test]
 fn test_take_while() {
     assert_eq!(
         read_all!(b"hello!", |r| {
