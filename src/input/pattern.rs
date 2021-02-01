@@ -71,3 +71,19 @@ unsafe impl<'i> Pattern<String<'i>> for char {
         })
     }
 }
+
+#[cfg(feature = "regex")]
+unsafe impl<'i> Pattern<String<'i>> for &regex::Regex {
+    fn find(self, input: &String<'i>) -> Option<(usize, usize)> {
+        self.find(input.as_dangerous())
+            .map(|m| (m.start(), m.end() - m.start()))
+    }
+}
+
+#[cfg(feature = "regex")]
+unsafe impl<'i> Pattern<Bytes<'i>> for &regex::bytes::Regex {
+    fn find(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
+        self.find(input.as_dangerous())
+            .map(|m| (m.start(), m.end() - m.start()))
+    }
+}
