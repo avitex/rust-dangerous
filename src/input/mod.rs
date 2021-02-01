@@ -1,9 +1,10 @@
 mod bytes;
 mod maybe;
-mod pattern;
 mod prefix;
 mod string;
 mod traits;
+
+pub(crate) mod pattern;
 
 use crate::fmt;
 
