@@ -70,7 +70,7 @@ fn test_skip() {
 #[test]
 fn test_skip_while() {
     read_all_ok!(b"hello!", |r| {
-        r.skip_while(|c| c.is_ascii_alphabetic());
+        r.skip_while(|c: u8| c.is_ascii_alphabetic());
         r.skip(1)
     });
 }
@@ -120,7 +120,7 @@ fn test_take_remaining_second() {
 #[test]
 fn test_take_while_all() {
     let input = read_all_ok!(b"hello", |r| {
-        Ok(r.take_while(|c| c.is_ascii_alphabetic()))
+        Ok(r.take_while(|c: u8| c.is_ascii_alphabetic()))
     });
     assert_eq!(input, b"hello"[..]);
     assert_eq!(input.bound(), Bound::Start);
@@ -129,7 +129,7 @@ fn test_take_while_all() {
 #[test]
 fn test_take_while_partial() {
     let input = read_all_ok!(b"hello!", |r| {
-        let input = r.take_while(|c| c.is_ascii_alphabetic());
+        let input = r.take_while(|c: u8| c.is_ascii_alphabetic());
         r.skip(1)?;
         Ok(input)
     });

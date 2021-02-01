@@ -117,7 +117,7 @@ where
     r.consume(b']')?;
 
     r.verify("newline after section", |r| {
-        r.take_while(|c| c.is_ascii_whitespace())
+        r.take_while(|c: u8| c.is_ascii_whitespace())
             .as_dangerous()
             .contains(&b'\n')
     })?;
@@ -144,7 +144,7 @@ fn skip_whitespace_or_comment<E>(r: &mut BytesReader<'_, E>, to_where: ConsumeTo
     loop {
         current += skip_comment(r);
         current += r
-            .take_while(|c| {
+            .take_while(|c: u8| {
                 let iwb = c.is_ascii_whitespace();
                 iwb && match to_where {
                     ConsumeTo::NextToken => true,

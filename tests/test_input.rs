@@ -150,11 +150,15 @@ fn test_read_partial() {
 #[test]
 fn test_read_infallible() {
     assert_eq!(
-        read_infallible!(b"hello", |r| { r.take_while(|c| c.is_ascii_alphabetic()) }),
+        read_infallible!(b"hello", |r| {
+            r.take_while(|b: u8| b.is_ascii_alphabetic())
+        }),
         (input!(b"hello"), input!(b""))
     );
     assert_eq!(
-        read_infallible!(b"hello1", |r| { r.take_while(|c| c.is_ascii_alphabetic()) }),
+        read_infallible!(b"hello1", |r| {
+            r.take_while(|b: u8| b.is_ascii_alphabetic())
+        }),
         (input!(b"hello"), input!(b"1"))
     );
 }
