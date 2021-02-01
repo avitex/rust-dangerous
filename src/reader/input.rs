@@ -1,5 +1,4 @@
-use crate::input::pattern::{self, Pattern};
-use crate::input::{Input, Prefix, PrivateExt};
+use crate::input::{Input, Pattern, Prefix, PrivateExt};
 
 #[cfg(feature = "retry")]
 use crate::error::ToRetryRequirement;
@@ -354,6 +353,55 @@ where
             .map(drop)
     }
 
+    /// Skip a length of input until a expected pattern matches.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValue`] if the pattern could not be found.
+    pub fn skip_until<P>(&mut self, pattern: P) -> Result<(), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<I> + Into<Value<'i>>,
+    {
+        self.try_advance(|input| input.split_until(pattern, "skip until"))
+            .map(drop)
+    }
+
+    /// Skip a length of input until a pattern matches and consumes the matched
+    /// input if found.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValue`] if the pattern could not be found.
+    pub fn skip_until_consume<P>(&mut self, pattern: P) -> Result<(), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<I> + Into<Value<'i>>,
+    {
+        self.try_advance(|input| input.split_until_consume(pattern, "skip until consume"))
+            .map(drop)
+    }
+
+    /// Skip a length of input until a pattern optionally matches.
+    pub fn skip_until_opt<P>(&mut self, pattern: P)
+    where
+        P: Pattern<I>,
+    {
+        let _skipped = self.take_until_opt(pattern);
+    }
+
+    /// Skip a length of input until a pattern optionally matches and consumes
+    /// the matched input if found.
+    ///
+    /// Returns `true` if the pattern was consumed, `false` if not.
+    pub fn skip_until_consume_opt<P>(&mut self, pattern: P) -> bool
+    where
+        P: Pattern<I>,
+    {
+        let (_skipped, consumed) = self.take_until_consume_opt(pattern);
+        consumed
+    }
+
     /// Read a length of input.
     ///
     /// # Errors
@@ -367,28 +415,26 @@ where
     }
 
     /// Read a length of input while a predicate check remains true.
+    ///
+    /// Returns the input leading up to when the predicate returns `false`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::{Input, Invalid};
+    ///
+    /// let result: Result<_, Invalid> = dangerous::input(b"hello!").read_all(|r| {
+    ///     r.take_while(|b| b.is_ascii_alphabetic());
+    ///     r.consume(b'!')
+    /// });
+    ///
+    /// assert!(result.is_ok());
+    /// ```
     pub fn take_while<F>(&mut self, pred: F) -> I
     where
         F: FnMut(I::Token) -> bool,
     {
         self.advance(|input| input.split_while(pred))
-    }
-
-    /// Read a length of input until a pattern matches.
-    pub fn take_until<P>(&mut self, pattern: P) -> I
-    where
-        P: Pattern<I>,
-    {
-        self.advance(|input| input.split_until(pattern::Start(pattern)))
-    }
-
-    /// Read a length of input until a pattern matches and consumes the matched
-    /// input.
-    pub fn take_until_consume<P>(&mut self, pattern: P) -> I
-    where
-        P: Pattern<I>,
-    {
-        self.advance(|input| input.split_until(pattern))
     }
 
     /// Try read a length of input while a predicate check remains successful
@@ -403,6 +449,101 @@ where
         F: FnMut(I::Token) -> Result<bool, E>,
     {
         self.try_advance(|input| input.try_split_while(pred, "try take while"))
+    }
+
+    /// Read a length of input until a expected pattern matches.
+    ///
+    /// Returns the input leading up to the pattern match.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::{Input, Invalid};
+    ///
+    /// let result: Result<_, Invalid> = dangerous::input(b"hello world").read_all(|r| {
+    ///     let before_space = r.take_until(b' ')?;
+    ///     Ok((before_space, r.take_remaining()))
+    /// });
+    ///
+    /// let (before_space, remaining) = result.unwrap();
+    ///
+    /// assert_eq!(before_space, b"hello"[..]);
+    /// assert_eq!(remaining, b" world"[..]);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValue`] if the pattern could not be found.
+    pub fn take_until<P>(&mut self, pattern: P) -> Result<I, E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<I> + Into<Value<'i>>,
+    {
+        self.try_advance(|input| input.split_until(pattern, "take until"))
+    }
+
+    /// Read a length of input until a pattern matches and consumes the matched
+    /// input if found.
+    ///
+    /// Returns the input leading up to the pattern match.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::{Input, Invalid};
+    ///
+    /// let result: Result<_, Invalid> = dangerous::input(b"hello world").read_all(|r| {
+    ///     let before_space = r.take_until_consume(b' ')?;
+    ///     Ok((before_space, r.take_remaining()))
+    /// });
+    ///
+    /// let (before_space, remaining) = result.unwrap();
+    ///
+    /// assert_eq!(before_space, b"hello"[..]);
+    /// assert_eq!(remaining, b"world"[..]);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValue`] if the pattern could not be found.
+    pub fn take_until_consume<P>(&mut self, pattern: P) -> Result<I, E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<I> + Into<Value<'i>>,
+    {
+        self.try_advance(|input| input.split_until_consume(pattern, "take until consume"))
+    }
+
+    /// Read a length of input until a pattern optionally matches.
+    ///
+    /// Returns the input leading up to the pattern match if any.
+    pub fn take_until_opt<P>(&mut self, pattern: P) -> I
+    where
+        P: Pattern<I>,
+    {
+        self.advance(|input| match input.clone().split_until_opt(pattern) {
+            Some((taken, next)) => (taken, next),
+            None => (input.clone(), input.end()),
+        })
+    }
+
+    /// Read a length of input until a pattern optionally matches and consumes
+    /// the matched input if found.
+    ///
+    /// Returns a tuple with:
+    ///
+    /// - The input leading up to the pattern match if any.
+    /// - `true` if the pattern was consumed, `false` if not.
+    pub fn take_until_consume_opt<P>(&mut self, pattern: P) -> (I, bool)
+    where
+        P: Pattern<I>,
+    {
+        self.advance(
+            |input| match input.clone().split_until_consume_opt(pattern) {
+                Some((taken, next)) => ((taken, true), next),
+                None => ((input.clone(), false), input.end()),
+            },
+        )
     }
 
     /// Peek a length of input.

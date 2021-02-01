@@ -39,19 +39,3 @@ unsafe impl<'i> Pattern<String<'i>> for char {
         })
     }
 }
-
-///////////////////////////////////////////////////////////////////////////////
-
-/// Matches the start of a pattern without spanning any input.
-#[derive(Copy, Clone)]
-pub(crate) struct Start<P>(pub(crate) P);
-
-unsafe impl<P, I> Pattern<I> for Start<P>
-where
-    P: Pattern<I>,
-{
-    #[inline(always)]
-    fn find(self, input: &I) -> Option<(usize, usize)> {
-        self.0.find(input).map(|(start, _)| (start, 0))
-    }
-}
