@@ -437,26 +437,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         })
     }
 
-    /// Splits the input up to when the provided function returns `false`.
-    #[inline(always)]
-    fn split_while<P, E>(self, pattern: P, operation: &'static str) -> Result<(Self, Self), E>
-    where
-        E: From<ExpectedValue<'i>>,
-        P: Pattern<Self> + Into<Value<'i>> + Copy,
-    {
-        self.clone().split_while_opt(pattern).ok_or_else(|| {
-            E::from(ExpectedValue {
-                actual: self.as_dangerous_bytes(),
-                expected: pattern.into(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
-                    operation,
-                    expected: "pattern match",
-                },
-            })
-        })
-    }
-
     /// Tries to split the input up to when the provided function returns
     /// `false`.
     ///
