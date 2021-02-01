@@ -6,9 +6,41 @@ use crate::input::{Bytes, String};
 ///
 /// The implementation must returned valid indexes and lengths for splitting
 /// input as these are not checked.
-pub unsafe trait Pattern<I>: Copy {
-    /// Returns the start byte index and byte length of the match if one is found.
+pub unsafe trait Pattern<I> {
+    /// Returns the start byte index and byte length of the match if found.
     fn find(self, input: &I) -> Option<(usize, usize)>;
+
+    // TODO
+    // Returns the start byte index of where the pattern does not match if found.
+    // fn find_negation(self, input: &I) -> Option<usize>;
+}
+
+unsafe impl<'i, F> Pattern<Bytes<'i>> for F
+where
+    F: FnMut(u8) -> bool,
+{
+    fn find(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
+        input
+            .as_dangerous()
+            .iter()
+            .copied()
+            .position(self)
+            .map(|i| (i, 1))
+    }
+}
+
+unsafe impl<'i, F> Pattern<String<'i>> for F
+where
+    F: FnMut(char) -> bool,
+{
+    fn find(mut self, input: &String<'i>) -> Option<(usize, usize)> {
+        for (i, c) in input.as_dangerous().char_indices() {
+            if !(self)(c) {
+                return Some((i, c.len_utf8()));
+            }
+        }
+        None
+    }
 }
 
 unsafe impl<'i> Pattern<Bytes<'i>> for u8 {
