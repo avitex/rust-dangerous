@@ -355,7 +355,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     where
         P: Pattern<Self>,
     {
-        pattern.find(&self).map(|(index, _)| {
+        pattern.find_match(&self).map(|(index, _)| {
             // SAFETY: Pattern guarantees it returns valid indexes.
             unsafe { self.split_at_byte_unchecked(index) }
         })
@@ -367,7 +367,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     where
         P: Pattern<Self>,
     {
-        pattern.find(&self).map(|(index, len)| {
+        pattern.find_match(&self).map(|(index, len)| {
             // SAFETY: Pattern guarantees it returns valid indexes.
             let (head, tail) = unsafe { self.split_at_byte_unchecked(index) };
             let (_, tail) = unsafe { tail.split_at_byte_unchecked(len) };
@@ -427,23 +427,34 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 
     /// Splits the input up to when the provided function returns `false`.
     #[inline(always)]
-    fn split_while<F>(self, mut pred: F) -> (Self, Self)
+    fn split_while_opt<P>(self, pattern: P) -> Option<(Self, Self)>
     where
-        F: FnMut(Self::Token) -> bool,
+        P: Pattern<Self>,
     {
-        // For each token, lets make sure it matches the predicate.
-        for (i, token) in self.clone().tokens() {
-            // Check if the token doesn't match the predicate.
-            if !pred(token) {
-                // Split the input up to, but not including the token. SAFETY:
-                // `i` derived from the token iterator is always a valid index
-                // for the input.
-                let (head, tail) = unsafe { self.split_at_byte_unchecked(i) };
-                // Return the split input parts.
-                return (head, tail);
-            }
-        }
-        (self.clone(), self.end())
+        pattern.find_reject(&self).map(|i| {
+            // SAFETY: Pattern guarantees it returns valid indexes.
+            unsafe { self.split_at_byte_unchecked(i) }
+        })
+    }
+
+    /// Splits the input up to when the provided function returns `false`.
+    #[inline(always)]
+    fn split_while<P, E>(self, pattern: P, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<Self> + Into<Value<'i>> + Copy,
+    {
+        self.clone().split_while_opt(pattern).ok_or_else(|| {
+            E::from(ExpectedValue {
+                actual: self.as_dangerous_bytes(),
+                expected: pattern.into(),
+                input: self.into_maybe_string(),
+                context: ExpectedContext {
+                    operation,
+                    expected: "pattern match",
+                },
+            })
+        })
     }
 
     /// Tries to split the input up to when the provided function returns

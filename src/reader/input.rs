@@ -330,12 +330,12 @@ where
             .map(drop)
     }
 
-    /// Skip a length of input while a predicate check remains true.
-    pub fn skip_while<F>(&mut self, pred: F)
+    /// Skip a length of input while a pattern matches.
+    pub fn skip_while<P>(&mut self, pattern: P)
     where
-        F: FnMut(I::Token) -> bool,
+        P: Pattern<I>,
     {
-        let _skipped = self.advance(|input| input.split_while(pred));
+        let _skipped = self.take_while(pattern);
     }
 
     /// Try skip a length of input while a predicate check remains successful
@@ -414,7 +414,7 @@ where
         self.try_advance(|input| input.split_at(len, "take"))
     }
 
-    /// Read a length of input while a predicate check remains true.
+    /// Read a length of input while a pattern matches.
     ///
     /// Returns the input leading up to when the predicate returns `false`.
     ///
@@ -424,17 +424,20 @@ where
     /// use dangerous::{Input, Invalid};
     ///
     /// let result: Result<_, Invalid> = dangerous::input(b"hello!").read_all(|r| {
-    ///     r.take_while(|b| b.is_ascii_alphabetic());
+    ///     r.take_while(|b: u8| b.is_ascii_alphabetic());
     ///     r.consume(b'!')
     /// });
     ///
     /// assert!(result.is_ok());
     /// ```
-    pub fn take_while<F>(&mut self, pred: F) -> I
+    pub fn take_while<P>(&mut self, pattern: P) -> I
     where
-        F: FnMut(I::Token) -> bool,
+        P: Pattern<I>,
     {
-        self.advance(|input| input.split_while(pred))
+        self.advance(|input| match input.clone().split_while_opt(pattern) {
+            Some((taken, next)) => (taken, next),
+            None => (input.clone(), input.end()),
+        })
     }
 
     /// Try read a length of input while a predicate check remains successful
