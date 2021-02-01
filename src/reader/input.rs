@@ -361,7 +361,7 @@ where
     pub fn skip_until<P>(&mut self, pattern: P) -> Result<(), E>
     where
         E: From<ExpectedValue<'i>>,
-        P: Pattern<I> + Into<Value<'i>>,
+        P: Pattern<I> + Into<Value<'i>> + Copy,
     {
         self.try_advance(|input| input.split_until(pattern, "skip until"))
             .map(drop)
@@ -376,7 +376,7 @@ where
     pub fn skip_until_consume<P>(&mut self, pattern: P) -> Result<(), E>
     where
         E: From<ExpectedValue<'i>>,
-        P: Pattern<I> + Into<Value<'i>>,
+        P: Pattern<I> + Into<Value<'i>> + Copy,
     {
         self.try_advance(|input| input.split_until_consume(pattern, "skip until consume"))
             .map(drop)
@@ -477,7 +477,7 @@ where
     pub fn take_until<P>(&mut self, pattern: P) -> Result<I, E>
     where
         E: From<ExpectedValue<'i>>,
-        P: Pattern<I> + Into<Value<'i>>,
+        P: Pattern<I> + Into<Value<'i>> + Copy,
     {
         self.try_advance(|input| input.split_until(pattern, "take until"))
     }
@@ -509,7 +509,7 @@ where
     pub fn take_until_consume<P>(&mut self, pattern: P) -> Result<I, E>
     where
         E: From<ExpectedValue<'i>>,
-        P: Pattern<I> + Into<Value<'i>>,
+        P: Pattern<I> + Into<Value<'i>> + Copy,
     {
         self.try_advance(|input| input.split_until_consume(pattern, "take until consume"))
     }

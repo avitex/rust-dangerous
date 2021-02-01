@@ -380,7 +380,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     fn split_until<P, E>(self, pattern: P, operation: &'static str) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValue<'i>>,
-        P: Pattern<Self> + Into<Value<'i>>,
+        P: Pattern<Self> + Into<Value<'i>> + Copy,
     {
         self.clone().split_until_opt(pattern).ok_or_else(|| {
             E::from(ExpectedValue {
@@ -408,7 +408,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValue<'i>>,
-        P: Pattern<Self> + Into<Value<'i>>,
+        P: Pattern<Self> + Into<Value<'i>> + Copy,
     {
         self.clone()
             .split_until_consume_opt(pattern)
