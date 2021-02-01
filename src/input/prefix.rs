@@ -1,5 +1,7 @@
 use super::{Bytes, BytesLength, String};
 
+use crate::util::utf8::CharBytes;
+
 pub unsafe trait Prefix<I>: BytesLength {
     fn is_prefix_of(self, input: &I) -> bool;
 }
@@ -34,9 +36,8 @@ unsafe impl<'i> Prefix<String<'i>> for char {
 unsafe impl<'i> Prefix<Bytes<'i>> for char {
     #[inline(always)]
     fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-        let mut arr = [0_u8; 4];
-        let prefix = self.encode_utf8(&mut arr);
-        input.as_dangerous().starts_with(prefix.as_bytes())
+        let bytes = CharBytes::from(self);
+        input.as_dangerous().starts_with(bytes.as_bytes())
     }
 }
 

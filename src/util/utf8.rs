@@ -89,6 +89,28 @@ fn parse_char(bytes: &[u8]) -> Result<char, InvalidChar> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// CharBytes
+
+#[derive(Copy, Clone)]
+pub(crate) struct CharBytes([u8; 4]);
+
+impl CharBytes {
+    #[inline(always)]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0[..char_len(self.0[0])]
+    }
+}
+
+impl From<char> for CharBytes {
+    #[inline(always)]
+    fn from(c: char) -> Self {
+        let mut bytes = [0_u8; 4];
+        c.encode_utf8(&mut bytes);
+        Self(bytes)
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // InvalidChar
 
 #[cfg_attr(test, derive(Debug))]

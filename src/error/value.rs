@@ -3,7 +3,7 @@ use core::slice;
 use crate::display::InputDisplay;
 use crate::fmt;
 use crate::input::{Bound, Bytes, Input};
-use crate::util::utf8;
+use crate::util::utf8::CharBytes;
 
 /// Value that was expected in an operation.
 #[derive(Copy, Clone)]
@@ -13,7 +13,7 @@ pub struct Value<'i>(ValueInner<'i>);
 #[derive(Copy, Clone)]
 enum ValueInner<'i> {
     Byte(u8),
-    Char([u8; 4]),
+    Char(CharBytes),
     Bytes(&'i [u8]),
     String(&'i str),
 }
@@ -24,7 +24,7 @@ impl<'i> Value<'i> {
     pub fn as_bytes(&self) -> &[u8] {
         match &self.0 {
             ValueInner::Byte(v) => slice::from_ref(v),
-            ValueInner::Char(v) => &v[..utf8::char_len(v[0])],
+            ValueInner::Char(v) => v.as_bytes(),
             ValueInner::Bytes(v) => v,
             ValueInner::String(v) => v.as_bytes(),
         }
@@ -61,9 +61,7 @@ impl<'i> From<u8> for Value<'i> {
 
 impl<'i> From<char> for Value<'i> {
     fn from(v: char) -> Self {
-        let mut arr = [0_u8; 4];
-        v.encode_utf8(&mut arr);
-        Self(ValueInner::Char(arr))
+        Self(ValueInner::Char(v.into()))
     }
 }
 
