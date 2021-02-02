@@ -2,6 +2,7 @@
 
 pub use dangerous::{error::*, *};
 pub use indoc::indoc;
+pub use paste::paste;
 
 macro_rules! input {
     ($input:expr) => {
@@ -27,11 +28,26 @@ macro_rules! read_infallible {
     };
 }
 
-macro_rules! assert_input_display_eq {
-    ($input:expr, $format:expr, $expected:expr) => {
-        assert_eq!(
-            format!($format, input!(<&[u8]>::from($input.as_ref()))),
-            $expected
-        );
+macro_rules! read_all_ok {
+    ($input:expr, $read_fn:expr) => {
+        read_all!($input, $read_fn).unwrap()
+    };
+}
+
+macro_rules! read_all_err {
+    ($input:expr, $read_fn:expr) => {
+        read_all!($input, $read_fn).unwrap_err()
+    };
+}
+
+macro_rules! read_partial_ok {
+    ($input:expr, $read_fn:expr) => {
+        read_partial!($input, $read_fn).unwrap()
+    };
+}
+
+macro_rules! read_partial_err {
+    ($input:expr, $read_fn:expr) => {
+        read_partial!($input, $read_fn).unwrap_err()
     };
 }

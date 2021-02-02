@@ -108,31 +108,19 @@ fn test_to_dangerous_str_expected_length() {
 #[test]
 fn test_read_all() {
     // Valid
-    assert_eq!(
-        read_all!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
-        ()
-    );
-    assert_eq!(
-        read_all!(b"hello", |r| { r.take(5) }).unwrap(),
-        input!(b"hello")
-    );
+    assert_eq!(read_all_ok!(b"hello", |r| { r.consume(b"hello") }), ());
+    assert_eq!(read_all_ok!(b"hello", |r| { r.take(5) }), input!(b"hello"));
     // Invalid
     assert_eq!(
-        read_all!(b"hello", |r| { r.consume(b"hell") })
-            .unwrap_err()
-            .to_retry_requirement(),
+        read_all_err!(b"hello", |r| { r.consume(b"hell") }).to_retry_requirement(),
         None
     );
     assert_eq!(
-        read_all!(b"hello", |r| { r.take(4) })
-            .unwrap_err()
-            .to_retry_requirement(),
+        read_all_err!(b"hello", |r| { r.take(4) }).to_retry_requirement(),
         None
     );
     assert_eq!(
-        read_all!(b"hello", |r| { r.take(10) })
-            .unwrap_err()
-            .to_retry_requirement(),
+        read_all_err!(b"hello", |r| { r.take(10) }).to_retry_requirement(),
         RetryRequirement::new(5)
     );
 }
@@ -141,22 +129,20 @@ fn test_read_all() {
 fn test_read_partial() {
     // Valid
     assert_eq!(
-        read_partial!(b"hello", |r| { r.consume(b"hello") }).unwrap(),
+        read_partial_ok!(b"hello", |r| { r.consume(b"hello") }),
         ((), input!(b""))
     );
     assert_eq!(
-        read_partial!(b"hello", |r| { r.take(5) }).unwrap(),
+        read_partial_ok!(b"hello", |r| { r.take(5) }),
         (input!(b"hello"), input!(b""))
     );
     assert_eq!(
-        read_partial!(b"hello", |r| { r.consume(b"hell") }).unwrap(),
+        read_partial_ok!(b"hello", |r| { r.consume(b"hell") }),
         ((), input!(b"o"))
     );
     // Invalid
     assert_eq!(
-        read_partial!(b"hello", |r| { r.take(10) })
-            .unwrap_err()
-            .to_retry_requirement(),
+        read_partial_err!(b"hello", |r| { r.take(10) }).to_retry_requirement(),
         RetryRequirement::new(5)
     );
 }

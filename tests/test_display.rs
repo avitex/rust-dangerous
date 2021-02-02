@@ -4,6 +4,15 @@ mod common;
 use common::*;
 use std::fmt;
 
+macro_rules! assert_input_display_eq {
+    ($input:expr, $format:expr, $expected:expr) => {
+        assert_eq!(
+            format!($format, input!(<&[u8]>::from($input.as_ref()))),
+            $expected
+        );
+    };
+}
+
 #[test]
 fn test_valid_utf8() {
     assert_input_display_eq!("hello ♥", "{}", "[68 65 6c 6c 6f 20 e2 99 a5]");
