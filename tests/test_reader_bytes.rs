@@ -187,7 +187,7 @@ macro_rules! test_can_read_num {
             paste! {
                 #[test]
                 #[allow(clippy::float_cmp)]
-                fn [<test_can_read $ty>]() {
+                fn [<test_can_read_ $ty>]() {
                     assert_eq!(
                         read_all_ok!(<$ty>::to_le_bytes(<$ty>::MIN), |r| r.[<read_ $ty _le>]()),
                         <$ty>::MIN
