@@ -5,7 +5,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        rust-toolchain: [stable]
+        rust-toolchain: [stable, nightly]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -28,18 +28,27 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ matrix.rust-toolchain }}
-      - name: Build code
-        run: cargo build
-      - name: Test code
+      - name: Test code with default features
         run: cargo test
+      - name: Test code with all features
+        run: cargo test --all-features
       - name: Test code with only retry feature
         run: cargo test --no-default-features --features retry
       - name: Lint code
-        run: cargo clippy
-      - name: Check code style
-        run: cargo fmt -- --check
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+        if: ${{ matrix.rust-toolchain == 'stable' }}
+        run: cargo fmt -- --check && cargo clippy
+  code_coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install Rust nightly components
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: llvm-tools-preview
+      - uses: Swatinem/fucov@v1
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
         with:
