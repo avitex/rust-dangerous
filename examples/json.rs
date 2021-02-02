@@ -171,7 +171,7 @@ where
             r.try_verify("first byte is digit", |r| {
                 r.read_u8().map(|c| c.is_ascii_digit())
             })?;
-            r.skip_while(|c| c.is_ascii_digit() || c == b'.');
+            r.skip_while(|c: u8| c.is_ascii_digit() || c == b'.');
             Ok(())
         })?;
         num_str.read_all(|r| {
@@ -184,7 +184,7 @@ where
 }
 
 fn skip_whitespace<E>(r: &mut BytesReader<'_, E>) {
-    r.skip_while(|c| c.is_ascii_whitespace());
+    r.skip_while(|c: u8| c.is_ascii_whitespace());
 }
 
 #[cfg(test)]
