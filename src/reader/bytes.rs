@@ -1,38 +1,34 @@
 use crate::error::{ExpectedLength, ExpectedValid, WithContext};
-use crate::input::{Input, PrivateExt, String};
+use crate::input::{PrivateExt, String};
 
 use super::BytesReader;
 
 impl<'i, E> BytesReader<'i, E> {
     /// Skip a length of string input while a predicate check remains true.
     ///
-    /// Returns the total length of input skipped in bytes.
-    ///
     /// # Errors
     ///
     /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
     /// [`ExpectedLength`] if a UTF-8 code point was cut short.
-    pub fn skip_str_while<F>(&mut self, pred: F) -> Result<usize, E>
+    pub fn skip_str_while<F>(&mut self, pred: F) -> Result<(), E>
     where
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
     {
         self.try_advance(|input| input.split_str_while(pred, "skip str while"))
-            .map(|head| head.byte_len())
+            .map(drop)
     }
 
     /// Try skip a length of string input while a predicate check remains
     /// successful and true.
-    ///
-    /// Returns the total length of input skipped in bytes.
     ///
     /// # Errors
     ///
     /// Returns any error the provided function does, [`ExpectedValid`] if the
     /// the input could never be valid UTF-8 and [`ExpectedLength`] if a UTF-8
     /// code point was cut short.
-    pub fn try_skip_str_while<F>(&mut self, pred: F) -> Result<usize, E>
+    pub fn try_skip_str_while<F>(&mut self, pred: F) -> Result<(), E>
     where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
@@ -40,7 +36,7 @@ impl<'i, E> BytesReader<'i, E> {
         F: FnMut(char) -> Result<bool, E>,
     {
         self.try_advance(|input| input.try_split_str_while(pred, "try skip str while"))
-            .map(|head| head.byte_len())
+            .map(drop)
     }
 
     /// Read a length of string input while a predicate check remains true.

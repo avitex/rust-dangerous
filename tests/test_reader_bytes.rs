@@ -111,14 +111,11 @@ fn test_peek_u8_opt() {
 
 #[test]
 fn test_skip_str_while() {
-    assert_eq!(
-        read_all_ok!(b"hello!", |r| {
-            let v = r.skip_str_while(|c| c.is_ascii_alphabetic())?;
-            r.skip(1)?;
-            Ok(v)
-        }),
-        5
-    );
+    read_all_ok!(b"hello!", |r| {
+        r.skip_str_while(|c| c.is_ascii_alphabetic())?;
+        r.skip(1)?;
+        Ok(())
+    })
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -159,14 +156,11 @@ fn test_take_str_while_utf8_retry() {
 
 #[test]
 fn test_try_skip_str_while() {
-    assert_eq!(
-        read_all_ok!(b"hello!", |r| {
-            let v = r.try_skip_str_while(|c| Ok(c.is_ascii_alphabetic()))?;
-            r.skip(1)?;
-            Ok(v)
-        }),
-        5
-    );
+    read_all_ok!(b"hello!", |r| {
+        r.try_skip_str_while(|c| Ok(c.is_ascii_alphabetic()))?;
+        r.skip(1)?;
+        Ok(())
+    })
 }
 
 ///////////////////////////////////////////////////////////////////////////////
