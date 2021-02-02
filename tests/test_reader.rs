@@ -203,13 +203,42 @@ fn test_take_consumed_partial_bound() {
 // Reader::try_take_consumed
 
 #[test]
-fn test_try_take_consumed() {
-    assert_eq!(
-        read_all_ok!(b"hello", |r| {
-            r.try_take_consumed(|r| r.consume(b"hello"))
-        }),
-        b"hello"[..]
-    );
+fn test_try_take_consumed_all_unbound() {
+    let consumed = read_all_ok!(b"hello", |r| {
+        r.try_take_consumed(|r| {
+            let _ = r.take_remaining();
+            Ok(())
+        })
+    });
+    assert_eq!(consumed, b"hello"[..]);
+    assert_eq!(consumed.bound(), Bound::Start);
+}
+
+#[test]
+fn test_try_take_consumed_all_bound() {
+    let consumed = read_all_ok!(b"hello", |r| {
+        r.try_take_consumed(|r| {
+            r.consume(b"hello")?;
+            Ok(())
+        })
+    });
+    assert_eq!(consumed, b"hello"[..]);
+    assert_eq!(consumed.bound(), Bound::Both);
+}
+
+#[test]
+fn test_try_take_consumed_partial_bound() {
+    let consumed = read_all_ok!(b"hello", |r| {
+        let consumed = r.try_take_consumed(|r| {
+            let _ = r.take(2)?;
+            let _ = r.take(1)?;
+            Ok(())
+        })?;
+        r.consume("lo")?;
+        Ok(consumed)
+    });
+    assert_eq!(consumed, b"hel"[..]);
+    assert_eq!(consumed.bound(), Bound::Both);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
