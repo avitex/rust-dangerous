@@ -214,6 +214,18 @@ fn test_reject_bytes_regex_none() {
     );
 }
 
+#[test]
+#[cfg(feature = "regex")]
+fn test_reject_bytes_regex_all() {
+    assert_eq!(
+        read_all_ok!(b"1234", |r| {
+            let regex = regex::bytes::Regex::new("\\d+").unwrap();
+            Ok(r.take_while(&regex))
+        }),
+        b"1234"[..]
+    );
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // match: bytes regex
 
@@ -288,6 +300,18 @@ fn test_reject_string_regex_none() {
             Ok(v)
         }),
         ""[..]
+    );
+}
+
+#[test]
+#[cfg(feature = "regex")]
+fn test_reject_string_regex_all() {
+    assert_eq!(
+        read_all_ok!("1234", |r| {
+            let regex = regex::Regex::new("\\d+").unwrap();
+            Ok(r.take_while(&regex))
+        }),
+        "1234"[..]
     );
 }
 
