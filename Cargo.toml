@@ -27,9 +27,6 @@ simd = ["bytecount"]
 unicode = ["unicode-width"]
 # Enables full context backtraces.
 full-context = ["alloc"]
-# Enables const generic support.
-# Will be removed in `1.51`.
-unstable-const-generics = []
 
 [dependencies]
 zc = { version = "0.3", optional = true, default-features = false }

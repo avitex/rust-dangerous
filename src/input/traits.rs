@@ -619,15 +619,6 @@ unsafe impl BytesLength for &str {
     }
 }
 
-#[cfg(feature = "unstable-const-generics")]
-unsafe impl<const N: usize> BytesLength for &[u8; N] {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len()
-    }
-}
-
-#[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! impl_array_bytes_len {
     ($($n:expr),*) => {
         $(
@@ -641,7 +632,6 @@ macro_rules! impl_array_bytes_len {
     };
 }
 
-#[cfg(not(feature = "unstable-const-generics"))]
 for_common_array_sizes!(impl_array_bytes_len);
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -683,17 +673,6 @@ impl<'i> IntoInput<'i> for &'i str {
     }
 }
 
-#[cfg(feature = "unstable-const-generics")]
-impl<'i, const N: usize> IntoInput<'i> for &'i [u8; N] {
-    type Input = Bytes<'i>;
-
-    #[inline(always)]
-    fn into_input(self) -> Self::Input {
-        Bytes::new(self, Bound::Start)
-    }
-}
-
-#[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! impl_array_into_input {
     ($($n:expr),*) => {
         $(
@@ -709,5 +688,4 @@ macro_rules! impl_array_into_input {
     };
 }
 
-#[cfg(not(feature = "unstable-const-generics"))]
 for_common_array_sizes!(impl_array_into_input);

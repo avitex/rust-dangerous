@@ -62,15 +62,6 @@ unsafe impl<'i> Prefix<Bytes<'i>> for &str {
     }
 }
 
-#[cfg(feature = "unstable-const-generics")]
-unsafe impl<'i, const N: usize> Prefix<Bytes<'i>> for &[u8; N] {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-        input.as_dangerous().starts_with(&self[..])
-    }
-}
-
-#[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! impl_array_prefix {
     ($($n:expr),*) => {
         $(
@@ -84,5 +75,4 @@ macro_rules! impl_array_prefix {
     };
 }
 
-#[cfg(not(feature = "unstable-const-generics"))]
 for_common_array_sizes!(impl_array_prefix);

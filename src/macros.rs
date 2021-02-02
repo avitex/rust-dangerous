@@ -39,18 +39,6 @@ macro_rules! impl_read_num {
     };
 }
 
-#[cfg(feature = "unstable-const-generics")]
-macro_rules! read_num {
-    ($reader:expr, $err_ty:ident, $num_ty:ident, $expected:expr, $from_xx_bytes:ident) => {{
-        $reader.try_advance(|input| {
-            let (arr, next) = input.split_array(concat!("read ", $expected))?;
-            let number = <$num_ty>::$from_xx_bytes(arr);
-            Ok((number, next))
-        })
-    }};
-}
-
-#[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! read_num {
     ($reader:expr, $err_ty:ident, $num_ty:ident, $expected:expr, $from_xx_bytes:ident) => {{
         $reader.try_advance(|input| {
@@ -61,7 +49,6 @@ macro_rules! read_num {
     }};
 }
 
-#[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! split_arr {
     ($input:expr, u8, $expected:expr) => {
         $input.split_arr_1($expected)
@@ -101,7 +88,6 @@ macro_rules! split_arr {
     };
 }
 
-#[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! for_common_array_sizes {
     ($impl:ident) => {
         for_common_array_sizes!($impl:

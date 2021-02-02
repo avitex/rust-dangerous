@@ -1,4 +1,3 @@
-#[cfg(not(feature = "unstable-const-generics"))]
 use core::convert::TryInto;
 use core::slice::Iter as SliceIter;
 use core::{iter, str};
@@ -304,30 +303,9 @@ impl<'i> Bytes<'i> {
         Ok((String::new(consumed, self.bound()), self.end()))
     }
 
-    #[cfg(feature = "unstable-const-generics")]
-    #[inline(always)]
-    pub(crate) fn split_array<E, const N: usize>(
-        self,
-        operation: &'static str,
-    ) -> Result<([u8; N], Bytes<'i>), E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        match self.split_at(N, operation) {
-            Ok((head, tail)) => {
-                let ptr = head.as_dangerous().as_ptr() as *const [u8; N];
-                // SAFETY: safe as we took only N amount and u8 is `Copy`.
-                let arr = unsafe { *ptr };
-                Ok((arr, tail))
-            }
-            Err(err) => Err(err),
-        }
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     // FIXME: use `split_array` once stable in 1.51
 
-    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_2<E>(self, operation: &'static str) -> Result<([u8; 2], Bytes<'i>), E>
     where
@@ -339,7 +317,6 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_4<E>(self, operation: &'static str) -> Result<([u8; 4], Bytes<'i>), E>
     where
@@ -351,7 +328,6 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_8<E>(self, operation: &'static str) -> Result<([u8; 8], Bytes<'i>), E>
     where
@@ -363,7 +339,6 @@ impl<'i> Bytes<'i> {
         }
     }
 
-    #[cfg(not(feature = "unstable-const-generics"))]
     #[inline(always)]
     pub(crate) fn split_arr_16<E>(self, operation: &'static str) -> Result<([u8; 16], Bytes<'i>), E>
     where

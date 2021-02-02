@@ -79,15 +79,6 @@ impl<'i> From<&'i str> for Value<'i> {
     }
 }
 
-#[cfg(feature = "unstable-const-generics")]
-impl<'i, const N: usize> From<&'i [u8; N]> for Value<'i> {
-    #[inline(always)]
-    fn from(v: &'i [u8; N]) -> Self {
-        Self(ValueInner::Bytes(v))
-    }
-}
-
-#[cfg(not(feature = "unstable-const-generics"))]
 macro_rules! impl_array_into_value {
     ($($n:expr),*) => {
         $(
@@ -101,5 +92,4 @@ macro_rules! impl_array_into_value {
     };
 }
 
-#[cfg(not(feature = "unstable-const-generics"))]
 for_common_array_sizes!(impl_array_into_value);
