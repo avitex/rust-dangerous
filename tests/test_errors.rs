@@ -82,16 +82,6 @@ enum ExpectedKind<'i> {
     Length(ExpectedLength<'i>),
 }
 
-impl<'i> fmt::Debug for ExpectedKind<'i> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Value(e) => e.fmt(f),
-            Self::Valid(e) => e.fmt(f),
-            Self::Length(e) => e.fmt(f),
-        }
-    }
-}
-
 impl<'i> WithContext<'i> for ExpectedKind<'i> {
     fn with_context(self, _input: impl Input<'i>, _context: impl Context) -> Self {
         self
@@ -134,6 +124,12 @@ fn trigger_expected_value<E: Error<'static>>() -> E {
         .unwrap_err()
 }
 
+fn trigger_expected_value_str<E: Error<'static>>() -> E {
+    input!("hello world")
+        .read_all(|r| r.context("hi", |r| r.consume("123")))
+        .unwrap_err()
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Expected valid
 
@@ -141,8 +137,9 @@ fn trigger_expected_value<E: Error<'static>>() -> E {
 fn test_expected_valid_variant() {
     let error = match trigger_expected_valid() {
         ExpectedKind::Valid(error) => error,
-        other => panic!("unexpected error kind: {:?}", other),
+        _ => unreachable!(),
     };
+    assert_eq!(error.input().is_string(), false);
     assert_eq!(error.input().into_bytes(), b"hello world\xC2 "[..]);
     assert_eq!(error.expected(), "utf-8 code point");
     assert_eq!(error.span(), b"\xC2"[..]);
@@ -232,8 +229,9 @@ fn test_expected_valid_full_boxed() {
 fn test_expected_length_variant() {
     let error = match trigger_expected_length() {
         ExpectedKind::Length(error) => error,
-        other => panic!("unexpected error kind: {:?}", other),
+        _ => unreachable!(),
     };
+    assert_eq!(error.input().is_string(), false);
     assert_eq!(error.input().into_bytes(), b"hello world"[..]);
     assert_eq!(error.len(), Length::AtLeast(13));
     assert_eq!(error.span(), b"hello world"[..]);
@@ -313,8 +311,9 @@ fn test_expected_length_full() {
 fn test_expected_value_variant() {
     let error = match trigger_expected_value() {
         ExpectedKind::Value(error) => error,
-        other => panic!("unexpected error kind: {:?}", other),
+        _ => unreachable!(),
     };
+    assert_eq!(error.input().is_string(), false);
     assert_eq!(error.input().into_bytes(), b"hello world"[..]);
     assert_eq!(error.found(), b"hel"[..]);
     assert_eq!(error.expected().as_bytes(), &b"123"[..]);
@@ -426,6 +425,32 @@ fn test_error_max_input_len() {
 #[test]
 #[cfg(feature = "full-context")]
 fn test_error_display_str() {
+    let error: Expected = trigger_expected_value_str();
+
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
+    assert_eq!(
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to consume: found a different value to the exact expected
+            expected:
+            > "123"
+            in:
+            > "hello world"
+               ^^^         
+            additional:
+              error line: 1, error offset: 0, input length: 11
+            backtrace:
+              1. `read all`
+              2. `read` (expected hi)
+              3. `consume` (expected exact value)
+        "#},
+    );
+}
+
+#[test]
+#[cfg(feature = "full-context")]
+fn test_error_display_str_hint() {
     let error: Expected = trigger_expected_value();
 
     assert!(error.is_fatal());

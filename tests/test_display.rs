@@ -86,3 +86,12 @@ fn test_format_with_mut_ref_write() {
 
     assert_eq!(Helper.to_string(), "a,1,01,80,81");
 }
+
+#[test]
+fn test_preferred_format_debug() {
+    use dangerous::display::PreferredFormat;
+    assert_eq!(format!("{:?}", PreferredFormat::Str), "Str");
+    assert_eq!(format!("{:?}", PreferredFormat::StrCjk), "StrCjk");
+    assert_eq!(format!("{:?}", PreferredFormat::Bytes), "Bytes");
+    assert_eq!(format!("{:?}", PreferredFormat::BytesAscii), "BytesAscii");
+}

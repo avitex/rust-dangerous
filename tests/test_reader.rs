@@ -445,6 +445,11 @@ fn test_recover() {
 // Reader::recover_if
 
 #[test]
+fn test_recover_if_ok() {
+    read_all_ok!(b"1", |r| { r.recover_if(|r| { r.take(1) }, |_| false) });
+}
+
+#[test]
 fn test_recover_if_true() {
     read_all_ok!(b"", |r| { r.recover_if(|r| { r.take(1) }, |_| true) });
 }

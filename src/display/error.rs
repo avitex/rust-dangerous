@@ -54,7 +54,7 @@ where
 
     /// Hint to the formatter that the [`crate::Input`] is a UTF-8 `str`.
     pub fn str_hint(self, value: bool) -> Self {
-        if value {
+        if self.error.input().is_string() || value {
             self.format(PreferredFormat::Str)
         } else {
             self.format(PreferredFormat::Bytes)
