@@ -116,33 +116,48 @@ fn test_take_remaining_second() {
 
 ///////////////////////////////////////////////////////////////////////////////
 // Reader::take_while
-// TODO: test patterns
 
 #[test]
-fn test_take_while() {
-    assert_eq!(
-        read_all_ok!(b"hello!", |r| {
-            let v = r.take_while(|c| c.is_ascii_alphabetic());
-            r.skip(1)?;
-            Ok(v)
-        }),
-        b"hello"[..]
-    );
+fn test_take_while_all() {
+    let input = read_all_ok!(b"hello", |r| {
+        Ok(r.take_while(|c| c.is_ascii_alphabetic()))
+    });
+    assert_eq!(input, b"hello"[..]);
+    assert_eq!(input.bound(), Bound::Start);
+}
+
+#[test]
+fn test_take_while_partial() {
+    let input = read_all_ok!(b"hello!", |r| {
+        let input = r.take_while(|c| c.is_ascii_alphabetic());
+        r.skip(1)?;
+        Ok(input)
+    });
+    assert_eq!(input, b"hello"[..]);
+    assert_eq!(input.bound(), Bound::Both);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Reader::try_take_while
 
 #[test]
-fn test_try_take_while() {
-    assert_eq!(
-        read_all_ok!(b"hello!", |r| {
-            let v = r.try_take_while(|c| Ok(c.is_ascii_alphabetic()))?;
-            r.skip(1)?;
-            Ok(v)
-        }),
-        b"hello"[..]
-    );
+fn test_try_take_while_all() {
+    let input = read_all_ok!(b"hello", |r| {
+        r.try_take_while(|c| Ok(c.is_ascii_alphabetic()))
+    });
+    assert_eq!(input, b"hello"[..]);
+    assert_eq!(input.bound(), Bound::Start);
+}
+
+#[test]
+fn test_try_take_while_partial() {
+    let input = read_all_ok!(b"hello!", |r| {
+        let v = r.try_take_while(|c| Ok(c.is_ascii_alphabetic()))?;
+        r.skip(1)?;
+        Ok(v)
+    });
+    assert_eq!(input, b"hello"[..]);
+    assert_eq!(input.bound(), Bound::Both);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -348,16 +363,23 @@ fn test_verify_false() {
 // Reader::try_verify
 
 #[test]
-fn test_try_verify_true() {
+fn test_try_verify_ok_true() {
     read_all_ok!(b"1", |r| {
         r.try_verify("value", |r| Ok(r.consume_opt(b"1")))
     })
 }
 
 #[test]
-fn test_try_verify_false() {
+fn test_try_verify_ok_false() {
     let _ = read_all_err!(b"1", |r| {
         r.try_verify("value", |r| Ok(r.consume_opt(b"2")))
+    });
+}
+
+#[test]
+fn test_try_verify_err() {
+    let _ = read_all_err!(b"1", |r| {
+        r.try_verify("value", |r| r.consume(b"2").map(|()| true))
     });
 }
 

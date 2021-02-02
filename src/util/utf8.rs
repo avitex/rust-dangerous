@@ -128,7 +128,6 @@ impl InvalidChar {
 // CharIter
 
 /// Char iterator over unvalidated bytes.
-#[derive(Clone)]
 pub(crate) struct CharIter<'i> {
     forward: usize,
     backward: usize,
@@ -192,15 +191,6 @@ impl<'i> Iterator for CharIter<'i> {
                 Err(err) => Err(err),
             };
             Some(result)
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.is_done() {
-            (0, None)
-        } else {
-            (1, None)
         }
     }
 }
