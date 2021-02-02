@@ -17,7 +17,7 @@ use super::{Bound, Input, MaybeString, Private, PrivateExt, String};
 #[derive(Clone)]
 #[must_use = "input must be consumed"]
 pub struct Bytes<'i> {
-    bytes: &'i [u8],
+    value: &'i [u8],
     #[cfg(feature = "retry")]
     bound: Bound,
 }
@@ -25,14 +25,14 @@ pub struct Bytes<'i> {
 impl<'i> Bytes<'i> {
     #[cfg(feature = "retry")]
     #[inline(always)]
-    pub(crate) fn new(bytes: &'i [u8], bound: Bound) -> Self {
-        Self { bytes, bound }
+    pub(crate) fn new(value: &'i [u8], bound: Bound) -> Self {
+        Self { value, bound }
     }
 
     #[cfg(not(feature = "retry"))]
     #[inline(always)]
-    pub(crate) fn new(bytes: &'i [u8], _bound: Bound) -> Self {
-        Self { bytes }
+    pub(crate) fn new(value: &'i [u8], _bound: Bound) -> Self {
+        Self { value }
     }
 
     /// Returns the underlying byte slice length.
@@ -78,7 +78,7 @@ impl<'i> Bytes<'i> {
     #[must_use]
     #[inline(always)]
     pub fn as_dangerous(&self) -> &'i [u8] {
-        self.bytes
+        self.value
     }
 
     /// Decodes the underlying byte slice into a UTF-8 `str` slice.
@@ -515,7 +515,7 @@ impl<'i> fmt::Debug for Bytes<'i> {
         let display = InputDisplay::from_formatter(self, f);
         f.debug_struct("Bytes")
             .field("bound", &self.bound())
-            .field("bytes", &display)
+            .field("value", &display)
             .finish()
     }
 }

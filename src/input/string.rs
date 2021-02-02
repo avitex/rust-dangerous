@@ -225,7 +225,10 @@ impl<'i> PartialEq<String<'i>> for str {
 impl<'i> fmt::Debug for String<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let display = InputDisplay::from_formatter(self, f).str_hint(true);
-        f.debug_tuple("String").field(&display).finish()
+        f.debug_struct("String")
+            .field("bound", &self.bound())
+            .field("value", &display)
+            .finish()
     }
 }
 

@@ -154,11 +154,11 @@ fn test_expected_valid_variant() {
             ExpectedValid {
                 input: Bytes {
                     bound: Start,
-                    bytes: ['h' 'e' 'l' 'l' 'o' 20 'w' 'o' 'r' 'l' 'd' c2 20],
+                    value: ['h' 'e' 'l' 'l' 'o' 20 'w' 'o' 'r' 'l' 'd' c2 20],
                 },
                 span: Bytes {
                     bound: Start,
-                    bytes: [c2],
+                    value: [c2],
                 },
                 context: ExpectedContext {
                     operation: "take str while",
@@ -248,11 +248,11 @@ fn test_expected_length_variant() {
                 ),
                 input: Bytes {
                     bound: Start,
-                    bytes: "hello world",
+                    value: "hello world",
                 },
                 span: Bytes {
                     bound: Start,
-                    bytes: "hello world",
+                    value: "hello world",
                 },
                 context: ExpectedContext {
                     operation: "take",
@@ -326,11 +326,11 @@ fn test_expected_value_variant() {
             ExpectedValue {
                 input: Bytes {
                     bound: Start,
-                    bytes: "hello world",
+                    value: "hello world",
                 },
                 actual: Bytes {
                     bound: Start,
-                    bytes: "hel",
+                    value: "hel",
                 },
                 expected: Bytes(
                     "123",
