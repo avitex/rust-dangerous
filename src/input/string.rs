@@ -3,7 +3,7 @@ use core::str;
 use crate::display::InputDisplay;
 use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, Length};
 use crate::fmt;
-use crate::util::{slice, utf8};
+use crate::util::{fast, slice, utf8};
 
 use super::{Bound, Bytes, Input, MaybeString, Private};
 
@@ -28,14 +28,7 @@ impl<'i> String<'i> {
     /// function for better performance.
     #[must_use]
     pub fn num_chars(&self) -> usize {
-        #[cfg(feature = "bytecount")]
-        {
-            bytecount::num_chars(self.utf8.as_dangerous())
-        }
-        #[cfg(not(feature = "bytecount"))]
-        {
-            self.as_dangerous().chars().count()
-        }
+        fast::num_chars(self.as_dangerous())
     }
 
     /// Returns `true` if the underlying byte slice length is zero.

@@ -8,7 +8,7 @@ use crate::error::{
     WithContext,
 };
 use crate::fmt;
-use crate::util::{slice, utf8};
+use crate::util::{fast, slice, utf8};
 
 use super::{Bound, Input, MaybeString, Private, PrivateExt, String};
 
@@ -54,18 +54,7 @@ impl<'i> Bytes<'i> {
     /// function for better performance.
     #[must_use]
     pub fn count(&self, needle: u8) -> usize {
-        #[cfg(feature = "bytecount")]
-        {
-            bytecount::count(self.as_dangerous(), needle)
-        }
-        #[cfg(not(feature = "bytecount"))]
-        {
-            self.as_dangerous()
-                .iter()
-                .copied()
-                .filter(|b| *b == needle)
-                .count()
-        }
+        fast::count_u8(needle, self.as_dangerous())
     }
 
     /// Returns the underlying byte slice.

@@ -1,4 +1,28 @@
+// # Safety note about searching for substrings for `Pattern`.
+//
+// As we are looking for exact slice matches, the needle and haystack are both
+// UTF-8, we are searching forward and the fact the first byte of a UTF-8
+// character cannot clash with a continuation byte we can safely search as just
+// raw bytes and return those indexes.
+//
+// For searching within a string we care that we don't return an index that
+// isn't a char boundary, but with the above conditions this is impossible.
+//
+// Note in the below UTF-8 byte sequence table continuation bytes (bytes 2-4)
+// cannot clash with the first byte. This means when the first byte of the
+// needle string matches the first byte of the haystack string, we are at a
+// valid char boundary and if rest of the needle matches the indexes we return
+// are valid.
+//
+// | Length | Byte 1   | Byte 2   | Byte 3   | Byte 4   |
+// | ------ | -------- | -------- | -------- | -------- |
+// | 1      | 0xxxxxxx |          |          |          |
+// | 2      | 110xxxxx | 10xxxxxx |          |          |
+// | 3      | 1110xxxx | 10xxxxxx | 10xxxxxx |          |
+// | 4      | 11110xxx | 10xxxxxx | 10xxxxxx | 10xxxxxx |
+
 use crate::input::{Bytes, String};
+use crate::util::fast;
 
 /// Implemented for structures that can be found within an
 /// [`Input`](crate::Input).
@@ -7,6 +31,7 @@ use crate::input::{Bytes, String};
 ///
 /// The implementation must returned valid indexes and lengths for splitting
 /// input as these are not checked.
+// FIXME: change input to take by value rather than reference.
 pub unsafe trait Pattern<I> {
     /// Returns the byte index and byte length of the first match and `None` if
     /// there was no match.
@@ -16,6 +41,9 @@ pub unsafe trait Pattern<I> {
     /// reject.
     fn find_reject(self, input: &I) -> Option<usize>;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Fn pattern
 
 unsafe impl<'i, F> Pattern<Bytes<'i>> for F
 where
@@ -66,44 +94,69 @@ where
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Token pattern
+
 unsafe impl<'i> Pattern<Bytes<'i>> for u8 {
-    #[cfg(feature = "memchr")]
     fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
-        memchr::memchr(self, input.as_dangerous()).map(|index| (index, 1))
-    }
-    #[cfg(not(feature = "memchr"))]
-    fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
-        input
-            .as_dangerous()
-            .iter()
-            .copied()
-            .position(|b| b == self)
-            .map(|index| (index, 1))
+        fast::find_u8_match(self, input.as_dangerous()).map(|index| (index, 1))
     }
 
-    // FIXME: add SIMD optimised search
     fn find_reject(self, input: &Bytes<'i>) -> Option<usize> {
-        Pattern::find_reject(|b| b == self, input)
+        fast::find_u8_reject(self, input.as_dangerous())
     }
 }
 
 unsafe impl<'i> Pattern<String<'i>> for char {
-    // FIXME: add SIMD optimised search
     fn find_match(self, input: &String<'i>) -> Option<(usize, usize)> {
-        input.as_dangerous().char_indices().find_map(|(i, c)| {
-            if c == self {
-                Some((i, c.len_utf8()))
-            } else {
-                None
-            }
-        })
+        fast::find_char_match(self, input.as_dangerous().as_bytes())
+            .map(|index| (index, self.len_utf8()))
     }
 
-    // FIXME: add SIMD optimised search
     fn find_reject(self, input: &String<'i>) -> Option<usize> {
-        Pattern::find_reject(|c| c == self, input)
+        fast::find_char_reject(self, input.as_dangerous().as_bytes())
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Sub-slice pattern
+
+unsafe impl<'i> Pattern<Bytes<'i>> for &[u8] {
+    fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
+        fast::find_slice_match(self, input.as_dangerous()).map(|index| (index, self.len()))
+    }
+
+    fn find_reject(self, input: &Bytes<'i>) -> Option<usize> {
+        fast::find_slice_reject(self, input.as_dangerous())
+    }
+}
+
+unsafe impl<'i> Pattern<Bytes<'i>> for &str {
+    fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
+        fast::find_slice_match(self.as_bytes(), input.as_dangerous())
+            .map(|index| (index, self.len()))
+    }
+
+    fn find_reject(self, input: &Bytes<'i>) -> Option<usize> {
+        fast::find_slice_reject(self.as_bytes(), input.as_dangerous())
+    }
+}
+
+unsafe impl<'i> Pattern<String<'i>> for &str {
+    #[inline]
+    fn find_match(self, input: &String<'i>) -> Option<(usize, usize)> {
+        fast::find_slice_match(self.as_bytes(), input.as_dangerous().as_bytes())
+            .map(|index| (index, self.len()))
+    }
+
+    #[inline]
+    fn find_reject(self, input: &String<'i>) -> Option<usize> {
+        fast::find_slice_reject(self.as_bytes(), input.as_dangerous().as_bytes())
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Regex pattern
 
 #[cfg(feature = "regex")]
 unsafe impl<'i> Pattern<String<'i>> for &regex::Regex {
