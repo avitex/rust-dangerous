@@ -27,11 +27,18 @@ use crate::util::fast;
 /// Implemented for structures that can be found within an
 /// [`Input`](crate::Input).
 ///
+/// You can search for a `char` or `&str` within either `Bytes` or `String`, but
+/// only a `u8` and `&[u8]` within `Bytes`.
+///
+/// With the `simd` feature enabled pattern searches are SIMD optimised where
+/// possible.
+///
+/// With the `regex` feature enabled, you can search for regex patterns.
+///
 /// # Safety
 ///
 /// The implementation must returned valid indexes and lengths for splitting
 /// input as these are not checked.
-// FIXME: change input to take by value rather than reference.
 pub unsafe trait Pattern<I> {
     /// Returns the byte index and byte length of the first match and `None` if
     /// there was no match.
@@ -104,6 +111,16 @@ unsafe impl<'i> Pattern<Bytes<'i>> for u8 {
 
     fn find_reject(self, input: &Bytes<'i>) -> Option<usize> {
         fast::find_u8_reject(self, input.as_dangerous())
+    }
+}
+
+unsafe impl<'i> Pattern<Bytes<'i>> for char {
+    fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
+        fast::find_char_match(self, input.as_dangerous()).map(|index| (index, self.len_utf8()))
+    }
+
+    fn find_reject(self, input: &Bytes<'i>) -> Option<usize> {
+        fast::find_char_reject(self, input.as_dangerous())
     }
 }
 
