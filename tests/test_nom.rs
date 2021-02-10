@@ -41,10 +41,18 @@ mod color {
 }
 
 mod verbose {
-    use nom::{bytes::streaming::tag, error::context, error::VerboseError, IResult};
+    use nom::{
+        bytes::streaming::tag, character::streaming::char, error::context, error::VerboseError,
+        IResult,
+    };
 
     pub fn parse(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
-        context("a", |i| context("b", |i| tag("foobar")(i))(i))(i)
+        context("a", |i| {
+            context("b", |i| {
+                let (i, _) = char('f')(i)?;
+                tag("oobar")(i)
+            })(i)
+        })(i)
     }
 }
 
@@ -96,7 +104,7 @@ fn test_parse_color_trailing() {
 #[test]
 fn test_parse_verbose_ok() {
     let value = read_all_ok!("foobar", parse_verbose);
-    assert_eq!(value, "foobar");
+    assert_eq!(value, "oobar");
 }
 
 #[test]
@@ -123,7 +131,6 @@ fn test_parse_color_too_short() {
 #[test]
 fn test_parse_verbose_err() {
     let error = read_all_err!("err", parse_verbose);
-    dbg!(error.to_retry_requirement());
     assert!(error.is_fatal());
     assert_str_eq!(
         format!("{:#}\n", error),
@@ -137,9 +144,9 @@ fn test_parse_verbose_err() {
               1. `read all`
               2. `read all`
               3. `try expect external` (expected value)
-                1. `<nom>` (expected a)
-                2. `<nom>` (expected b)
-                3. `Tag`
+                1. `context` (expected a)
+                2. `context` (expected b)
+                3. `char` (expected character 'f')
         "##}
     );
 }

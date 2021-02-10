@@ -84,27 +84,12 @@ where
     fn operation(&self) -> Option<&'static str> {
         Some(error_kind_operation(self.code))
     }
-
-    fn push_child_backtrace<E>(self, error: E) -> E
-    where
-        E: WithContext<'i>,
-    {
-        error
-    }
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nom")))]
 impl Context for ErrorKind {
     fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         w.write_str(self.description())
-    }
-
-    fn has_expected(&self) -> bool {
-        false
-    }
-
-    fn expected(&self, _: &mut dyn fmt::Write) -> fmt::Result {
-        Err(fmt::Error)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -117,8 +102,8 @@ impl Context for ErrorKind {
 impl Context for VerboseErrorKind {
     fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         match *self {
-            VerboseErrorKind::Context(_) => w.write_str("<nom>"),
-            VerboseErrorKind::Char(_) => w.write_str("<nom>"),
+            VerboseErrorKind::Context(_) => w.write_str("context"),
+            VerboseErrorKind::Char(_) => w.write_str("char"),
             VerboseErrorKind::Nom(kind) => w.write_str(error_kind_operation(kind)),
         }
     }
@@ -133,7 +118,7 @@ impl Context for VerboseErrorKind {
     fn expected(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         match *self {
             VerboseErrorKind::Char(c) => {
-                w.write_str("char '")?;
+                w.write_str("character '")?;
                 w.write_char(c)?;
                 w.write_char('\'')
             }
@@ -157,19 +142,11 @@ where
         self.errors.get(0).map(|(input, _)| input.as_bytes())
     }
 
-    fn operation(&self) -> Option<&'static str> {
-        self.errors.get(0).map(|(_, kind)| match *kind {
-            VerboseErrorKind::Context(_) => "<nom>",
-            VerboseErrorKind::Char(_) => "<nom>",
-            VerboseErrorKind::Nom(kind) => error_kind_operation(kind),
-        })
-    }
-
     fn push_child_backtrace<E>(self, mut error: E) -> E
     where
         E: WithContext<'i>,
     {
-        for (_, code) in self.errors.into_iter().skip(1) {
+        for (_, code) in self.errors.into_iter() {
             error = error.with_child_context(code);
         }
         error

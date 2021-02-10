@@ -215,7 +215,7 @@ fn test_expected_valid_full() {
               error offset: 11, input length: 13
             backtrace:
               1. `read all`
-              2. `read` (expected hi)
+              2. `context` (expected hi)
               3. `take str while` (expected utf-8 code point)
         "#}
     );
@@ -305,9 +305,9 @@ fn test_external_error_deep_child() {
             backtrace:
               1. `read all`
               2. `try expect external` (expected value)
-                1. `read` (expected c)
-                2. `read` (expected b)
-                3. `read` (expected a)
+                1. `context` (expected c)
+                2. `context` (expected b)
+                3. `context` (expected a)
         "#}
     );
 }
@@ -349,7 +349,7 @@ fn test_expected_length_full() {
               error offset: 0, input length: 11
             backtrace:
               1. `read all`
-              2. `read` (expected hi)
+              2. `context` (expected hi)
               3. `take` (expected enough input)
         "#}
     );
@@ -437,7 +437,7 @@ fn test_expected_value_full() {
               error offset: 0, input length: 11
             backtrace:
               1. `read all`
-              2. `read` (expected hi)
+              2. `context` (expected hi)
               3. `consume` (expected exact value)
         "#}
     );
@@ -466,7 +466,7 @@ fn test_error_max_input_len() {
               error offset: 0, input length: 11
             backtrace:
               1. `read all`
-              2. `read` (expected hi)
+              2. `context` (expected hi)
               3. `consume` (expected exact value)
         "#}
     );
@@ -492,7 +492,7 @@ fn test_error_display_str() {
               error line: 1, error offset: 0, input length: 11
             backtrace:
               1. `read all`
-              2. `read` (expected hi)
+              2. `context` (expected hi)
               3. `consume` (expected exact value)
         "#}
     );
@@ -518,7 +518,7 @@ fn test_error_display_str_hint() {
               error line: 1, error offset: 0, input length: 11
             backtrace:
               1. `read all`
-              2. `read` (expected hi)
+              2. `context` (expected hi)
               3. `consume` (expected exact value)
         "#}
     );

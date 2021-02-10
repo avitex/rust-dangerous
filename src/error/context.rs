@@ -49,7 +49,7 @@ pub trait Context: Any {
 
 impl Context for &'static str {
     fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        w.write_str("read")
+        w.write_str("context")
     }
 
     fn has_expected(&self) -> bool {
