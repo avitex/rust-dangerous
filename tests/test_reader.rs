@@ -463,15 +463,28 @@ fn try_expect_external_ok() {
 #[test]
 fn try_expect_external_unconsumed() {
     let _ = read_all_err!(b"abc", |r| {
-        r.try_expect_external("value", |_| Result::<_, ExternalError>::Ok(((), 2)))
+        r.try_expect_external("value", |i| {
+            Result::<_, ExternalError>::Ok(((), i.len() - 1))
+        })
     });
 }
 
 #[test]
-fn try_expect_external_invalid_boundary() {
+fn try_expect_external_read_too_much() {
+    let _ = read_all_err!(b"abc", |r| {
+        r.try_expect_external("value", |i| {
+            Result::<_, ExternalError>::Ok(((), i.len() + 1))
+        })
+    });
+}
+
+#[test]
+fn try_expect_external_read_invalid_boundary() {
     assert_eq!('♥'.len_utf8(), 3);
     let _ = read_all_err!("♥", |r| {
-        r.try_expect_external("value", |_| Result::<_, ExternalError>::Ok(((), 2)))
+        r.try_expect_external("value", |i| {
+            Result::<_, ExternalError>::Ok(((), i.byte_len() - 1))
+        })
     });
 }
 
