@@ -117,6 +117,10 @@ pub trait Details<'i> {
 /// External errors are consumed with [`Input::into_external()`] or
 /// [`Reader::try_expect_external()`].
 ///
+/// If either or both [`External::operation()`] and [`External::expected()`]
+/// return a value, a context will be added to the bottom of the backtrace. Keep
+/// this in mind if you use [`External::push_child_backtrace()`].
+///
 /// [`Input::into_external()`]: crate::Input::into_external()
 /// [`Reader::try_expect_external()`]: crate::Reader::try_expect_external()
 pub trait External<'i>: Sized {
