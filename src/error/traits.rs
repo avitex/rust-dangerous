@@ -51,7 +51,7 @@ impl<'i, T> Error<'i> for T where
 /// Implemented for errors that collect [`Context`]s.
 pub trait WithContext<'i>: Sized {
     /// If `true` indicates the error does not care about any provided contexts.
-    /// 
+    ///
     /// Defaults to `false`.
     ///
     /// This can be used for selecting a verbose error at compile time on an

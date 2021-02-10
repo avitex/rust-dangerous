@@ -40,6 +40,14 @@ mod color {
     }
 }
 
+mod verbose {
+    use nom::{bytes::streaming::tag, error::context, error::VerboseError, IResult};
+
+    pub fn parse(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
+        context("a", |i| context("b", |i| tag("foobar")(i))(i))(i)
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 fn parse_color<'i, E>(r: &mut StringReader<'i, E>) -> Result<color::Value, E>
@@ -49,6 +57,18 @@ where
     r.take_remaining().read_all(|r| {
         r.try_expect_external("hex color", |i| {
             color::parse(i.as_dangerous())
+                .map(|(remaining, response)| (response, i.byte_len() - remaining.len()))
+        })
+    })
+}
+
+fn parse_verbose<'i, E>(r: &mut StringReader<'i, E>) -> Result<&'i str, E>
+where
+    E: Error<'i>,
+{
+    r.take_remaining().read_all(|r| {
+        r.try_expect_external("value", |i| {
+            verbose::parse(i.as_dangerous())
                 .map(|(remaining, response)| (response, i.byte_len() - remaining.len()))
         })
     })
@@ -74,8 +94,15 @@ fn test_parse_color_trailing() {
 }
 
 #[test]
+fn test_parse_verbose_ok() {
+    let value = read_all_ok!("foobar", parse_verbose);
+    assert_eq!(value, "foobar");
+}
+
+#[test]
 fn test_parse_color_too_short() {
     let error = read_all_err!("#2F14D", parse_color);
+    assert!(error.is_fatal());
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r##"
@@ -89,6 +116,51 @@ fn test_parse_color_too_short() {
               2. `read all`
               3. `try expect external` (expected hex color)
                 1. `TakeWhileMN`
+        "##}
+    );
+}
+
+#[test]
+fn test_parse_verbose_err() {
+    let error = read_all_err!("err", parse_verbose);
+    dbg!(error.to_retry_requirement());
+    assert!(error.is_fatal());
+    assert_str_eq!(
+        format!("{:#}\n", error),
+        indoc! {r##"
+            error attempting to try expect external: expected value
+            > "err"
+               ^^^ 
+            additional:
+              error line: 1, error offset: 0, input length: 3
+            backtrace:
+              1. `read all`
+              2. `read all`
+              3. `try expect external` (expected value)
+                1. `<nom>` (expected a)
+                2. `<nom>` (expected b)
+                3. `Tag`
+        "##}
+    );
+}
+
+#[test]
+fn test_parse_verbose_err_retry() {
+    let error = read_all_err!("f", parse_verbose);
+    assert!(!error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), RetryRequirement::new(5));
+    assert_str_eq!(
+        format!("{:#}\n", error),
+        indoc! {r##"
+            error attempting to try expect external: expected value
+            > "f"
+               ^ 
+            additional:
+              error line: 1, error offset: 0, input length: 1
+            backtrace:
+              1. `read all`
+              2. `read all`
+              3. `try expect external` (expected value)
         "##}
     );
 }

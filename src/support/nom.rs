@@ -55,8 +55,8 @@ where
     #[cfg(feature = "retry")]
     fn retry_requirement(&self) -> Option<RetryRequirement> {
         match self {
-            Err::Error(_) | Err::Incomplete(Needed::Unknown) => RetryRequirement::new(1),
-            Err::Failure(_) => None,
+            Err::Error(_) | Err::Failure(_) => None,
+            Err::Incomplete(Needed::Unknown) => RetryRequirement::new(1),
             Err::Incomplete(Needed::Size(s)) => RetryRequirement::new(s.get()),
         }
     }
