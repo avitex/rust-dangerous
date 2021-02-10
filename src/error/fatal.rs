@@ -50,6 +50,8 @@ impl fmt::Display for Fatal {
 }
 
 impl<'i> WithContext<'i> for Fatal {
+    const PASSTHROUGH: bool = true;
+
     #[inline(always)]
     fn with_context(self, _input: impl Input<'i>, _context: impl Context) -> Self {
         self

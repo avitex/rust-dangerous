@@ -50,6 +50,15 @@ impl<'i, T> Error<'i> for T where
 
 /// Implemented for errors that collect [`Context`]s.
 pub trait WithContext<'i>: Sized {
+    /// If `true` indicates the error does not care about any provided contexts.
+    /// 
+    /// Defaults to `false`.
+    ///
+    /// This can be used for selecting a verbose error at compile time on an
+    /// external parser if it is known this error will actually use the
+    /// collected backtrace.
+    const PASSTHROUGH: bool = false;
+
     /// Return `Self` with a parent context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.

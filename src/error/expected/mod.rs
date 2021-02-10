@@ -163,6 +163,8 @@ impl<'i, S> WithContext<'i> for Expected<'i, S>
 where
     S: BacktraceBuilder,
 {
+    const PASSTHROUGH: bool = S::PASSTHROUGH;
+
     fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
         self.add_context(input, context);
         self
@@ -179,6 +181,8 @@ impl<'i, S> WithContext<'i> for Box<Expected<'i, S>>
 where
     S: BacktraceBuilder,
 {
+    const PASSTHROUGH: bool = S::PASSTHROUGH;
+
     fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
         self.add_context(input, context);
         self

@@ -87,6 +87,8 @@ impl ToRetryRequirement for Invalid {
 }
 
 impl<'i> WithContext<'i> for Invalid {
+    const PASSTHROUGH: bool = true;
+
     #[inline(always)]
     fn with_context(self, _input: impl Input<'i>, _context: impl Context) -> Self {
         self

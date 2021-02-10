@@ -21,6 +21,11 @@ pub trait Backtrace: 'static {
 
 /// Implemented for [`Backtrace`] builders.
 pub trait BacktraceBuilder {
+    /// See [`WithContext::PASSTHROUGH`].
+    ///
+    /// [`WithContext::PASSTHROUGH`]: crate::error::WithContext::PASSTHROUGH
+    const PASSTHROUGH: bool = false;
+
     /// Create the builder from a root expected context.
     fn from_root(context: ExpectedContext) -> Self;
 
@@ -56,6 +61,8 @@ pub struct RootBacktrace {
 }
 
 impl BacktraceBuilder for RootBacktrace {
+    const PASSTHROUGH: bool = true;
+
     fn from_root(context: ExpectedContext) -> Self {
         Self { context }
     }
