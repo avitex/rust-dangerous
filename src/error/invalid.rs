@@ -2,11 +2,11 @@ use crate::fmt;
 use crate::input::Input;
 
 use super::{
-    Context, ContextStack, Expected, ExpectedLength, ExpectedValid, ExpectedValue,
-    RetryRequirement, ToRetryRequirement, WithContext,
+    Backtrace, Context, Expected, ExpectedLength, ExpectedValid, ExpectedValue, RetryRequirement,
+    ToRetryRequirement, WithContext,
 };
 
-/// `Invalid` contains no details around what went wrong other than a
+/// An error that has no details around what went wrong other than a
 /// [`RetryRequirement`] if the error is not fatal.
 ///
 /// This is the most performant and simplistic catch-all **retryable** error,
@@ -30,6 +30,7 @@ use super::{
 /// ```
 #[derive(Copy, Clone, PartialEq)]
 #[must_use = "error must be handled"]
+#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub struct Invalid {
     retry_requirement: Option<RetryRequirement>,
 }
@@ -94,7 +95,7 @@ impl<'i> WithContext<'i> for Invalid {
 
 impl<'i, S> From<Expected<'i, S>> for Invalid
 where
-    S: ContextStack,
+    S: Backtrace,
 {
     #[inline(always)]
     fn from(err: Expected<'i, S>) -> Self {
@@ -129,9 +130,3 @@ impl From<Option<RetryRequirement>> for Invalid {
         Self { retry_requirement }
     }
 }
-
-#[cfg(feature = "std")]
-impl std::error::Error for Invalid {}
-
-#[cfg(feature = "zc")]
-unsafe impl zc::NoInteriorMut for Invalid {}

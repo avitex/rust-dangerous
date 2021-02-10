@@ -97,6 +97,3 @@ impl<'i> ToRetryRequirement for ExpectedLength<'i> {
         self.input.is_bound() || self.len().max().is_some()
     }
 }
-
-#[cfg(feature = "zc")]
-unsafe impl<'i> zc::NoInteriorMut for ExpectedLength<'i> {}

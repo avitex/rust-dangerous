@@ -8,7 +8,9 @@ use crate::fmt;
 /// Although the value allows you to estimate how much more input you need till
 /// you can continue processing the input, it is a very granular value and may
 /// result in a lot of wasted reprocessing of input if not handled correctly.
+#[must_use]
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub struct RetryRequirement(NonZeroUsize);
 
 impl RetryRequirement {
@@ -19,7 +21,7 @@ impl RetryRequirement {
     /// amount of additional input bytes required to continue processing.
     #[must_use]
     pub fn new(value: usize) -> Option<Self> {
-        NonZeroUsize::new(value).map(Self)
+        NonZeroUsize::new(value).map(Self::from_continue_after)
     }
 
     /// Create a retry requirement from a count of how many bytes we had and
@@ -27,6 +29,12 @@ impl RetryRequirement {
     #[must_use]
     pub fn from_had_and_needed(had: usize, needed: usize) -> Option<Self> {
         Self::new(needed.saturating_sub(had))
+    }
+
+    /// Create a retry requirement from a count of how many bytes are required
+    /// to continue processing input.
+    pub fn from_continue_after(continue_after: NonZeroUsize) -> Self {
+        Self(continue_after)
     }
 
     /// An indicator of how many bytes are required to continue processing input, if
@@ -66,10 +74,8 @@ impl fmt::Display for RetryRequirement {
     }
 }
 
-#[cfg(feature = "zc")]
-unsafe impl zc::NoInteriorMut for RetryRequirement {}
-
 /// Implemented for errors that return a [`RetryRequirement`].
+#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub trait ToRetryRequirement {
     /// Returns the requirement, if applicable, to retry processing the `Input`.
     fn to_retry_requirement(&self) -> Option<RetryRequirement>;

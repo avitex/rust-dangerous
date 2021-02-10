@@ -4,6 +4,33 @@ pub use dangerous::{error::*, *};
 pub use indoc::indoc;
 pub use paste::paste;
 
+macro_rules! assert_str_eq {
+    ($left:expr, $right:expr) => {{
+        let left = &$left[..];
+        let right = &$right[..];
+        if left != right {
+            panic!(
+                indoc! {"
+                string not expected value:
+                =============================LEFT=============================
+                {}
+                =============================RIGHT============================
+                {}
+                ==============================DIFF============================
+                {}
+                ==============================================================
+            "},
+                left,
+                right,
+                colored_diff::PrettyDifference {
+                    expected: left,
+                    actual: right,
+                },
+            );
+        }
+    }};
+}
+
 macro_rules! input {
     ($input:expr) => {
         dangerous::input(&$input)

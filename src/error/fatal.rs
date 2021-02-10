@@ -5,7 +5,7 @@ use super::{Context, ExpectedLength, ExpectedValid, ExpectedValue, WithContext};
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
 
-/// `Fatal` contains no details around what went wrong and cannot be retried.
+/// An error that has no details around what went wrong and cannot be retried.
 ///
 /// This is the most performant and simplistic catch-all error, but it doesn't
 /// provide any context to debug problems well and cannot be used in streaming
@@ -84,9 +84,3 @@ impl<'i> From<ExpectedValid<'i>> for Fatal {
         Self
     }
 }
-
-#[cfg(feature = "std")]
-impl std::error::Error for Fatal {}
-
-#[cfg(feature = "zc")]
-unsafe impl zc::NoInteriorMut for Fatal {}

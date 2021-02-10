@@ -15,16 +15,17 @@
 //!
 //! # Feature flags
 //!
-//! | Feature        | Default     | Description
-//! | -------------- | ----------- | ----------------------------------------------- |
-//! | `std`          | _Disabled_  | Enables `std::error::Error` support and `alloc` |
-//! | `alloc`        | **Enabled** | Enables allocations.                            |
-//! | `retry`        | **Enabled** | Enables retry support.                          |
-//! | `simd`         | **Enabled** | Enables all supported SIMD optimisations.       |
-//! | `unicode`      | **Enabled** | Enables improved unicode printing support.      |
-//! | `full-context` | **Enabled** | Enables full context backtraces.                |
-//! | `zc`           | _Disabled_  | Enables `zc` crate support.                     |
-//! | `regex`        | _Disabled_  | Enables `regex` pattern support.                |
+//! | Feature          | Default     | Description
+//! | ---------------- | ----------- | -------------------------------------------------- |
+//! | `std`            | _Disabled_  | Enables `std::error::Error` support and `alloc`    |
+//! | `alloc`          | **Enabled** | Enables allocations.                               |
+//! | `retry`          | **Enabled** | Enables retry support.                             |
+//! | `simd`           | **Enabled** | Enables all supported SIMD optimisations.          |
+//! | `unicode`        | **Enabled** | Enables improved unicode printing support.         |
+//! | `full-backtrace` | **Enabled** | Enables collection of all contexts for `Expected`. |
+//! | `zc`             | _Disabled_  | Enables `zc` crate support.                        |
+//! | `nom`            | _Disabled_  | Enables `nom` crate error support.                 |
+//! | `regex`          | _Disabled_  | Enables `regex` pattern support.                   |
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -68,17 +69,15 @@ mod macros;
 
 mod input;
 mod reader;
+mod support;
 mod util;
 
 pub mod display;
 pub mod error;
 
-pub use self::error::{Error, Expected, Fatal, FromExpected, WithContext};
+pub use self::error::{Error, Expected, Fatal};
 #[cfg(feature = "retry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::error::{Invalid, ToRetryRequirement};
-#[cfg(feature = "retry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::input::Bound;
 pub use self::input::{input, Bytes, Input, MaybeString, Pattern, String};
 pub use self::reader::{BytesReader, Peek, Reader, StringReader};

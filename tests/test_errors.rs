@@ -15,8 +15,8 @@ fn test_fatal() {
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(format!("{}", error), "invalid input");
-    assert_eq!(format!("{:?}", error), "Fatal");
+    assert_str_eq!(format!("{}", error), "invalid input");
+    assert_str_eq!(format!("{:?}", error), "Fatal");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -30,11 +30,11 @@ fn test_invalid_retry_1_more() {
 
     assert!(!error.is_fatal());
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(1));
-    assert_eq!(
+    assert_str_eq!(
         format!("{}", error),
         "invalid input: needs 1 byte more to continue processing"
     );
-    assert_eq!(
+    assert_str_eq!(
         format!("{:?}", error),
         "Invalid { retry_requirement: Some(RetryRequirement(1)) }"
     );
@@ -48,11 +48,11 @@ fn test_invalid_retry_2_more() {
 
     assert!(!error.is_fatal());
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
-    assert_eq!(
+    assert_str_eq!(
         format!("{}", error),
         "invalid input: needs 2 bytes more to continue processing"
     );
-    assert_eq!(
+    assert_str_eq!(
         format!("{:?}", error),
         "Invalid { retry_requirement: Some(RetryRequirement(2)) }"
     );
@@ -66,8 +66,8 @@ fn test_invalid_fatal() {
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(format!("{}", error), "invalid input");
-    assert_eq!(
+    assert_str_eq!(format!("{}", error), "invalid input");
+    assert_str_eq!(
         format!("{:?}", error),
         "Invalid { retry_requirement: None }"
     );
@@ -103,6 +103,16 @@ impl<'i> From<ExpectedValue<'i>> for ExpectedKind<'i> {
 impl<'i> From<ExpectedLength<'i>> for ExpectedKind<'i> {
     fn from(err: ExpectedLength<'i>) -> Self {
         Self::Length(err)
+    }
+}
+
+impl<'i> ToRetryRequirement for ExpectedKind<'i> {
+    fn to_retry_requirement(&self) -> Option<RetryRequirement> {
+        match self {
+            Self::Value(e) => e.to_retry_requirement(),
+            Self::Valid(e) => e.to_retry_requirement(),
+            Self::Length(e) => e.to_retry_requirement(),
+        }
     }
 }
 
@@ -143,9 +153,8 @@ fn test_expected_valid_variant() {
     assert_eq!(error.input().into_bytes(), b"hello world\xC2 "[..]);
     assert_eq!(error.expected(), "utf-8 code point");
     assert_eq!(error.span(), b"\xC2"[..]);
-    assert_eq!(error.context().operation(), "take str while");
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
+    assert_str_eq!(
         format!("{:#?}\n", error),
         indoc! {r#"
             ExpectedValid {
@@ -169,11 +178,11 @@ fn test_expected_valid_variant() {
 
 #[test]
 fn test_expected_valid_root() {
-    let error: Expected<RootContextStack> = trigger_expected_valid();
+    let error: Expected<RootBacktrace> = trigger_expected_valid();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
             error attempting to take str while: expected utf-8 code point
@@ -188,14 +197,14 @@ fn test_expected_valid_root() {
 }
 
 #[test]
-#[cfg(feature = "full-context")]
+#[cfg(feature = "full-backtrace")]
 fn test_expected_valid_full() {
     let error: Expected = trigger_expected_valid();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
     println!("{}\n", error);
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
             error attempting to take str while: expected utf-8 code point
@@ -212,14 +221,14 @@ fn test_expected_valid_full() {
 }
 
 #[test]
-#[cfg(feature = "full-context")]
+#[cfg(feature = "full-backtrace")]
 fn test_expected_valid_full_boxed() {
     let error: Expected = trigger_expected_valid();
     let error_boxed: Box<Expected> = trigger_expected_valid();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(format!("{:#?}", error), format!("{:#?}", error_boxed),);
+    assert_str_eq!(format!("{:#?}", error), format!("{:#?}", error_boxed));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -235,9 +244,8 @@ fn test_expected_length_variant() {
     assert_eq!(error.input().into_bytes(), b"hello world"[..]);
     assert_eq!(error.len(), Length::AtLeast(13));
     assert_eq!(error.span(), b"hello world"[..]);
-    assert_eq!(error.context().operation(), "take");
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
-    assert_eq!(
+    assert_str_eq!(
         format!("{:#?}\n", error),
         indoc! {r#"
             ExpectedLength {
@@ -262,12 +270,54 @@ fn test_expected_length_variant() {
 }
 
 #[test]
+#[cfg(feature = "full-backtrace")]
+fn test_external_error_deep_child() {
+    struct DeepExternalError;
+
+    impl<'i> External<'i> for DeepExternalError {
+        fn push_child_backtrace<E>(self, error: E) -> E
+        where
+            E: WithContext<'i>,
+        {
+            error
+                .with_child_context("a")
+                .with_child_context("b")
+                .with_child_context("c")
+        }
+    }
+
+    let error = read_all_err!("hello world", |r| {
+        r.try_expect_external("value", |_| {
+            Result::<((), usize), DeepExternalError>::Err(DeepExternalError)
+        })
+    });
+
+    assert!(error.is_fatal());
+    assert_str_eq!(
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to try expect external: expected value
+            > "hello world"
+               ^^^^^^^^^^^ 
+            additional:
+              error line: 1, error offset: 0, input length: 11
+            backtrace:
+              1. `read all`
+              2. `try expect external` (expected value)
+                1. `read` (expected c)
+                2. `read` (expected b)
+                3. `read` (expected a)
+        "#}
+    );
+}
+
+#[test]
 fn test_expected_length_root() {
-    let error: Expected<RootContextStack> = trigger_expected_length();
+    let error: Expected<RootBacktrace> = trigger_expected_length();
 
     assert!(!error.is_fatal());
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
             error attempting to take: found 11 bytes when at least 13 bytes was expected
@@ -282,13 +332,13 @@ fn test_expected_length_root() {
 }
 
 #[test]
-#[cfg(feature = "full-context")]
+#[cfg(feature = "full-backtrace")]
 fn test_expected_length_full() {
     let error: Expected = trigger_expected_length();
 
     assert!(!error.is_fatal());
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
             error attempting to take: found 11 bytes when at least 13 bytes was expected
@@ -300,7 +350,7 @@ fn test_expected_length_full() {
               1. `read all`
               2. `read` (expected hi)
               3. `take` (expected enough input)
-        "#},
+        "#}
     );
 }
 
@@ -317,9 +367,8 @@ fn test_expected_value_variant() {
     assert_eq!(error.input().into_bytes(), b"hello world"[..]);
     assert_eq!(error.found(), b"hel"[..]);
     assert_eq!(error.expected().as_bytes(), &b"123"[..]);
-    assert_eq!(error.context().operation(), "consume");
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
+    assert_str_eq!(
         format!("{:#?}\n", error),
         indoc! {r#"
             ExpectedValue {
@@ -345,12 +394,12 @@ fn test_expected_value_variant() {
 
 #[test]
 fn test_expected_value_root() {
-    let error: Expected<RootContextStack> = trigger_expected_value();
+    let error: Expected<RootBacktrace> = trigger_expected_value();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
     println!("{}", error);
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
             error attempting to consume: found a different value to the exact expected
@@ -368,13 +417,13 @@ fn test_expected_value_root() {
 }
 
 #[test]
-#[cfg(feature = "full-context")]
+#[cfg(feature = "full-backtrace")]
 fn test_expected_value_full() {
     let error: Expected = trigger_expected_value();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
             error attempting to consume: found a different value to the exact expected
@@ -389,7 +438,7 @@ fn test_expected_value_full() {
               1. `read all`
               2. `read` (expected hi)
               3. `consume` (expected exact value)
-        "#},
+        "#}
     );
 }
 
@@ -397,13 +446,13 @@ fn test_expected_value_full() {
 // Other
 
 #[test]
-#[cfg(feature = "full-context")]
+#[cfg(feature = "full-backtrace")]
 fn test_error_max_input_len() {
     let error: Expected = trigger_expected_value();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error.display().input_max_width(20)),
         indoc! {r#"
             error attempting to consume: found a different value to the exact expected
@@ -418,18 +467,18 @@ fn test_error_max_input_len() {
               1. `read all`
               2. `read` (expected hi)
               3. `consume` (expected exact value)
-        "#},
+        "#}
     );
 }
 
 #[test]
-#[cfg(feature = "full-context")]
+#[cfg(feature = "full-backtrace")]
 fn test_error_display_str() {
     let error: Expected = trigger_expected_value_str();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
+    assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
             error attempting to consume: found a different value to the exact expected
@@ -444,18 +493,18 @@ fn test_error_display_str() {
               1. `read all`
               2. `read` (expected hi)
               3. `consume` (expected exact value)
-        "#},
+        "#}
     );
 }
 
 #[test]
-#[cfg(feature = "full-context")]
+#[cfg(feature = "full-backtrace")]
 fn test_error_display_str_hint() {
     let error: Expected = trigger_expected_value();
 
     assert!(error.is_fatal());
     assert_eq!(error.to_retry_requirement(), None);
-    assert_eq!(
+    assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r#"
             error attempting to consume: found a different value to the exact expected
@@ -470,29 +519,27 @@ fn test_error_display_str_hint() {
               1. `read all`
               2. `read` (expected hi)
               3. `consume` (expected exact value)
-        "#},
+        "#}
     );
 }
 
 #[test]
 fn test_invalid_error_details_span() {
     use dangerous::display::{ErrorDisplay, Write};
-    use dangerous::error::{
-        ContextStack, ContextStackBuilder, Details, ExpectedValid, RootContextStack,
-    };
+    use dangerous::error::{Backtrace, BacktraceBuilder, Details, ExpectedValid, RootBacktrace};
     use dangerous::{Input, MaybeString};
 
-    struct MyError(RootContextStack);
+    struct MyError(RootBacktrace);
 
     impl<'i> From<ExpectedValid<'i>> for MyError {
         fn from(err: ExpectedValid<'i>) -> Self {
-            Self(RootContextStack::from_root(err.context()))
+            Self(RootBacktrace::from_root(err.context()))
         }
     }
 
     impl<'i> From<ExpectedLength<'i>> for MyError {
         fn from(err: ExpectedLength<'i>) -> Self {
-            Self(RootContextStack::from_root(err.context()))
+            Self(RootBacktrace::from_root(err.context()))
         }
     }
 
@@ -509,7 +556,7 @@ fn test_invalid_error_details_span() {
         fn description(&self, w: &mut dyn Write) -> fmt::Result {
             w.write_str("test")
         }
-        fn context_stack(&self) -> &dyn ContextStack {
+        fn backtrace(&self) -> &dyn Backtrace {
             &self.0
         }
     }

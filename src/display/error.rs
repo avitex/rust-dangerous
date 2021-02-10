@@ -72,7 +72,7 @@ where
         let span = self.error.span();
         // Write description
         w.write_str("error attempting to ")?;
-        w.write_str(self.error.context_stack().root().operation())?;
+        self.error.backtrace().root().operation(w)?;
         w.write_str(": ")?;
         self.error.description(w)?;
         w.write_char('\n')?;
@@ -127,21 +127,31 @@ where
         w.write_char('\n')?;
         // Write context backtrace
         w.write_str("backtrace:")?;
-        let write_success = self.error.context_stack().walk(&mut |i, c| {
-            let writer = |w: &mut dyn Write, i, c: &dyn Context| {
+        let mut child_index = 1;
+        let mut last_parent_depth = 0;
+        let write_success = self.error.backtrace().walk(&mut |parent_depth, context| {
+            let mut write = || {
                 w.write_str("\n  ")?;
-                w.write_usize(i)?;
+                if parent_depth == last_parent_depth {
+                    w.write_str("  ")?;
+                    w.write_usize(child_index)?;
+                    child_index += 1;
+                } else {
+                    child_index = 1;
+                    last_parent_depth = parent_depth;
+                    w.write_usize(parent_depth)?;
+                }
                 w.write_str(". `")?;
-                w.write_str(c.operation())?;
+                context.operation(w)?;
                 w.write_char('`')?;
-                if c.has_expected() {
+                if context.has_expected() {
                     w.write_str(" (expected ")?;
-                    c.expected(w)?;
+                    context.expected(w)?;
                     w.write_char(')')?;
                 }
                 fmt::Result::Ok(())
             };
-            writer(w, i, c).is_ok()
+            write().is_ok()
         });
         if write_success {
             Ok(())

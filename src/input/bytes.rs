@@ -423,6 +423,15 @@ impl<'i> Private<'i> for Bytes<'i> {
     }
 
     #[inline(always)]
+    fn verify_token_boundary(&self, index: usize) -> Result<(), &'static str> {
+        if index > self.len() {
+            Err("byte index")
+        } else {
+            Ok(())
+        }
+    }
+
+    #[inline(always)]
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
         slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
             // We split at a known length making the head input bound.
@@ -506,9 +515,3 @@ impl<'i> fmt::Display for Bytes<'i> {
         InputDisplay::from_formatter(self, f).fmt(f)
     }
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// Zc
-
-#[cfg(feature = "zc")]
-unsafe impl<'i> zc::NoInteriorMut for Bytes<'i> {}

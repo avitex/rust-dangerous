@@ -16,7 +16,7 @@ pub type BytesReader<'i, E> = Reader<'i, E, Bytes<'i>>;
 /// [`String`] specific [`Reader`].
 pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 
-/// A `Reader` is created from and consumes an [`Input`].
+/// Created from and consumes an [`Input`].
 ///
 /// You can only create a [`Reader`] from [`Input`] via [`Input::read_all()`],
 /// [`Input::read_partial()`] or [`Input::read_infallible()`].
@@ -31,12 +31,12 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 ///
 /// To verify input and optionally return a type from that verification,
 /// [`verify()`], [`try_verify()`], [`expect()`], [`try_expect()`] and
-/// [`try_expect_erased()`] is provided. These functions are the interface for
+/// [`try_expect_external()`] is provided. These functions are the interface for
 /// creating errors based off what was expected.
 ///
-/// [`try_expect_erased()`] is provided for reading a custom type that does not
-/// support a `&mut Reader<'i, E, I>` interface, for example a type implementing
-/// `FromStr`.
+/// [`try_expect_external()`] is provided for reading a custom type that does
+/// not support a `&mut Reader<'i, E, I>` interface, for example a type
+/// implementing `FromStr`.
 ///
 /// [`recover()`] and [`recover_if()`] are provided as an escape hatch when you
 /// wish to catch an error and try another branch.
@@ -79,7 +79,7 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// [`try_verify()`]: Reader::try_verify()  
 /// [`expect()`]: Reader::expect()  
 /// [`try_expect()`]: Reader::try_expect()  
-/// [`try_expect_erased()`]: Reader::try_expect_erased()  
+/// [`try_expect_external()`]: Reader::try_expect_external()  
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
 /// [`RetryRequirement`]: crate::error::RetryRequirement  
@@ -139,12 +139,4 @@ where
             .field("input", &self.input)
             .finish()
     }
-}
-
-#[cfg(feature = "zc")]
-unsafe impl<'i, E, I> zc::NoInteriorMut for Reader<'i, E, I>
-where
-    E: zc::NoInteriorMut,
-    I: zc::NoInteriorMut + Input<'i>,
-{
 }

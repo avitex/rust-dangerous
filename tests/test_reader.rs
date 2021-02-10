@@ -37,11 +37,11 @@ fn test_at_end_false() {
 #[test]
 fn test_context() {
     let err = read_all_err!(b"hello", |r| { r.context("bob", |r| r.consume(b"world")) });
-    #[cfg(feature = "full-context")]
-    assert_eq!(err.context_stack().count(), 3);
-    #[cfg(not(feature = "full-context"))]
-    assert_eq!(err.context_stack().count(), 1);
-    err.context_stack().walk(&mut |i, c| {
+    #[cfg(feature = "full-backtrace")]
+    assert_eq!(err.backtrace().count(), 3);
+    #[cfg(not(feature = "full-backtrace"))]
+    assert_eq!(err.backtrace().count(), 1);
+    err.backtrace().walk(&mut |i, c| {
         // i == 1 is an operation context which cannot be downcast
         if i == 2 {
             let c = Any::downcast_ref::<&'static str>(c.as_any());
@@ -443,20 +443,49 @@ fn test_try_expect_none() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Reader::try_expect_erased
+// Reader::try_expect_external
+
+struct ExternalError(Option<RetryRequirement>);
+
+impl<'i> External<'i> for ExternalError {
+    fn retry_requirement(&self) -> Option<RetryRequirement> {
+        self.0
+    }
+}
 
 #[test]
-fn try_expect_erased_ok() {
+fn try_expect_external_ok() {
     read_all_ok!(b"", |r| {
-        r.try_expect_erased("value", |_| Result::<(), Fatal>::Ok(()))
+        r.try_expect_external("value", |i| Result::<_, ExternalError>::Ok(((), i.len())))
     });
 }
 
 #[test]
-fn try_expect_erased_err() {
-    let _ = read_all_err!(b"", |r| {
-        r.try_expect_erased("value", |_| Result::<(), Fatal>::Err(Fatal))
+fn try_expect_external_unconsumed() {
+    let _ = read_all_err!(b"abc", |r| {
+        r.try_expect_external("value", |_| Result::<_, ExternalError>::Ok(((), 2)))
     });
+}
+
+#[test]
+fn try_expect_external_err() {
+    let error = read_all_err!(b"", |r| {
+        r.try_expect_external("value", |_| {
+            Result::<((), usize), ExternalError>::Err(ExternalError(RetryRequirement::new(0)))
+        })
+    });
+    assert!(error.is_fatal());
+}
+
+#[test]
+fn try_expect_external_err_retry() {
+    let error = read_all_err!(b"", |r| {
+        r.try_expect_external("value", |_| {
+            Result::<((), usize), ExternalError>::Err(ExternalError(RetryRequirement::new(1)))
+        })
+    });
+    assert!(!error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), RetryRequirement::new(1));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -493,13 +522,12 @@ fn test_recover_if_false() {
 
 #[test]
 fn test_error() {
-    let err = read_all_err!(b"", |r| {
-        r.try_expect_erased("value", |r| {
-            r.error(|r: &mut BytesReader<Fatal>| {
-                // Normally this would retryable but we are using the fatal error
-                r.take(1)
-            })
-        })
+    let _: Result<_, Expected> = read_all!(b"", |r| {
+        let result = r.error(|r: &mut BytesReader<Fatal>| {
+            // Normally this would retryable but we are using the fatal error
+            r.take(1)
+        });
+        assert_eq!(result, Err(Fatal));
+        Ok(())
     });
-    assert!(err.is_fatal());
 }

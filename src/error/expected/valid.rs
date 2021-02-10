@@ -91,6 +91,3 @@ impl<'i> ToRetryRequirement for ExpectedValid<'i> {
         self.input.is_bound() || self.retry_requirement.is_none()
     }
 }
-
-#[cfg(feature = "zc")]
-unsafe impl<'i> zc::NoInteriorMut for ExpectedValid<'i> {}

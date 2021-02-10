@@ -5,10 +5,7 @@ use crate::input::Input;
 
 use super::WithContext;
 
-#[cfg(feature = "full-context")]
-use alloc::{boxed::Box, vec::Vec};
-
-/// The base context surrounding an error.
+/// Information surrounding an error.
 pub trait Context: Any {
     /// The operation that was attempted when an error occurred.
     ///
@@ -18,17 +15,25 @@ pub trait Context: Any {
     /// ```text
     /// error attempting to <operation>.
     /// ```
-    fn operation(&self) -> &'static str;
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`fmt::Error`] if failed to write to the formatter.
+    fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result;
 
     /// Returns `true` if there is an expected value.
-    fn has_expected(&self) -> bool;
+    fn has_expected(&self) -> bool {
+        false
+    }
 
     /// The expected value.
     ///
     /// # Errors
     ///
     /// Returns a [`fmt::Error`] if failed to write to the formatter.
-    fn expected(&self, w: &mut dyn fmt::Write) -> fmt::Result;
+    fn expected(&self, _w: &mut dyn fmt::Write) -> fmt::Result {
+        Err(fmt::Error)
+    }
 
     /// Return a reference of self as [`Any`].
     // FIXME: an ideal implementation wouldn't require this function and we
@@ -39,45 +44,12 @@ pub trait Context: Any {
     fn as_any(&self) -> &dyn Any;
 }
 
-/// A walkable stack of [`Context`]s collected from an error.
-pub trait ContextStack: 'static {
-    /// The root context.
-    fn root(&self) -> ExpectedContext;
-
-    /// Return the total number of contexts.
-    fn count(&self) -> usize;
-
-    /// Walk the context stack, starting with the highest context to the root.
-    ///
-    /// Returns `true` if all of the stack available was walked, `false` if not.
-    fn walk<'a>(&'a self, f: &mut ContextStackWalker<'a>) -> bool;
-}
-
-/// A [`ContextStack`] builder.
-pub trait ContextStackBuilder {
-    /// Create the builder from a root expected context.
-    fn from_root(context: ExpectedContext) -> Self;
-
-    /// Push an additional context onto the stack.
-    fn push(&mut self, context: impl Context);
-}
-
-/// A dynamic function for walking a context stack.
-///
-/// Returns `true` if the walk should continue, `false` if not.
-///
-/// # Parameters
-///
-/// - `index` (the index of the context starting from `1`).
-/// - `context` (the context at the provided index).
-pub type ContextStackWalker<'a> = dyn FnMut(usize, &dyn Context) -> bool + 'a;
-
 ///////////////////////////////////////////////////////////////////////////////
 // Basic expected context
 
 impl Context for &'static str {
-    fn operation(&self) -> &'static str {
-        "read"
+    fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        w.write_str("read")
     }
 
     fn has_expected(&self) -> bool {
@@ -104,12 +76,12 @@ pub struct ExpectedContext {
 }
 
 impl Context for ExpectedContext {
-    fn operation(&self) -> &'static str {
-        self.operation
+    fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        w.write_str(self.operation)
     }
 
     fn has_expected(&self) -> bool {
-        true
+        !self.expected.is_empty()
     }
 
     fn expected(&self, w: &mut dyn fmt::Write) -> fmt::Result {
@@ -130,26 +102,16 @@ impl fmt::Debug for ExpectedContext {
     }
 }
 
-#[cfg(feature = "zc")]
-unsafe impl zc::NoInteriorMut for ExpectedContext {}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Operation context
 
+/// A sealed operation context.
 #[derive(Copy, Clone)]
-pub(crate) struct OperationContext(pub(crate) &'static str);
+pub struct OperationContext(pub(crate) &'static str);
 
 impl Context for OperationContext {
-    fn operation(&self) -> &'static str {
-        self.0
-    }
-
-    fn has_expected(&self) -> bool {
-        false
-    }
-
-    fn expected(&self, _: &mut dyn fmt::Write) -> fmt::Result {
-        Err(fmt::Error)
+    fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        w.write_str(self.0)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -162,92 +124,6 @@ impl fmt::Debug for OperationContext {
         f.debug_tuple("OperationContext").field(&self.0).finish()
     }
 }
-
-#[cfg(feature = "zc")]
-unsafe impl zc::NoInteriorMut for OperationContext {}
-
-///////////////////////////////////////////////////////////////////////////////
-// Root context stack
-
-/// A [`ContextStack`] that only contains the root [`ExpectedContext`].
-pub struct RootContextStack {
-    context: ExpectedContext,
-}
-
-impl ContextStackBuilder for RootContextStack {
-    fn from_root(context: ExpectedContext) -> Self {
-        Self { context }
-    }
-
-    fn push(&mut self, _context: impl Context) {}
-}
-
-impl ContextStack for RootContextStack {
-    fn root(&self) -> ExpectedContext {
-        self.context
-    }
-
-    fn count(&self) -> usize {
-        1
-    }
-
-    fn walk<'a>(&'a self, f: &mut ContextStackWalker<'a>) -> bool {
-        f(1, &self.context)
-    }
-}
-
-#[cfg(feature = "zc")]
-unsafe impl zc::NoInteriorMut for RootContextStack {}
-
-///////////////////////////////////////////////////////////////////////////////
-// Full context stack
-
-/// A [`ContextStack`] that contains all [`Context`]s collected.
-#[cfg(feature = "full-context")]
-#[cfg_attr(docsrs, doc(cfg(feature = "full-context")))]
-pub struct FullContextStack {
-    root: ExpectedContext,
-    stack: Vec<Box<dyn Context>>,
-}
-
-#[cfg(feature = "full-context")]
-impl ContextStackBuilder for FullContextStack {
-    fn from_root(context: ExpectedContext) -> Self {
-        Self {
-            root: context,
-            stack: Vec::with_capacity(32),
-        }
-    }
-
-    fn push(&mut self, context: impl Context) {
-        self.stack.push(Box::new(context))
-    }
-}
-
-#[cfg(feature = "full-context")]
-impl ContextStack for FullContextStack {
-    fn root(&self) -> ExpectedContext {
-        self.root
-    }
-
-    fn count(&self) -> usize {
-        self.stack.len() + 1
-    }
-
-    fn walk<'a>(&'a self, f: &mut ContextStackWalker<'a>) -> bool {
-        let mut i = 1;
-        for item in self.stack.iter().rev() {
-            if !f(i, item.as_ref()) {
-                return false;
-            }
-            i += 1;
-        }
-        f(i, &self.root)
-    }
-}
-
-#[cfg(feature = "zc")]
-unsafe impl zc::NoInteriorMut for FullContextStack {}
 
 ///////////////////////////////////////////////////////////////////////////////
 

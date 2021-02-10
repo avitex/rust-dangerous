@@ -156,6 +156,15 @@ impl<'i> Private<'i> for String<'i> {
     }
 
     #[inline(always)]
+    fn verify_token_boundary(&self, index: usize) -> Result<(), &'static str> {
+        if self.as_dangerous().is_char_boundary(index) {
+            Ok(())
+        } else {
+            Err("char index")
+        }
+    }
+
+    #[inline(always)]
     fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
         let string = self.as_dangerous();
         let iter = &mut string.chars();
@@ -243,12 +252,3 @@ impl<'i> fmt::Display for String<'i> {
         InputDisplay::from_formatter(self, f).str_hint(true).fmt(f)
     }
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// Zc
-
-#[cfg(feature = "zc")]
-unsafe impl<'i> zc::NoInteriorMut for String<'i> {}
-
-#[cfg(feature = "zc")]
-unsafe impl<'i> zc::NoInteriorMut for MaybeString<'i> {}

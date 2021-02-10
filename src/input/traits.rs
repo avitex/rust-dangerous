@@ -2,10 +2,8 @@ use core::convert::Infallible;
 use core::ops::Range;
 
 use crate::display::InputDisplay;
-#[cfg(feature = "retry")]
-use crate::error::ToRetryRequirement;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, Length,
+    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, External, Length,
     OperationContext, Value, WithContext,
 };
 use crate::fmt::{Debug, Display, DisplayBase};
@@ -15,7 +13,7 @@ use crate::util::slice;
 
 use super::{Bound, Bytes, MaybeString, Prefix, String};
 
-/// An [`Input`] is an immutable wrapper around bytes to be processed.
+/// Implemented for immutable wrappers around bytes to be processed ([`Bytes`]/[`String`]).
 ///
 /// It can only be created via [`dangerous::input()`] as so to clearly point out
 /// where untrusted / dangerous input is consumed and takes the form of either
@@ -195,6 +193,28 @@ pub trait Input<'i>: Private<'i> {
         let ok = f(&mut r);
         (ok, r.take_remaining())
     }
+
+    /// Tries to convert `self` into `T` with [`External`] error support.
+    ///
+    /// **Note**: it is the callers responsibility to ensure all of the input is
+    /// handled. If the function may only consume a partial amount of input, use
+    /// [`Reader::try_expect_external()`] instead.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValid`] if the provided function returns an
+    /// [`External`] error.
+    #[inline]
+    fn into_external<F, T, E, Ex>(self, expected: &'static str, f: F) -> Result<T, E>
+    where
+        F: FnOnce(Self) -> Result<T, Ex>,
+        E: WithContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        Ex: External<'i>,
+    {
+        f(self.clone())
+            .map_err(|external| self.map_external_error(external, expected, "into external"))
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -217,6 +237,14 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
 
     // Return self with its end bound removed.
     fn into_unbound_end(self) -> Self;
+
+    /// Verifies a token boundary.
+    ///
+    /// The start and end of the input (when `index == self.byte_len()`) are
+    /// considered to be boundaries.
+    ///
+    /// Returns what was expected at that index.
+    fn verify_token_boundary(&self, index: usize) -> Result<(), &'static str>;
 
     /// Split the input at the token index `mid`.
     ///
@@ -241,7 +269,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self.clone().into_bytes().as_dangerous()
     }
 
-    /// Splits the input into two at `mid`.
+    /// Splits the input into two at the token index `mid`.
     ///
     /// # Errors
     ///
@@ -262,6 +290,48 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                 },
             })
         })
+    }
+
+    /// Splits the input into two at the byte index `mid`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedLength`] if `mid > self.len()` and [`ExpectedValid`]
+    /// if `mid` is not a valid token boundary.
+    #[inline(always)]
+    fn split_at_byte<E>(self, mid: usize, operation: &'static str) -> Result<(Self, Self), E>
+    where
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        if self.byte_len() < mid {
+            Err(E::from(ExpectedLength {
+                len: Length::AtLeast(mid),
+                span: self.as_dangerous_bytes(),
+                input: self.into_maybe_string(),
+                context: ExpectedContext {
+                    operation,
+                    expected: "enough input",
+                },
+            }))
+        } else {
+            match self.verify_token_boundary(mid) {
+                Ok(()) => {
+                    // SAFETY: index `mid` has been checked to be a valid token
+                    // boundary.
+                    Ok(unsafe { self.split_at_byte_unchecked(mid) })
+                }
+                Err(expected) => Err(E::from(ExpectedValid {
+                    span: &self.as_dangerous_bytes()[mid..mid],
+                    input: self.into_maybe_string(),
+                    retry_requirement: None,
+                    context: ExpectedContext {
+                        operation,
+                        expected,
+                    },
+                })),
+            }
+        }
     }
 
     /// Splits the input into the first token and whatever remains.
@@ -601,43 +671,74 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         }
     }
 
-    /// Tries to split the input from the value expected to be read.
+    /// Tries to split the input from a value expected with support for an
+    /// external error.
     ///
     /// # Errors
     ///
-    /// Returns an erased error from the provided function if it fails or if the
-    /// expected value was not present.
-    #[cfg(feature = "retry")]
+    /// Returns [`ExpectedValid`] if:
+    ///
+    /// - the provided function returns an amount of input read not aligned to a
+    ///   token boundary
+    /// - the provided function returns an [`External`] error.
+    ///
+    /// Returns [`ExpectedLength`] if:
+    ///
+    /// - the provided function returns an amount of input read that is greater
+    ///   than the actual length
     #[inline(always)]
-    fn try_split_expect_erased<F, T, R, E>(
+    fn try_split_expect_external<F, T, E, Ex>(
         self,
         f: F,
         expected: &'static str,
         operation: &'static str,
     ) -> Result<(T, Self), E>
     where
+        F: FnOnce(Self) -> Result<(T, usize), Ex>,
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, R>,
-        R: ToRetryRequirement,
+        E: From<ExpectedLength<'i>>,
+        Ex: External<'i>,
     {
-        let mut reader = Reader::new(self.clone());
-        match f(&mut reader) {
-            Ok(ok) => Ok((ok, reader.take_remaining())),
-            Err(err) => {
-                let tail = reader.take_remaining();
-                let span = &self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()];
-                Err(E::from(ExpectedValid {
-                    span,
-                    input: self.into_maybe_string(),
-                    context: ExpectedContext {
-                        expected,
-                        operation,
-                    },
-                    retry_requirement: err.to_retry_requirement(),
-                }))
-            }
+        match f(self.clone()) {
+            Ok((ok, read)) => self
+                .split_at_byte(read, operation)
+                .map(|(_, remaining)| (ok, remaining)),
+            Err(external) => Err(self.map_external_error(external, expected, operation)),
         }
+    }
+
+    fn map_external_error<E, Ex>(
+        self,
+        external: Ex,
+        expected: &'static str,
+        operation: &'static str,
+    ) -> E
+    where
+        E: WithContext<'i>,
+        E: From<ExpectedValid<'i>>,
+        Ex: External<'i>,
+    {
+        let bytes = self.as_dangerous_bytes();
+        let error = E::from(ExpectedValid {
+            span: external.span().unwrap_or(bytes),
+            input: self.into_maybe_string(),
+            context: ExpectedContext {
+                expected,
+                operation,
+            },
+            retry_requirement: external.retry_requirement(),
+        });
+        let error = match (external.operation(), external.expected()) {
+            (None, None) => error,
+            (None, Some(expected)) => error.with_child_context(expected),
+            (Some(operation), None) => error.with_child_context(OperationContext(operation)),
+            (Some(operation), Some(expected)) => error.with_child_context(ExpectedContext {
+                expected,
+                operation,
+            }),
+        };
+        external.push_child_backtrace(error)
     }
 }
 

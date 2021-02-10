@@ -1,6 +1,7 @@
 use crate::input::{Bytes, String};
 
-/// A structure that can be found within an [`Input`](crate::Input).
+/// Implemented for structures that can be found within an
+/// [`Input`](crate::Input).
 ///
 /// # Safety
 ///

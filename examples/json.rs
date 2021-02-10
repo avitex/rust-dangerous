@@ -6,7 +6,7 @@
 //! ```
 use std::io::{self, Read};
 
-use dangerous::{BytesReader, Error, Expected, Input, Invalid};
+use dangerous::{BytesReader, Error, Expected, Input};
 
 fn main() {
     let mut input_data = Vec::new();
@@ -167,19 +167,15 @@ where
 {
     skip_whitespace(r);
     r.context("json number", |r| {
-        let num_str = r.try_take_consumed(|r| {
+        r.try_take_consumed(|r| {
             r.try_verify("first byte is digit", |r| {
                 r.read_u8().map(|c| c.is_ascii_digit())
             })?;
             r.skip_while(|c: u8| c.is_ascii_digit() || c == b'.');
             Ok(())
-        })?;
-        num_str.read_all(|r| {
-            r.try_expect_erased("f64", |r| {
-                let s = r.take_remaining().to_dangerous_str::<Invalid>()?;
-                s.parse().map_err(|_| Invalid::fatal())
-            })
-        })
+        })?
+        .into_string::<E>()?
+        .into_external("f64", |i| i.as_dangerous().parse())
     })
 }
 

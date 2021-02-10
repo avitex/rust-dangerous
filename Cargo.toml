@@ -14,7 +14,7 @@ include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "C
 keywords = ["parsing", "simd", "untrusted"]
 
 [features]
-default = ["retry", "full-context", "simd", "unicode"]
+default = ["retry", "full-backtrace", "simd", "unicode"]
 # Enables `std::error::Error` support.
 std = ["alloc"]
 # Enables allocations.
@@ -26,10 +26,11 @@ simd = ["memchr", "bytecount"]
 # Enables improved unicode printing support.
 unicode = ["unicode-width"]
 # Enables full context backtraces.
-full-context = ["alloc"]
+full-backtrace = ["alloc"]
 
 [dependencies]
 zc = { version = "0.3", optional = true, default-features = false }
+nom = { version = "6", features = ["alloc"], optional = true, default-features = false }
 regex = { version = "1.4", optional = true }
 memchr = { version = "2.3", optional = true }
 bytecount = { version = "0.6", optional = true }
@@ -39,6 +40,8 @@ unicode-width = { version = "0.1", optional = true }
 zc = "0.3"
 paste = "1.0"
 indoc = "1.0"
+imap-proto = "0.12"
+colored-diff = "0.2.2"
 
 [[example]]
 name = "json"
@@ -51,6 +54,14 @@ required-features = ["std"]
 [[example]]
 name = "zerocopy"
 required-features = ["zc"]
+
+[[example]]
+name = "nom"
+required-features = ["nom"]
+
+[[test]]
+name = "test_nom"
+required-features = ["nom", "full-backtrace"]
 
 [package.metadata.docs.rs]
 all-features = true

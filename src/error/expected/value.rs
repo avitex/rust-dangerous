@@ -91,6 +91,3 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
                 .starts_with(self.found().as_dangerous())
     }
 }
-
-#[cfg(feature = "zc")]
-unsafe impl<'i> zc::NoInteriorMut for ExpectedValue<'i> {}

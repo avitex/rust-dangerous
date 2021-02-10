@@ -1,35 +1,71 @@
 use crate::fmt;
 use crate::input::{Bytes, Input, MaybeString};
 
-use super::{Context, ContextStack, ExpectedLength, ExpectedValid, ExpectedValue, Value};
+use super::{Backtrace, Context, ExpectedLength, ExpectedValid, ExpectedValue, Value};
+#[cfg(feature = "retry")]
+use super::{RetryRequirement, ToRetryRequirement};
 
-/// Convenience trait requiring [`WithContext`], [`FromExpected`].
-pub trait Error<'i>: WithContext<'i> + FromExpected<'i> {}
+/// Auto-trait for both [`WithContext`] and [`From`] for [`ExpectedValue`],
+/// [`ExpectedLength`] and [`ExpectedValid`].
+///
+/// Also requires [`ToRetryRequirement`] if the `retry` feature is enabled.
+#[cfg(feature = "retry")]
+pub trait Error<'i>:
+    WithContext<'i>
+    + From<ExpectedValue<'i>>
+    + From<ExpectedLength<'i>>
+    + From<ExpectedValid<'i>>
+    + ToRetryRequirement
+{
+}
 
-impl<'i, T> Error<'i> for T where T: WithContext<'i> + FromExpected<'i> {}
+#[cfg(feature = "retry")]
+impl<'i, T> Error<'i> for T where
+    T: WithContext<'i>
+        + From<ExpectedValue<'i>>
+        + From<ExpectedLength<'i>>
+        + From<ExpectedValid<'i>>
+        + ToRetryRequirement
+{
+}
+
+/// Trait requiring [`WithContext`] and [`From`] for [`ExpectedValue`],
+/// [`ExpectedLength`] and [`ExpectedValid`].
+///
+/// Also requires [`ToRetryRequirement`] if the `retry` feature is enabled.
+#[cfg(not(feature = "retry"))]
+pub trait Error<'i>:
+    WithContext<'i> + From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
+{
+}
+
+#[cfg(not(feature = "retry"))]
+impl<'i, T> Error<'i> for T where
+    T: WithContext<'i>
+        + From<ExpectedValue<'i>>
+        + From<ExpectedLength<'i>>
+        + From<ExpectedValid<'i>>
+{
+}
 
 /// Implemented for errors that collect [`Context`]s.
-pub trait WithContext<'i> {
-    /// Return `Self` with context.
+pub trait WithContext<'i>: Sized {
+    /// Return `Self` with a parent context.
     ///
     /// This method is used for adding parent contexts to errors bubbling up.
     fn with_context(self, input: impl Input<'i>, context: impl Context) -> Self;
+
+    /// Return `Self` with a child context attached to the last parent context
+    /// added.
+    ///
+    /// This method is used for adding child contexts to errors bubbling up.
+    fn with_child_context(self, _context: impl Context) -> Self {
+        self
+    }
 }
 
-/// Convenience trait requiring [`From`] for [`ExpectedValue`], [`ExpectedLength`]
-/// and [`ExpectedValid`].
-pub trait FromExpected<'i>:
-    From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
-{
-}
-
-impl<'i, T> FromExpected<'i> for T where
-    T: From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
-{
-}
-
-/// The required details around an error to produce a verbose report on what
-/// went wrong when processing input.
+/// Required details around an error to produce a verbose report on what went
+/// wrong when processing input.
 ///
 /// If you're not interested in errors of this nature and only wish to know
 /// whether or not the input was correctly processed, you'll wish to use the
@@ -61,7 +97,49 @@ pub trait Details<'i> {
     /// Returns a [`fmt::Error`] if failed to write to the formatter.
     fn description(&self, w: &mut dyn fmt::Write) -> fmt::Result;
 
-    /// The walkable [`ContextStack`] to the original context around the error
+    /// The walkable [`Backtrace`] to the original context around the error
     /// that occurred.
-    fn context_stack(&self) -> &dyn ContextStack;
+    fn backtrace(&self) -> &dyn Backtrace;
+}
+
+/// Implemented for errors that aren't a first-class citizen to `dangerous` but
+/// wish to add additional information.
+///
+/// External errors are consumed with [`Input::into_external()`] or
+/// [`Reader::try_expect_external()`].
+///
+/// [`Input::into_external()`]: crate::Input::into_external()
+/// [`Reader::try_expect_external()`]: crate::Reader::try_expect_external()
+pub trait External<'i>: Sized {
+    /// The specific section of input that caused an error.
+    fn span(&self) -> Option<&'i [u8]> {
+        None
+    }
+
+    /// The operation that was attempted when an error occurred.
+    fn operation(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// The expected value.
+    fn expected(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// Returns the requirement, if applicable, to retry processing the `Input`.
+    #[cfg(feature = "retry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
+    fn retry_requirement(&self) -> Option<RetryRequirement> {
+        None
+    }
+
+    /// Pushes a child backtrace to the base error generated.
+    ///
+    /// Push from the bottom of the trace (from the source of the error) up.
+    fn push_child_backtrace<E>(self, error: E) -> E
+    where
+        E: WithContext<'i>,
+    {
+        error
+    }
 }

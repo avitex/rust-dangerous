@@ -13,22 +13,21 @@ use crate::display::ErrorDisplay;
 use crate::fmt;
 use crate::input::{Bytes, Input, MaybeString};
 
-use super::{
-    Context, ContextStack, ContextStackBuilder, Details, ExpectedContext, Value, WithContext,
-};
+use super::{Backtrace, BacktraceBuilder, Context, Details, ExpectedContext, Value, WithContext};
 
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
 
-#[cfg(feature = "full-context")]
-type ExpectedContextStack = crate::error::FullContextStack;
-#[cfg(not(feature = "full-context"))]
-type ExpectedContextStack = crate::error::RootContextStack;
+#[cfg(feature = "full-backtrace")]
+type ExpectedBacktrace = crate::error::FullBacktrace;
+#[cfg(not(feature = "full-backtrace"))]
+type ExpectedBacktrace = crate::error::RootBacktrace;
 
-/// A catch-all error for all expected errors supported in this crate.
+/// An error that [`Details`] what went wrong while reading and may be retried
+/// with the `retry` feature enabled.
 ///
-/// - Enable the `full-context` feature (enabled by default), for full-context
-///   stacks.
+/// - Enable the `full-backtrace` feature (enabled by default), to collect of
+///   all contexts with [`Expected`].
 /// - It is generally recommended for better performance to box `Expected` if
 ///   the structures being returned from parsing are smaller than or equal to
 ///   `~128 bytes`. This is because the `Expected` structure is `176 - 200
@@ -38,9 +37,9 @@ type ExpectedContextStack = crate::error::RootContextStack;
 ///
 /// See [`crate::error`] for additional documentation around the error system.
 #[must_use = "error must be handled"]
-pub struct Expected<'i, S = ExpectedContextStack> {
+pub struct Expected<'i, S = ExpectedBacktrace> {
     input: MaybeString<'i>,
-    stack: S,
+    trace: S,
     kind: ExpectedKind<'i>,
 }
 
@@ -55,7 +54,7 @@ enum ExpectedKind<'i> {
 
 impl<'i, S> Expected<'i, S>
 where
-    S: ContextStack,
+    S: Backtrace,
 {
     /// Returns an `ErrorDisplay` for formatting.
     pub fn display(&self) -> ErrorDisplay<'_, Self> {
@@ -65,14 +64,19 @@ where
 
 impl<'i, S> Expected<'i, S>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     #[inline(always)]
     fn add_context(&mut self, input: impl Input<'i>, context: impl Context) {
         if self.input.clone().into_bytes().is_within(&input) {
             self.input = input.into_maybe_string()
         }
-        self.stack.push(context);
+        self.trace.push(context);
+    }
+
+    #[inline(always)]
+    fn add_child_context(&mut self, context: impl Context) {
+        self.trace.push_child(context);
     }
 
     fn from_kind(kind: ExpectedKind<'i>) -> Self {
@@ -84,14 +88,14 @@ where
         Self {
             kind,
             input,
-            stack: S::from_root(context),
+            trace: S::from_root(context),
         }
     }
 }
 
 impl<'i, S> Details<'i> for Expected<'i, S>
 where
-    S: ContextStack,
+    S: Backtrace,
 {
     fn input(&self) -> MaybeString<'i> {
         self.input.clone()
@@ -120,8 +124,8 @@ where
         }
     }
 
-    fn context_stack(&self) -> &dyn ContextStack {
-        &self.stack
+    fn backtrace(&self) -> &dyn Backtrace {
+        &self.trace
     }
 }
 
@@ -157,10 +161,15 @@ impl<'i, S> ToRetryRequirement for Box<Expected<'i, S>> {
 
 impl<'i, S> WithContext<'i> for Expected<'i, S>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
         self.add_context(input, context);
+        self
+    }
+
+    fn with_child_context(mut self, context: impl Context) -> Self {
+        self.add_child_context(context);
         self
     }
 }
@@ -168,17 +177,22 @@ where
 #[cfg(feature = "alloc")]
 impl<'i, S> WithContext<'i> for Box<Expected<'i, S>>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
         self.add_context(input, context);
+        self
+    }
+
+    fn with_child_context(mut self, context: impl Context) -> Self {
+        self.add_child_context(context);
         self
     }
 }
 
 impl<'i, S> fmt::Debug for Expected<'i, S>
 where
-    S: ContextStack,
+    S: Backtrace,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).banner(true).fmt(f)
@@ -187,7 +201,7 @@ where
 
 impl<'i, S> fmt::Display for Expected<'i, S>
 where
-    S: ContextStack,
+    S: Backtrace,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ErrorDisplay::from_formatter(self, f).fmt(f)
@@ -196,7 +210,7 @@ where
 
 impl<'i, S> From<ExpectedLength<'i>> for Expected<'i, S>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn from(err: ExpectedLength<'i>) -> Self {
         Self::from_kind(ExpectedKind::Length(err))
@@ -206,7 +220,7 @@ where
 #[cfg(feature = "alloc")]
 impl<'i, S> From<ExpectedLength<'i>> for Box<Expected<'i, S>>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn from(expected: ExpectedLength<'i>) -> Box<Expected<'i, S>> {
         Box::new(expected.into())
@@ -215,7 +229,7 @@ where
 
 impl<'i, S> From<ExpectedValid<'i>> for Expected<'i, S>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn from(err: ExpectedValid<'i>) -> Self {
         Self::from_kind(ExpectedKind::Valid(err))
@@ -225,7 +239,7 @@ where
 #[cfg(feature = "alloc")]
 impl<'i, S> From<ExpectedValid<'i>> for Box<Expected<'i, S>>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn from(expected: ExpectedValid<'i>) -> Box<Expected<'i, S>> {
         Box::new(expected.into())
@@ -234,7 +248,7 @@ where
 
 impl<'i, S> From<ExpectedValue<'i>> for Expected<'i, S>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn from(err: ExpectedValue<'i>) -> Self {
         Self::from_kind(ExpectedKind::Value(err))
@@ -244,32 +258,26 @@ where
 #[cfg(feature = "alloc")]
 impl<'i, S> From<ExpectedValue<'i>> for Box<Expected<'i, S>>
 where
-    S: ContextStackBuilder,
+    S: BacktraceBuilder,
 {
     fn from(expected: ExpectedValue<'i>) -> Box<Expected<'i, S>> {
         Box::new(expected.into())
     }
 }
 
-#[cfg(feature = "std")]
-impl<'i, S> std::error::Error for Expected<'i, S> where S: ContextStack {}
-
-#[cfg(feature = "zc")]
-unsafe impl<'i, S> zc::NoInteriorMut for Expected<'i, S> where S: zc::NoInteriorMut {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(all(target_pointer_width = "64", not(feature = "full-context")))]
+    #[cfg(all(target_pointer_width = "64", not(feature = "full-backtrace")))]
     fn test_expected_size() {
         // Update the docs if this value changes.
         assert_eq!(core::mem::size_of::<Expected<'_>>(), 176);
     }
 
     #[test]
-    #[cfg(all(target_pointer_width = "64", feature = "full-context"))]
+    #[cfg(all(target_pointer_width = "64", feature = "full-backtrace"))]
     fn test_expected_size() {
         // Update the docs if this value changes.
         assert_eq!(core::mem::size_of::<Expected<'_>>(), 200);

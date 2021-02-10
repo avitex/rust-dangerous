@@ -39,6 +39,20 @@ impl<'i, E> BytesReader<'i, E> {
             .map(drop)
     }
 
+    /// Read the remaining string input.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
+    pub fn take_remaining_str(&mut self) -> Result<String<'i>, E>
+    where
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_str_while(|_| true, "take remaining str"))
+    }
+
     /// Read a length of string input while a predicate check remains true.
     ///
     /// # Errors

@@ -29,7 +29,7 @@ dangerous = "0.8"
 **\[1]** Panics due to OOM are out-of-scope. Disable heap-allocations if this is
 a concern.  
 **\[2]** Zero dependencies when both `unicode` and `simd` features are disabled.  
-**\[3]** Zero heap-allocations when the `full-context` feature is disabled.
+**\[3]** Zero heap-allocations when the `full-backtrace` feature is disabled.
 
 This library's intentions are to provide a simple interface for explicitly
 parsing untrusted data safely. `dangerous` really shines with parsing binary or

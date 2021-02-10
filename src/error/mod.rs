@@ -4,8 +4,8 @@
 //!   [`Fatal`] or [`Invalid`] (retryable) has you covered.
 //! - If you want an error that is still designed to be fast, but also includes
 //!   debugging information, [`Expected`] will meet your uh, expectations... If
-//!   the feature `full-context` is enabled, [`Expected`] uses
-//!   [`FullContextStack`], [`RootContextStack`] if not.
+//!   the feature `full-backtrace` is enabled, [`Expected`] uses
+//!   [`FullBacktrace`], [`RootBacktrace`] if not.
 //! - If you require more verbosity, consider creating custom [`Context`]s
 //!   before jumping to custom errors. If you do require a custom error,
 //!   implementing it is easy enough. Just implement [`WithContext`] and
@@ -19,6 +19,7 @@
 //! is provided, the error system should be flexible for those requirements. If
 //! it's not, consider opening an issue.
 
+mod backtrace;
 mod context;
 mod expected;
 mod fatal;
@@ -30,23 +31,18 @@ mod retry;
 mod traits;
 mod value;
 
-#[cfg(feature = "full-context")]
-#[cfg_attr(docsrs, doc(cfg(feature = "full-context")))]
-pub use self::context::FullContextStack;
-pub use self::context::{
-    Context, ContextStack, ContextStackBuilder, ContextStackWalker, ExpectedContext,
-    RootContextStack,
-};
+#[cfg(feature = "alloc")]
+pub use self::backtrace::FullBacktrace;
+pub use self::backtrace::{Backtrace, BacktraceBuilder, BacktraceWalker, RootBacktrace};
+pub use self::context::{Context, ExpectedContext, OperationContext};
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::fatal::Fatal;
 #[cfg(feature = "retry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::invalid::Invalid;
 pub use self::length::Length;
 #[cfg(feature = "retry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
-pub use self::traits::{Details, Error, FromExpected, WithContext};
+pub use self::traits::{Details, Error, External, WithContext};
 pub use self::value::Value;
 
-pub(crate) use self::context::{with_context, OperationContext};
+pub(crate) use self::context::with_context;

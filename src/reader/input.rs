@@ -1,10 +1,8 @@
 use crate::input::{Input, Pattern, Prefix, PrivateExt};
 
-#[cfg(feature = "retry")]
-use crate::error::ToRetryRequirement;
 use crate::error::{
-    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, OperationContext, Value,
-    WithContext,
+    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, External,
+    OperationContext, Value, WithContext,
 };
 
 use super::{Peek, Reader};
@@ -170,28 +168,38 @@ where
         self.try_advance(|input| input.try_split_expect(f, expected, "try expect"))
     }
 
-    /// Expect a value with any error's details erased except for an optional
-    /// [`RetryRequirement`].
+    /// Tries to read an expected value with support for an external error.
     ///
     /// This function is useful for reading custom/unsupported types easily
     /// without having to create custom errors.
+    ///
+    /// # Usage
+    ///
+    /// On success, the provided function must return `Ok((T, usize))` where `T`
+    /// is the type being read and `usize` being the length in bytes of input
+    /// that was consumed. The length of bytes returned **MUST** align to a
+    /// token boundary within the input, else an error will be returned. For a
+    /// [`BytesReader`] this doesn't matter, but for a [`StringReader`] the
+    /// length returned must sit on a valid char boundary.
     ///
     /// # Example
     ///
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// use dangerous::{BytesReader, Error, Expected, Input, Invalid};
+    /// use dangerous::{BytesReader, Error, Expected, Input};
     ///
     /// // Our custom reader function
     /// fn read_ipv4_addr<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Ipv4Addr, E>
     /// where
     ///   E: Error<'i>,
     /// {
-    ///     r.try_expect_erased("ipv4 addr", |i| {
-    ///         i.take_remaining()
-    ///             .to_dangerous_str()
-    ///             .and_then(|s| s.parse().map_err(|_| Invalid::fatal()))
+    ///     r.take_remaining_str()?.read_all(|r| {
+    ///         r.try_expect_external("ipv4 addr", |i| {
+    ///             // We map the parsed address along with the byte length
+    ///             // of the input to tell the reader we read all of it.
+    ///             i.as_dangerous().parse().map(|addr| (addr, i.byte_len()))
+    ///         })
     ///     })
     /// }
     ///
@@ -204,19 +212,30 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if provided function does.
+    /// Returns [`ExpectedValid`] if:
     ///
-    /// [`RetryRequirement`]: crate::error::RetryRequirement
-    #[cfg(feature = "retry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
-    pub fn try_expect_erased<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
+    /// - the provided function returns an amount of input read not aligned to a
+    ///   token boundary
+    /// - the provided function returns an [`External`] error.
+    ///
+    /// Returns [`ExpectedLength`] if:
+    ///
+    /// - the provided function returns an amount of input read that is greater
+    ///   than the actual length
+    ///
+    /// [`BytesReader`]: crate::BytesReader  
+    /// [`StringReader`]: crate::StringReader
+    pub fn try_expect_external<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Self) -> Result<T, R>,
-        R: ToRetryRequirement,
+        E: From<ExpectedLength<'i>>,
+        F: FnOnce(I) -> Result<(T, usize), R>,
+        R: External<'i>,
     {
-        self.try_advance(|input| input.try_split_expect_erased(f, expected, "try expect erased"))
+        self.try_advance(|input| {
+            input.try_split_expect_external(f, expected, "try expect external")
+        })
     }
 
     /// Recovers from an error returning `Some(O)` if successful, or `None` if
