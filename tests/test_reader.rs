@@ -468,6 +468,14 @@ fn try_expect_external_unconsumed() {
 }
 
 #[test]
+fn try_expect_external_invalid_boundary() {
+    assert_eq!('♥'.len_utf8(), 3);
+    let _ = read_all_err!("♥", |r| {
+        r.try_expect_external("value", |_| Result::<_, ExternalError>::Ok(((), 2)))
+    });
+}
+
+#[test]
 fn try_expect_external_err() {
     let error = read_all_err!(b"", |r| {
         r.try_expect_external("value", |_| {
