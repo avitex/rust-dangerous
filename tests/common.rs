@@ -5,26 +5,26 @@ pub use indoc::indoc;
 pub use paste::paste;
 
 macro_rules! assert_str_eq {
-    ($left:expr, $right:expr) => {{
-        let left = &$left[..];
-        let right = &$right[..];
-        if left != right {
+    ($actual:expr, $expected:expr) => {{
+        let actual = &$actual[..];
+        let expected = &$expected[..];
+        if actual != expected {
             panic!(
                 indoc! {"
                 string not expected value:
-                =============================LEFT=============================
+                ============================EXPECTED==========================
                 {}
-                =============================RIGHT============================
+                =============================ACTUAL===========================
                 {}
                 ==============================DIFF============================
                 {}
                 ==============================================================
             "},
-                left,
-                right,
+                expected,
+                actual,
                 colored_diff::PrettyDifference {
-                    expected: left,
-                    actual: right,
+                    expected,
+                    actual,
                 },
             );
         }
