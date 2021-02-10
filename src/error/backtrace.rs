@@ -1,5 +1,6 @@
 #[cfg(feature = "alloc")]
 use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "alloc")]
 use core::iter;
 
 use super::{Context, ExpectedContext};
