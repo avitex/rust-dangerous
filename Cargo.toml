@@ -14,7 +14,7 @@ include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "C
 keywords = ["parsing", "simd", "untrusted"]
 
 [features]
-default = ["retry", "full-backtrace", "simd", "unicode"]
+default = ["std", "retry", "full-backtrace", "simd", "unicode"]
 # Enables `std::error::Error` support.
 std = ["alloc"]
 # Enables allocations.

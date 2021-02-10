@@ -17,7 +17,7 @@
 //!
 //! | Feature          | Default     | Description
 //! | ---------------- | ----------- | -------------------------------------------------- |
-//! | `std`            | _Disabled_  | Enables `std::error::Error` support and `alloc`    |
+//! | `std`            | **Enabled** | Enables `std::error::Error` support and `alloc`    |
 //! | `alloc`          | **Enabled** | Enables allocations.                               |
 //! | `retry`          | **Enabled** | Enables retry support.                             |
 //! | `simd`           | **Enabled** | Enables all supported SIMD optimisations.          |
