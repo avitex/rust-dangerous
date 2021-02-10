@@ -22,10 +22,7 @@ macro_rules! assert_str_eq {
             "},
                 expected,
                 actual,
-                colored_diff::PrettyDifference {
-                    expected,
-                    actual,
-                },
+                colored_diff::PrettyDifference { expected, actual },
             );
         }
     }};

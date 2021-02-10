@@ -68,11 +68,22 @@ impl Context for &'static str {
 ///////////////////////////////////////////////////////////////////////////////
 // Expected context
 
-/// A sealed expected [`Context`].
+/// A [`Context`] with an expected value and operation name.
+///
+/// # Example
+///
+/// ```
+/// ExpectedContext {
+///   operation: "my operation",
+///   expected: "value",
+/// }
+/// ```
 #[derive(Copy, Clone)]
 pub struct ExpectedContext {
-    pub(crate) operation: &'static str,
-    pub(crate) expected: &'static str,
+    /// Value for [`Context::operation()`].
+    pub operation: &'static str,
+    /// Value for [`Context::expected()`].
+    pub expected: &'static str,
 }
 
 impl Context for ExpectedContext {
@@ -105,9 +116,18 @@ impl fmt::Debug for ExpectedContext {
 ///////////////////////////////////////////////////////////////////////////////
 // Operation context
 
-/// A sealed operation context.
+/// An operation [`Context`].
+///
+/// # Example
+///
+/// ```
+/// OperationContext("my operation")
+/// ```
 #[derive(Copy, Clone)]
-pub struct OperationContext(pub(crate) &'static str);
+pub struct OperationContext(
+    /// Value for [`Context::operation()`].
+    pub &'static str,
+);
 
 impl Context for OperationContext {
     fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
