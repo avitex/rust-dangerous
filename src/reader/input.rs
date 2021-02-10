@@ -185,26 +185,24 @@ where
     /// # Example
     ///
     /// ```
-    /// use std::net::Ipv4Addr;
-    ///
     /// use dangerous::{BytesReader, Error, Expected, Input};
     ///
     /// // Our custom reader function
-    /// fn read_ipv4_addr<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Ipv4Addr, E>
+    /// fn read_number<'i, E>(r: &mut BytesReader<'i, E>) -> Result<u32, E>
     /// where
     ///   E: Error<'i>,
     /// {
     ///     r.take_remaining_str()?.read_all(|r| {
-    ///         r.try_expect_external("ipv4 addr", |i| {
-    ///             // We map the parsed address along with the byte length
+    ///         r.try_expect_external("number", |i| {
+    ///             // We map the parsed number along with the byte length
     ///             // of the input to tell the reader we read all of it.
-    ///             i.as_dangerous().parse().map(|addr| (addr, i.byte_len()))
+    ///             i.as_dangerous().parse().map(|number| (number, i.byte_len()))
     ///         })
     ///     })
     /// }
     ///
-    /// let input = dangerous::input(b"192.168.1.x");
-    /// let error: Expected<'_> = input.read_all(read_ipv4_addr).unwrap_err();
+    /// let input = dangerous::input(b"12x");
+    /// let error: Expected<'_> = input.read_all(read_number).unwrap_err();
     ///
     /// // Prefer string input formatting
     /// println!("{:#}", error);

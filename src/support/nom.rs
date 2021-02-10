@@ -176,7 +176,8 @@ where
     }
 }
 
-// Taken from: https://docs.rs/nom/6.1.0/src/nom/error.rs.html#487-543  
+// Taken from: https://docs.rs/nom/6.1.0/src/nom/error.rs.html#487-543
+//
 // FIXME: remove this if `ErrorKind::description()` is changed to return a
 // string with a `'static` lifetime.
 #[rustfmt::skip]
