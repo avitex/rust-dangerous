@@ -72,7 +72,7 @@ impl Context for &'static str {
 ///
 /// # Example
 ///
-/// ```
+/// ```nocompile
 /// ExpectedContext {
 ///   operation: "my operation",
 ///   expected: "value",
@@ -120,7 +120,7 @@ impl fmt::Debug for ExpectedContext {
 ///
 /// # Example
 ///
-/// ```
+/// ```nocompile
 /// OperationContext("my operation")
 /// ```
 #[derive(Copy, Clone)]
