@@ -6,10 +6,7 @@ unsafe impl zc::NoInteriorMut for crate::error::RootBacktrace {}
 unsafe impl zc::NoInteriorMut for crate::error::FullBacktrace {}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl zc::NoInteriorMut for crate::error::ExpectedContext {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl zc::NoInteriorMut for crate::error::OperationContext {}
+unsafe impl zc::NoInteriorMut for crate::error::CoreContext {}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
 unsafe impl zc::NoInteriorMut for crate::error::Fatal {}

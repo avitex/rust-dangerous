@@ -1,7 +1,9 @@
 use core::str;
 
 use crate::display::InputDisplay;
-use crate::error::{ExpectedContext, ExpectedLength, ExpectedValid, Length};
+use crate::error::{
+    CoreContext, CoreExpected, CoreOperation, ExpectedLength, ExpectedValid, Length,
+};
 use crate::fmt;
 use crate::util::{fast, slice, utf8};
 
@@ -62,12 +64,12 @@ impl<'i> String<'i> {
         if self.is_empty() {
             Err(E::from(ExpectedLength {
                 len: Length::AtLeast(1),
-                span: self.as_dangerous().as_bytes(),
-                input: self.clone().into_maybe_string(),
-                context: ExpectedContext {
-                    operation: "convert input to non-empty slice",
-                    expected: "non-empty input",
+                context: CoreContext {
+                    span: self.span(),
+                    operation: CoreOperation::IntoString,
+                    expected: CoreExpected::NonEmpty,
                 },
+                input: self.clone().into_maybe_string(),
             }))
         } else {
             Ok(self.as_dangerous())
@@ -80,12 +82,14 @@ impl<'i> String<'i> {
     ///
     /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
     /// [`ExpectedLength`] if a UTF-8 code point was cut short.
+    #[inline(always)]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn from_utf8<E>(utf8: Bytes<'i>) -> Result<String<'i>, E>
     where
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        utf8.into_string()
+        utf8.to_dangerous_str().map(|s| Self::new(s, utf8.bound()))
     }
 
     /// Construct a `String` from unchecked [`Bytes`].
@@ -111,6 +115,15 @@ impl<'i> Input<'i> for String<'i> {
     }
 
     #[inline(always)]
+    fn into_string<E>(self) -> Result<String<'i>, E>
+    where
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        Ok(self)
+    }
+
+    #[inline(always)]
     fn into_bound(mut self) -> Self {
         self.utf8 = self.utf8.into_bound();
         self
@@ -122,7 +135,7 @@ impl<'i> Input<'i> for String<'i> {
     }
 
     fn display(&self) -> InputDisplay<'i> {
-        InputDisplay::new(self).str_hint(true)
+        InputDisplay::new(self).str_hint()
     }
 }
 
@@ -149,11 +162,13 @@ impl<'i> Private<'i> for String<'i> {
     }
 
     #[inline(always)]
-    fn verify_token_boundary(&self, index: usize) -> Result<(), &'static str> {
-        if self.as_dangerous().is_char_boundary(index) {
+    fn verify_token_boundary(&self, index: usize) -> Result<(), CoreExpected> {
+        if index > self.byte_len() {
+            Err(CoreExpected::EnoughInputFor("char index"))
+        } else if self.as_dangerous().is_char_boundary(index) {
             Ok(())
         } else {
-            Err("char index")
+            Err(CoreExpected::Valid("char index"))
         }
     }
 
@@ -226,7 +241,7 @@ impl<'i> PartialEq<String<'i>> for str {
 
 impl<'i> fmt::Debug for String<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let display = InputDisplay::from_formatter(self, f).str_hint(true);
+        let display = self.display().with_formatter(f);
         f.debug_struct("String")
             .field("bound", &self.bound())
             .field("value", &display)
@@ -242,6 +257,6 @@ impl<'i> fmt::DisplayBase for String<'i> {
 
 impl<'i> fmt::Display for String<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        InputDisplay::from_formatter(self, f).str_hint(true).fmt(f)
+        self.display().with_formatter(f).fmt(f)
     }
 }

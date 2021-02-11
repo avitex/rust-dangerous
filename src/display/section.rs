@@ -8,7 +8,8 @@
 use core::str;
 
 use crate::fmt::{self, Write};
-use crate::util::{slice, utf8};
+use crate::input::Span;
+use crate::util::utf8;
 
 use super::input::{InputWriter, PreferredFormat};
 use super::unit::UnitIter;
@@ -21,16 +22,16 @@ const HEAD_TAIL_HAS_MORE_COST: usize = SIDE_HAS_MORE_COST;
 const STR_HEAD_TAIL_HAS_MORE_COST: usize = SIDE_HAS_MORE_COST + DELIM_PAIR_COST + SPACE_COST;
 
 #[derive(Copy, Clone)]
-pub(super) enum SectionOpt<'a> {
+pub(super) enum SectionOpt {
     Full,
     Head { width: usize },
     Tail { width: usize },
     HeadTail { width: usize },
-    Span { width: usize, span: &'a [u8] },
+    Span { width: usize, span: Span },
 }
 
-impl<'a> SectionOpt<'a> {
-    pub(super) fn compute(self, input: &'a [u8], format: PreferredFormat) -> Section<'a> {
+impl SectionOpt {
+    pub(super) fn compute(self, input: &[u8], format: PreferredFormat) -> Section<'_> {
         match self {
             Self::Full => Section::from_full(input, format),
             Self::Head { width } => Section::from_head(input, width, format),
@@ -66,7 +67,7 @@ enum Visible<'a> {
 pub(super) struct Section<'a> {
     full: &'a [u8],
     visible: Visible<'a>,
-    span: Option<&'a [u8]>,
+    span: Option<Span>,
 }
 
 impl<'a> Section<'a> {
@@ -143,19 +144,18 @@ impl<'a> Section<'a> {
 
     pub(super) fn from_span(
         full: &'a [u8],
-        mut span: &'a [u8],
+        mut span: Span,
         width: usize,
         format: PreferredFormat,
     ) -> Self {
-        if !slice::is_sub_slice(full, span) {
+        let span_offset = if let Some(span_offset) = span.offset_within(full.into()) {
+            span_offset
+        } else {
             return Self::from_head_tail(full, width, format);
-        }
+        };
         let width = init_width(width);
-        let full_bounds = full.as_ptr_range();
-        let span_bounds = span.as_ptr_range();
-        let span_offset = span_bounds.start as usize - full_bounds.start as usize;
         if span.is_empty() {
-            if full_bounds.start == span_bounds.start {
+            if span.is_start_of(full.into()) {
                 let visible = match format {
                     PreferredFormat::Bytes => take_bytes_head(full, width, false),
                     PreferredFormat::BytesAscii => take_bytes_head(full, width, true),
@@ -167,7 +167,7 @@ impl<'a> Section<'a> {
                     visible,
                     span: Some(span),
                 };
-            } else if full_bounds.end == span_bounds.end {
+            } else if span.is_end_of(full.into()) {
                 let visible = match format {
                     PreferredFormat::Bytes => take_bytes_tail(full, width, false),
                     PreferredFormat::BytesAscii => take_bytes_tail(full, width, true),
@@ -180,7 +180,7 @@ impl<'a> Section<'a> {
                     span: Some(span),
                 };
             }
-            span = &full[span_offset..=span_offset];
+            span = span.start();
         }
         // If the span starts at an invalid UTF-8 boundary, show the section
         // as bytes-ascii
@@ -603,10 +603,10 @@ mod tests {
         }) => {{
             let full = $input;
             let span = &full[$range];
-            let section = Section::from_span(full, span, $display.len(), $format);
+            let section = Section::from_span(full, span.into(), $display.len(), $format);
             let input = InputDisplay::new(&input(&full[..]))
                 .format($format)
-                .span(&input(span), $display.len());
+                .span(span.into(), $display.len());
             assert_eq!(section.visible, $visible);
             assert_eq!($display, input.to_string());
         }};

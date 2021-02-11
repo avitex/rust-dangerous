@@ -28,7 +28,7 @@ use super::{
 ///     "invalid input: needs 1 byte more to continue processing",
 /// );
 /// ```
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[must_use = "error must be handled"]
 #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub struct Invalid {
@@ -50,14 +50,6 @@ impl Invalid {
         Self {
             retry_requirement: Some(requirement),
         }
-    }
-}
-
-impl fmt::Debug for Invalid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Invalid")
-            .field("retry_requirement", &self.retry_requirement)
-            .finish()
     }
 }
 
@@ -90,7 +82,12 @@ impl<'i> WithContext<'i> for Invalid {
     const PASSTHROUGH: bool = true;
 
     #[inline(always)]
-    fn with_context(self, _input: impl Input<'i>, _context: impl Context) -> Self {
+    fn with_input(self, _input: impl Input<'i>) -> Self {
+        self
+    }
+
+    #[inline(always)]
+    fn with_context(self, _context: impl Context) -> Self {
         self
     }
 }

@@ -1,4 +1,4 @@
-use crate::error::ExpectedLength;
+use crate::error::{CoreOperation, ExpectedLength};
 use crate::input::PrivateExt;
 
 use super::StringReader;
@@ -16,7 +16,7 @@ impl<'i, E> StringReader<'i, E> {
     {
         self.input
             .clone()
-            .split_first("peek char")
+            .split_token(CoreOperation::PeekChar)
             .map(|(byte, _)| byte)
     }
 
@@ -27,7 +27,7 @@ impl<'i, E> StringReader<'i, E> {
     #[inline]
     #[must_use = "peek result must be used"]
     pub fn peek_char_opt(&self) -> Option<char> {
-        self.input.clone().split_first_opt().map(|(byte, _)| byte)
+        self.input.clone().split_token_opt().map(|(byte, _)| byte)
     }
 
     /// Read a char.
@@ -40,6 +40,6 @@ impl<'i, E> StringReader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_first("read char"))
+        self.try_advance(|input| input.split_token(CoreOperation::ReadChar))
     }
 }

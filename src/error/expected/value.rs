@@ -1,8 +1,8 @@
 use crate::error::Value;
 use crate::fmt;
-use crate::input::{Bytes, MaybeString};
+use crate::input::MaybeString;
 
-use super::ExpectedContext;
+use super::CoreContext;
 
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
@@ -11,52 +11,51 @@ use super::{RetryRequirement, ToRetryRequirement};
 /// [`Input`](crate::Input).
 #[must_use = "error must be handled"]
 pub struct ExpectedValue<'i> {
-    pub(crate) input: MaybeString<'i>,
-    pub(crate) actual: &'i [u8],
     pub(crate) expected: Value<'i>,
-    pub(crate) context: ExpectedContext,
+    pub(crate) context: CoreContext,
+    pub(crate) input: MaybeString<'i>,
 }
 
 impl<'i> ExpectedValue<'i> {
-    /// The [`Input`](crate::Input) provided in the context when the error occurred.
-    #[inline(always)]
-    pub fn input(&self) -> MaybeString<'i> {
-        self.input.clone()
-    }
-
-    /// The [`ExpectedContext`] around the error.
-    #[must_use]
-    #[inline(always)]
-    pub fn context(&self) -> ExpectedContext {
-        self.context
-    }
-
-    /// The [`Input`](crate::Input) that was found.
-    #[inline(always)]
-    pub fn found(&self) -> Bytes<'i> {
-        Bytes::new(self.actual, self.input.bound())
-    }
-
     /// The [`Input`](crate::Input) value that was expected.
     #[inline(always)]
     pub fn expected(&self) -> Value<'i> {
         self.expected
+    }
+
+    /// The [`CoreContext`] around the error.
+    #[must_use]
+    #[inline(always)]
+    pub fn context(&self) -> CoreContext {
+        self.context
+    }
+
+    /// The [`Input`](crate::Input) provided in the context when the error occurred.
+    #[inline(always)]
+    pub fn input(&self) -> MaybeString<'i> {
+        self.input.clone()
     }
 }
 
 impl<'i> fmt::Debug for ExpectedValue<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExpectedValue")
-            .field("input", &self.input())
-            .field("actual", &self.found())
             .field("expected", &self.expected())
-            .field("context", &self.context())
+            .field("context", &self.context().debug_for(self.input()))
+            .field("input", &self.input())
             .finish()
     }
 }
 
 impl<'i> fmt::DisplayBase for ExpectedValue<'i> {
     fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        #[cfg(feature = "retry")]
+        if self.is_fatal() {
+            w.write_str("found a different value to the exact expected")
+        } else {
+            w.write_str("not enough input to match expected value")
+        }
+        #[cfg(not(feature = "retry"))]
         w.write_str("found a different value to the exact expected")
     }
 }
@@ -75,7 +74,7 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
             None
         } else {
             let needed = self.expected().as_bytes().len();
-            let had = self.found().len();
+            let had = self.context.span.len();
             RetryRequirement::from_had_and_needed(had, needed)
         }
     }
@@ -84,10 +83,12 @@ impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     /// was incomplete.
     #[inline]
     fn is_fatal(&self) -> bool {
-        self.input.is_bound()
-            || !self
-                .expected()
-                .as_bytes()
-                .starts_with(self.found().as_dangerous())
+        if self.input.is_bound() {
+            return true;
+        }
+        match self.context.span.of(self.input.as_dangerous_bytes()) {
+            Some(found) => !self.expected().as_bytes().starts_with(found),
+            None => true,
+        }
     }
 }

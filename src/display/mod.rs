@@ -30,6 +30,12 @@ where
     }
 }
 
+impl DisplayBase for &'static str {
+    fn fmt(&self, w: &mut dyn Write) -> Result {
+        w.write_str(self)
+    }
+}
+
 /// Library specific [`Write`] trait for formatting.
 pub trait Write {
     /// Writes a string slice into this writer, returning whether the write

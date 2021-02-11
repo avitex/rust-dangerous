@@ -27,15 +27,9 @@ use super::{RetryRequirement, ToRetryRequirement};
 ///     "invalid input",
 /// );
 /// ```
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 #[must_use = "error must be handled"]
 pub struct Fatal;
-
-impl fmt::Debug for Fatal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Fatal").finish()
-    }
-}
 
 impl fmt::DisplayBase for Fatal {
     fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
@@ -53,7 +47,12 @@ impl<'i> WithContext<'i> for Fatal {
     const PASSTHROUGH: bool = true;
 
     #[inline(always)]
-    fn with_context(self, _input: impl Input<'i>, _context: impl Context) -> Self {
+    fn with_input(self, _input: impl Input<'i>) -> Self {
+        self
+    }
+
+    #[inline(always)]
+    fn with_context(self, _context: impl Context) -> Self {
         self
     }
 }

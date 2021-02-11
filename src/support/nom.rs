@@ -7,8 +7,9 @@ use nom::{Err, Needed};
 
 #[cfg(feature = "retry")]
 use crate::error::RetryRequirement;
-use crate::error::{Context, External, WithContext};
+use crate::error::{Context, External, Operation, WithContext};
 use crate::fmt;
+use crate::input::Span;
 
 pub trait AsBytes<'i> {
     fn as_bytes(&self) -> &'i [u8];
@@ -31,23 +32,9 @@ impl<'i, Ex> External<'i> for Err<Ex>
 where
     Ex: External<'i>,
 {
-    fn span(&self) -> Option<&'i [u8]> {
+    fn span(&self) -> Option<Span> {
         match self {
             Err::Error(err) | Err::Failure(err) => err.span(),
-            Err::Incomplete(_) => None,
-        }
-    }
-
-    fn operation(&self) -> Option<&'static str> {
-        match self {
-            Err::Error(err) | Err::Failure(err) => err.operation(),
-            Err::Incomplete(_) => None,
-        }
-    }
-
-    fn expected(&self) -> Option<&'static str> {
-        match self {
-            Err::Error(err) | Err::Failure(err) => err.expected(),
             Err::Incomplete(_) => None,
         }
     }
@@ -61,34 +48,38 @@ where
         }
     }
 
-    fn push_child_backtrace<E>(self, error: E) -> E
+    fn push_backtrace<E>(self, error: E) -> E
     where
         E: WithContext<'i>,
     {
         match self {
-            Err::Error(err) | Err::Failure(err) => err.push_child_backtrace(error),
+            Err::Error(err) | Err::Failure(err) => err.push_backtrace(error),
             Err::Incomplete(_) => error,
         }
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "nom")))]
-impl<'i, I> External<'i> for Error<I>
-where
-    I: AsBytes<'i>,
-{
-    fn span(&self) -> Option<&'i [u8]> {
-        Some(self.input.as_bytes())
+///////////////////////////////////////////////////////////////////////////////
+// Basic
+
+struct NomContext {
+    kind: ErrorKind,
+    span: Span,
+}
+
+impl Context for NomContext {
+    fn span(&self) -> Option<Span> {
+        Some(self.span)
     }
 
-    fn operation(&self) -> Option<&'static str> {
-        Some(error_kind_operation(self.code))
+    fn operation(&self) -> &dyn Operation {
+        &self.kind
     }
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nom")))]
-impl Context for ErrorKind {
-    fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+impl Operation for ErrorKind {
+    fn description(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         w.write_str(self.description())
     }
 
@@ -97,26 +88,54 @@ impl Context for ErrorKind {
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "nom")))]
+impl<'i, I> External<'i> for Error<I>
+where
+    I: AsBytes<'i>,
+{
+    fn span(&self) -> Option<Span> {
+        Some(self.input.as_bytes().into())
+    }
+
+    fn push_backtrace<E>(self, error: E) -> E
+    where
+        E: WithContext<'i>,
+    {
+        error.with_context(NomContext {
+            span: self.input.as_bytes().into(),
+            kind: self.code,
+        })
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Verbose
+
 #[cfg(feature = "alloc")]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "nom", feature = "alloc"))))]
-impl Context for VerboseErrorKind {
-    fn operation(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        match *self {
-            VerboseErrorKind::Context(_) => w.write_str("context"),
-            VerboseErrorKind::Char(_) => w.write_str("char"),
-            VerboseErrorKind::Nom(kind) => w.write_str(error_kind_operation(kind)),
-        }
+struct NomVerboseContext {
+    kind: VerboseErrorKind,
+    span: Span,
+}
+
+#[cfg(feature = "alloc")]
+impl Context for NomVerboseContext {
+    fn span(&self) -> Option<Span> {
+        Some(self.span)
+    }
+
+    fn operation(&self) -> &dyn Operation {
+        &self.kind
     }
 
     fn has_expected(&self) -> bool {
-        match self {
+        match self.kind {
             VerboseErrorKind::Char(_) | VerboseErrorKind::Context(_) => true,
             VerboseErrorKind::Nom(_) => false,
         }
     }
 
     fn expected(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        match *self {
+        match self.kind {
             VerboseErrorKind::Char(c) => {
                 w.write_str("character '")?;
                 w.write_char(c)?;
@@ -124,6 +143,18 @@ impl Context for VerboseErrorKind {
             }
             VerboseErrorKind::Context(c) => w.write_str(c),
             VerboseErrorKind::Nom(_) => Err(fmt::Error),
+        }
+    }
+}
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "nom", feature = "alloc"))))]
+impl Operation for VerboseErrorKind {
+    fn description(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        match self {
+            VerboseErrorKind::Context(_) => w.write_str("<context>"),
+            VerboseErrorKind::Char(_) => w.write_str("consume input"),
+            VerboseErrorKind::Nom(kind) => Operation::description(kind, w),
         }
     }
 
@@ -138,80 +169,20 @@ impl<'i, I> External<'i> for VerboseError<I>
 where
     I: AsBytes<'i>,
 {
-    fn span(&self) -> Option<&'i [u8]> {
-        self.errors.get(0).map(|(input, _)| input.as_bytes())
+    fn span(&self) -> Option<Span> {
+        self.errors.get(0).map(|(input, _)| input.as_bytes().into())
     }
 
-    fn push_child_backtrace<E>(self, mut error: E) -> E
+    fn push_backtrace<E>(self, mut error: E) -> E
     where
         E: WithContext<'i>,
     {
-        for (_, code) in self.errors.into_iter() {
-            error = error.with_child_context(code);
+        for (input, kind) in self.errors.into_iter() {
+            error = error.with_context(NomVerboseContext {
+                span: input.as_bytes().into(),
+                kind,
+            });
         }
         error
-    }
-}
-
-// Taken from: https://docs.rs/nom/6.1.0/src/nom/error.rs.html#487-543
-//
-// FIXME: remove this if `ErrorKind::description()` is changed to return a
-// string with a `'static` lifetime.
-#[rustfmt::skip]
-fn error_kind_operation(kind: ErrorKind) -> &'static str {
-    match kind {
-        ErrorKind::Tag                       => "Tag",
-        ErrorKind::MapRes                    => "Map on Result",
-        ErrorKind::MapOpt                    => "Map on Option",
-        ErrorKind::Alt                       => "Alternative",
-        ErrorKind::IsNot                     => "IsNot",
-        ErrorKind::IsA                       => "IsA",
-        ErrorKind::SeparatedList             => "Separated list",
-        ErrorKind::SeparatedNonEmptyList     => "Separated non empty list",
-        ErrorKind::Many0                     => "Many0",
-        ErrorKind::Many1                     => "Many1",
-        ErrorKind::Count                     => "Count",
-        ErrorKind::TakeUntil                 => "Take until",
-        ErrorKind::LengthValue               => "Length followed by value",
-        ErrorKind::TagClosure                => "Tag closure",
-        ErrorKind::Alpha                     => "Alphabetic",
-        ErrorKind::Digit                     => "Digit",
-        ErrorKind::AlphaNumeric              => "AlphaNumeric",
-        ErrorKind::Space                     => "Space",
-        ErrorKind::MultiSpace                => "Multiple spaces",
-        ErrorKind::LengthValueFn             => "LengthValueFn",
-        ErrorKind::Eof                       => "End of file",
-        ErrorKind::Switch                    => "Switch",
-        ErrorKind::TagBits                   => "Tag on bitstream",
-        ErrorKind::OneOf                     => "OneOf",
-        ErrorKind::NoneOf                    => "NoneOf",
-        ErrorKind::Char                      => "Char",
-        ErrorKind::CrLf                      => "CrLf",
-        ErrorKind::RegexpMatch               => "RegexpMatch",
-        ErrorKind::RegexpMatches             => "RegexpMatches",
-        ErrorKind::RegexpFind                => "RegexpFind",
-        ErrorKind::RegexpCapture             => "RegexpCapture",
-        ErrorKind::RegexpCaptures            => "RegexpCaptures",
-        ErrorKind::TakeWhile1                => "TakeWhile1",
-        ErrorKind::Complete                  => "Complete",
-        ErrorKind::Fix                       => "Fix",
-        ErrorKind::Escaped                   => "Escaped",
-        ErrorKind::EscapedTransform          => "EscapedTransform",
-        ErrorKind::NonEmpty                  => "NonEmpty",
-        ErrorKind::ManyMN                    => "Many(m, n)",
-        ErrorKind::HexDigit                  => "Hexadecimal Digit",
-        ErrorKind::OctDigit                  => "Octal digit",
-        ErrorKind::Not                       => "Negation",
-        ErrorKind::Permutation               => "Permutation",
-        ErrorKind::ManyTill                  => "ManyTill",
-        ErrorKind::Verify                    => "predicate verification",
-        ErrorKind::TakeTill1                 => "TakeTill1",
-        ErrorKind::TakeWhileMN               => "TakeWhileMN",
-        ErrorKind::ParseTo                   => "Parse string to the specified type",
-        ErrorKind::TooLarge                  => "Needed data size is too large",
-        ErrorKind::Many0Count                => "Count occurrence of >=0 patterns",
-        ErrorKind::Many1Count                => "Count occurrence of >=1 patterns",
-        ErrorKind::Float                     => "Float",
-        ErrorKind::Satisfy                   => "Satisfy",
     }
 }

@@ -114,15 +114,15 @@ fn test_parse_color_too_short() {
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r##"
-            error attempting to try expect external: expected hex color
+            error attempting to read and expect an external value: expected hex color
             > "#2F14D"
                     ^ 
             additional:
               error line: 1, error offset: 5, input length: 6
             backtrace:
-              1. `read all`
-              2. `read all`
-              3. `try expect external` (expected hex color)
+              1. `read all input`
+              2. `read all input`
+              3. `read and expect an external value` (expected hex color)
                 1. `TakeWhileMN`
         "##}
     );
@@ -135,18 +135,18 @@ fn test_parse_verbose_err() {
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r##"
-            error attempting to try expect external: expected value
+            error attempting to read and expect an external value: expected value
             > "err"
                ^^^ 
             additional:
               error line: 1, error offset: 0, input length: 3
             backtrace:
-              1. `read all`
-              2. `read all`
-              3. `try expect external` (expected value)
-                1. `context` (expected a)
-                2. `context` (expected b)
-                3. `char` (expected character 'f')
+              1. `read all input`
+              2. `read all input`
+              3. `read and expect an external value` (expected value)
+                1. `<context>` (expected a)
+                2. `<context>` (expected b)
+                3. `consume input` (expected character 'f')
         "##}
     );
 }
@@ -159,15 +159,15 @@ fn test_parse_verbose_err_retry() {
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r##"
-            error attempting to try expect external: expected value
+            error attempting to read and expect an external value: expected value
             > "f"
                ^ 
             additional:
               error line: 1, error offset: 0, input length: 1
             backtrace:
-              1. `read all`
-              2. `read all`
-              3. `try expect external` (expected value)
+              1. `read all input`
+              2. `read all input`
+              3. `read and expect an external value` (expected value)
         "##}
     );
 }

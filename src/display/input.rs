@@ -1,13 +1,13 @@
 use crate::fmt::{self, Write};
-use crate::input::{Input, PrivateExt};
+use crate::input::{Input, PrivateExt, Span};
 
 use super::section::{Section, SectionOpt};
 use super::unit::{byte_display_width, byte_display_write, char_display_width, char_display_write};
 
-const DEFAULT_SECTION_OPTION: SectionOpt<'static> = SectionOpt::HeadTail { width: 1024 };
+const DEFAULT_SECTION_OPTION: SectionOpt = SectionOpt::HeadTail { width: 1024 };
 
 /// Preferred [`Input`] formats.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PreferredFormat {
     /// Prefer displaying as a UTF-8 str.
     Str,
@@ -18,18 +18,6 @@ pub enum PreferredFormat {
     Bytes,
     /// Prefer displaying as bytes with valid ASCII graphic characters.
     BytesAscii,
-}
-
-impl fmt::Debug for PreferredFormat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Str => "Str",
-            Self::StrCjk => "StrCjk",
-            Self::Bytes => "Bytes",
-            Self::BytesAscii => "BytesAscii",
-        };
-        f.write_str(s)
-    }
 }
 
 /// Provides configurable [`Input`] formatting.
@@ -64,14 +52,19 @@ pub struct InputDisplay<'i> {
     underline: bool,
     format: PreferredFormat,
     section: Option<Section<'i>>,
-    section_opt: SectionOpt<'i>,
+    section_opt: SectionOpt,
 }
 
 impl<'i> InputDisplay<'i> {
     /// Create a new `InputDisplay` given [`Input`].
     pub fn new(input: &impl Input<'i>) -> Self {
+        Self::from_bytes(input.as_dangerous_bytes())
+    }
+
+    /// Create a new `InputDisplay` given bytes.
+    pub fn from_bytes(input: &'i [u8]) -> Self {
         Self {
-            input: input.as_dangerous_bytes(),
+            input,
             format: PreferredFormat::Bytes,
             underline: false,
             section: None,
@@ -83,8 +76,8 @@ impl<'i> InputDisplay<'i> {
     ///
     /// - Precision (eg. `{:.16}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
-    pub fn from_formatter(input: &impl Input<'i>, f: &fmt::Formatter<'_>) -> Self {
-        let format = Self::new(input).str_hint(f.alternate());
+    pub fn with_formatter(self, f: &fmt::Formatter<'_>) -> Self {
+        let format = if f.alternate() { self.str_hint() } else { self };
         match f.precision() {
             Some(width) => format.head_tail(width),
             None => format,
@@ -92,17 +85,18 @@ impl<'i> InputDisplay<'i> {
     }
 
     /// Print the input underline for any provided span.
-    pub fn underline(mut self, value: bool) -> Self {
-        self.underline = value;
+    pub fn underline(mut self) -> Self {
+        self.underline = true;
         self
     }
 
     /// Hint to the formatter that the [`Input`] is a UTF-8 `str`.
-    pub fn str_hint(self, value: bool) -> Self {
-        if value {
-            self.format(PreferredFormat::Str)
-        } else {
-            self.format(PreferredFormat::Bytes)
+    pub fn str_hint(self) -> Self {
+        match self.format {
+            PreferredFormat::Bytes | PreferredFormat::BytesAscii => {
+                self.format(PreferredFormat::Str)
+            }
+            _ => self,
         }
     }
 
@@ -176,17 +170,14 @@ impl<'i> InputDisplay<'i> {
     ///
     /// let full = &[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
     /// let input = dangerous::input(full);
-    /// let span = dangerous::input(&full[5..]);
-    /// let formatted = input.display().span(&span, 16).to_string();
+    /// let span = full[5..].into();
+    /// let formatted = input.display().span(span, 16).to_string();
     ///
     /// assert_eq!(formatted, "[.. cc dd ee ff]");
     /// ```
-    pub fn span(mut self, span: &impl Input<'i>, width: usize) -> Self {
+    pub fn span(mut self, span: Span, width: usize) -> Self {
         self.section = None;
-        self.section_opt = SectionOpt::Span {
-            width,
-            span: span.as_dangerous_bytes(),
-        };
+        self.section_opt = SectionOpt::Span { width, span };
         self
     }
 
@@ -249,14 +240,14 @@ pub(super) struct InputWriter<'a> {
     w: &'a mut dyn Write,
     underline: bool,
     full: &'a [u8],
-    span: Option<&'a [u8]>,
+    span: Option<Span>,
 }
 
 impl<'a> InputWriter<'a> {
     pub(super) fn new(
         w: &'a mut dyn Write,
         full: &'a [u8],
-        span: Option<&'a [u8]>,
+        span: Option<Span>,
         underline: bool,
     ) -> Self {
         Self {
@@ -450,61 +441,33 @@ impl<'a> InputWriter<'a> {
 }
 
 fn has_more_before(bytes: &[u8], full: &[u8]) -> bool {
-    let section_bounds = bytes.as_ptr_range();
-    let full_bounds = full.as_ptr_range();
-    section_bounds.start > full_bounds.start
+    Span::from(full).is_overlapping_start_of(bytes.into())
 }
 
 fn has_more_after(bytes: &[u8], full: &[u8]) -> bool {
-    let section_bounds = bytes.as_ptr_range();
-    let full_bounds = full.as_ptr_range();
-    section_bounds.end < full_bounds.end
+    Span::from(full).is_overlapping_end_of(bytes.into())
 }
 
-fn is_span_start_within_section(bytes: &[u8], span: Option<&[u8]>) -> bool {
-    span.map_or(false, |span| {
-        let section_bounds = bytes.as_ptr_range();
-        let span_bounds = span.as_ptr_range();
-        section_bounds.start <= span_bounds.start && section_bounds.end > span_bounds.start
-    })
+fn is_span_start_within_section(bytes: &[u8], span: Option<Span>) -> bool {
+    span.map_or(false, |span| span.is_start_within(bytes.into()))
 }
 
-fn is_section_start_within_span(bytes: &[u8], span: Option<&[u8]>) -> bool {
-    span.map_or(false, |span| {
-        let section_bounds = bytes.as_ptr_range();
-        let span_bounds = span.as_ptr_range();
-        section_bounds.start >= span_bounds.start && section_bounds.start < span_bounds.end
-    })
+fn is_section_start_within_span(bytes: &[u8], span: Option<Span>) -> bool {
+    span.map_or(false, |span| Span::from(bytes).is_start_within(span))
 }
 
-fn is_span_overlapping_end(bytes: &[u8], span: Option<&[u8]>) -> bool {
-    span.map_or(false, |span| {
-        let section_bounds = bytes.as_ptr_range();
-        let span_bounds = span.as_ptr_range();
-        section_bounds.end < span_bounds.end
-    })
+fn is_span_overlapping_end(bytes: &[u8], span: Option<Span>) -> bool {
+    span.map_or(false, |span| span.is_overlapping_end_of(bytes.into()))
 }
 
-fn is_span_overlapping_start(bytes: &[u8], span: Option<&[u8]>) -> bool {
-    span.map_or(false, |span| {
-        let section_bounds = bytes.as_ptr_range();
-        let span_bounds = span.as_ptr_range();
-        section_bounds.start > span_bounds.start
-    })
+fn is_span_overlapping_start(bytes: &[u8], span: Option<Span>) -> bool {
+    span.map_or(false, |span| span.is_overlapping_start_of(bytes.into()))
 }
 
-fn is_span_pointing_to_start(bytes: &[u8], span: Option<&[u8]>) -> bool {
-    span.map_or(false, |span| {
-        let section_bounds = bytes.as_ptr_range();
-        let span_bounds = span.as_ptr_range();
-        span.is_empty() && section_bounds.start == span_bounds.start
-    })
+fn is_span_pointing_to_start(bytes: &[u8], span: Option<Span>) -> bool {
+    span.map_or(false, |span| span.is_start_of(bytes.into()))
 }
 
-fn is_span_pointing_to_end(bytes: &[u8], span: Option<&[u8]>) -> bool {
-    span.map_or(false, |span| {
-        let section_bounds = bytes.as_ptr_range();
-        let span_bounds = span.as_ptr_range();
-        span.is_empty() && section_bounds.end == span_bounds.end
-    })
+fn is_span_pointing_to_end(bytes: &[u8], span: Option<Span>) -> bool {
+    span.map_or(false, |span| span.is_end_of(bytes.into()))
 }

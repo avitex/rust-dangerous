@@ -34,7 +34,9 @@ mod value;
 #[cfg(feature = "alloc")]
 pub use self::backtrace::FullBacktrace;
 pub use self::backtrace::{Backtrace, BacktraceBuilder, BacktraceWalker, RootBacktrace};
-pub use self::context::{Context, ExpectedContext, OperationContext};
+pub use self::context::{
+    Context, CoreContext, CoreExpected, CoreOperation, ExternalContext, Operation, WithChildContext,
+};
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::fatal::Fatal;
 #[cfg(feature = "retry")]

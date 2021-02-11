@@ -32,8 +32,14 @@ impl<'i> TryFrom<dangerous::String<'i>> for Custom<'i> {
 pub struct ParseCustomError;
 
 impl<'i> error::External<'i> for ParseCustomError {
-    fn expected(&self) -> Option<&'static str> {
-        Some("my custom type")
+    fn push_backtrace<E>(self, error: E) -> E
+    where
+        E: error::WithContext<'i>,
+    {
+        error.with_context(error::ExternalContext {
+            operation: Some("read my custom type"),
+            expected: Some("my custom type"),
+        })
     }
 }
 

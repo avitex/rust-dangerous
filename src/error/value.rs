@@ -35,7 +35,7 @@ impl<'i> Value<'i> {
         let display = Bytes::new(self.as_bytes(), Bound::Both).display();
         match self.0 {
             ValueInner::Byte(_) | ValueInner::Bytes(_) => display,
-            ValueInner::Char(_) | ValueInner::String(_) => display.str_hint(true),
+            ValueInner::Char(_) | ValueInner::String(_) => display.str_hint(),
         }
     }
 }
@@ -48,7 +48,7 @@ impl<'i> fmt::Debug for Value<'i> {
             ValueInner::Bytes(_) => "Bytes",
             ValueInner::String(_) => "String",
         };
-        let display = self.display().str_hint(f.alternate());
+        let display = self.display().with_formatter(f);
         f.debug_tuple(name).field(&display).finish()
     }
 }

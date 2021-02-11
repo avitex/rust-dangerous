@@ -2,7 +2,7 @@ use crate::error::{self, Context};
 use crate::fmt::{self, Write};
 use crate::input::{Bytes, Input, Private};
 
-use super::{InputDisplay, PreferredFormat};
+use super::{DisplayBase, InputDisplay, PreferredFormat};
 
 const DEFAULT_MAX_WIDTH: usize = 80;
 const INVALID_SPAN_ERROR: &str = "\
@@ -69,16 +69,15 @@ where
 
     fn write_sections(&self, w: &mut dyn Write) -> fmt::Result {
         let input = self.error.input();
-        let span = self.error.span();
+        let root = self.error.backtrace().root();
         // Write description
         w.write_str("error attempting to ")?;
-        self.error.backtrace().root().operation(w)?;
+        root.operation().description(w)?;
         w.write_str(": ")?;
         self.error.description(w)?;
         w.write_char('\n')?;
         // Write inputs
         let input_display = self.configure_input_display(input.display());
-        let span_display = self.configure_input_display(span.display());
         let format = input_display.get_format();
         let input = input.into_bytes();
         if let Some(expected_value) = self.error.expected() {
@@ -87,21 +86,16 @@ where
             write_input(w, expected_display, false)?;
             w.write_str("in:\n")?;
         }
-        if span.is_within(&input) {
-            write_input(w, input_display.span(&span, self.input_max_width), true)?;
+        if root.span.is_within(input.span()) {
+            write_input(w, input_display.span(root.span, self.input_max_width), true)?;
         } else {
             w.write_str(INVALID_SPAN_ERROR)?;
-            w.write_str("span:\n")?;
-            write_input(w, span_display, false)?;
             w.write_str("input:\n")?;
             write_input(w, input_display, false)?;
         }
         // Write additional
         w.write_str("additional:\n  ")?;
-        if span.is_within(&input) {
-            let input_bounds = input.as_dangerous().as_ptr_range();
-            let span_bounds = span.as_dangerous().as_ptr_range();
-            let span_offset = span_bounds.start as usize - input_bounds.start as usize;
+        if let Some(span_offset) = root.span.offset_within(input.span()) {
             match format {
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
                     w.write_str("error line: ")?;
@@ -115,14 +109,10 @@ where
             w.write_str(", input length: ")?;
             w.write_usize(input.len())?;
         } else {
-            w.write_str("span ptr: ")?;
-            w.write_usize(span.as_dangerous().as_ptr() as usize)?;
-            w.write_str(", span length: ")?;
-            w.write_usize(span.len())?;
-            w.write_str("input ptr: ")?;
-            w.write_usize(input.as_dangerous().as_ptr() as usize)?;
-            w.write_str(", input length: ")?;
-            w.write_usize(input.len())?;
+            w.write_str("error: ")?;
+            DisplayBase::fmt(&root.span, w)?;
+            w.write_str("input: ")?;
+            DisplayBase::fmt(&input.span(), w)?;
         }
         w.write_char('\n')?;
         // Write context backtrace
@@ -142,7 +132,7 @@ where
                     w.write_usize(parent_depth)?;
                 }
                 w.write_str(". `")?;
-                context.operation(w)?;
+                context.operation().description(w)?;
                 w.write_char('`')?;
                 if context.has_expected() {
                     w.write_str(" (expected ")?;
@@ -218,7 +208,7 @@ fn write_input(w: &mut dyn Write, input: InputDisplay<'_>, underline: bool) -> f
     w.write_char('\n')?;
     if underline {
         w.write_str("  ")?;
-        fmt::DisplayBase::fmt(&input.underline(true), w)?;
+        fmt::DisplayBase::fmt(&input.underline(), w)?;
         w.write_char('\n')?;
     }
     Ok(())

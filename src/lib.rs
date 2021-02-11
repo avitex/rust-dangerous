@@ -39,7 +39,6 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(
-    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
@@ -48,6 +47,7 @@
 #![deny(
     unused,
     rustdoc,
+    // missing_docs,
     rust_2018_idioms,
     clippy::all,
     clippy::correctness,
@@ -88,7 +88,7 @@ pub use self::error::{Error, Expected, Fatal};
 #[cfg(feature = "retry")]
 pub use self::error::{Invalid, ToRetryRequirement};
 pub use self::input::Bound;
-pub use self::input::{input, Bytes, Input, MaybeString, Pattern, String};
+pub use self::input::{input, Bytes, Input, MaybeString, Pattern, Span, String};
 pub use self::reader::{BytesReader, Peek, Reader, StringReader};
 
 // Re-exported types from core::fmt along with `DisplayBase` and `Write`.

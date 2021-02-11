@@ -9,7 +9,7 @@ use crate::fmt;
 /// you can continue processing the input, it is a very granular value and may
 /// result in a lot of wasted reprocessing of input if not handled correctly.
 #[must_use]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub struct RetryRequirement(NonZeroUsize);
 
@@ -52,12 +52,6 @@ impl RetryRequirement {
     #[must_use]
     pub fn continue_after_non_zero(self) -> NonZeroUsize {
         self.0
-    }
-}
-
-impl fmt::Debug for RetryRequirement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("RetryRequirement").field(&self.0).finish()
     }
 }
 

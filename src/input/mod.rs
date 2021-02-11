@@ -1,16 +1,16 @@
 mod bytes;
 mod maybe;
 mod prefix;
+mod span;
 mod string;
 mod traits;
 
 pub(crate) mod pattern;
 
-use crate::fmt;
-
 pub use self::bytes::Bytes;
 pub use self::maybe::MaybeString;
 pub use self::pattern::Pattern;
+pub use self::span::Span;
 pub use self::string::String;
 pub use self::traits::Input;
 
@@ -42,7 +42,7 @@ where
 ///
 /// Used for retry functionality if enabled.
 #[must_use]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Bound {
     /// Both sides of the [`Input`](crate::Input) may change in further passes.
     None,
@@ -95,16 +95,5 @@ impl Bound {
             // where the start is, perhaps the true end is not known yet!
             Bound::Start | Bound::None => Bound::None,
         }
-    }
-}
-
-impl fmt::Debug for Bound {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::None => "None",
-            Self::Start => "Start",
-            Self::Both => "Both",
-        };
-        f.write_str(s)
     }
 }

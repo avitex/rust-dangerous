@@ -91,16 +91,16 @@ Ever tried working backwards from something like this?
 Wouldn't it be better if this was the alternative?
 
 ```
-[ERRO]: ahhh!: error attempting to convert input to str: expected utf-8 code point
-> ['h' 'e' ff 'l' 'o']
-           ^^
+[ERRO]: ahhh!: error reading message: error attempting to convert input into string: expected utf-8 code point
+> [01 05 68 65 ff 6c 6f]
+               ^^       
 additional:
-  error offset: 2, input length: 5
+  error offset: 4, input length: 7
 backtrace:
-  1. `read all`
-  2. `read` (expected message)
-  3. `read` (expected body)
-  4. `convert input to str` (expected utf-8 code point)
+  1. `read all input`
+  2. `<context>` (expected message)
+  3. `<context>` (expected body)
+  4. `convert input into string` (expected utf-8 code point)
 ```
 
 ## Inspiration

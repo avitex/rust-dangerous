@@ -1,11 +1,3 @@
-/// Checks whether the sub slice is within the address range of the parent.
-#[inline(always)]
-pub(crate) fn is_sub_slice<T>(parent: &[T], sub: &[T]) -> bool {
-    let parent_bounds = parent.as_ptr_range();
-    let sub_bounds = sub.as_ptr_range();
-    parent_bounds.start <= sub_bounds.start && parent_bounds.end >= sub_bounds.end
-}
-
 /// Returns an end slice of the slice provided (always empty).
 #[inline(always)]
 pub(crate) fn end<T>(slice: &[T]) -> &[T] {

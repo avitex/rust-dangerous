@@ -83,7 +83,9 @@ where
         r.context("property", |r| {
             skip_whitespace_or_comment(r, ConsumeTo::NextToken);
             let name = r.context("name", |r| {
-                r.take_while(is_bare_text).to_dangerous_non_empty_str()
+                r.take_while(is_bare_text)
+                    .into_non_empty::<E>()?
+                    .to_dangerous_str()
             })?;
             skip_whitespace_or_comment(r, ConsumeTo::EndOfLine);
 
@@ -92,7 +94,8 @@ where
             skip_whitespace_or_comment(r, ConsumeTo::EndOfLine);
             let value = r.context("value", |r| {
                 r.take_while(|c| c != b';' && c != b'\n' && c != b'=' && c != b'[')
-                    .to_dangerous_non_empty_str()
+                    .into_non_empty::<E>()?
+                    .to_dangerous_str()
                     .map(str::trim)
             })?;
             skip_whitespace_or_comment(r, ConsumeTo::NextToken);
@@ -111,7 +114,8 @@ where
     r.consume(b'[')?;
     let name = r.context("section name", |r| {
         r.take_while(|c| c != b']' && c != b'\n')
-            .to_dangerous_non_empty_str()
+            .into_non_empty::<E>()?
+            .to_dangerous_str()
             .map(str::trim)
     })?;
     r.consume(b']')?;

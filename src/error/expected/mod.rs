@@ -11,9 +11,9 @@ use alloc::boxed::Box;
 
 use crate::display::ErrorDisplay;
 use crate::fmt;
-use crate::input::{Bytes, Input, MaybeString};
+use crate::input::{Input, MaybeString};
 
-use super::{Backtrace, BacktraceBuilder, Context, Details, ExpectedContext, Value, WithContext};
+use super::{Backtrace, BacktraceBuilder, Context, CoreContext, Details, Value, WithContext};
 
 #[cfg(feature = "retry")]
 use super::{RetryRequirement, ToRetryRequirement};
@@ -30,7 +30,7 @@ type ExpectedBacktrace = crate::error::RootBacktrace;
 ///   all contexts with [`Expected`].
 /// - It is generally recommended for better performance to box `Expected` if
 ///   the structures being returned from parsing are smaller than or equal to
-///   `~128 bytes`. This is because the `Expected` structure is `176 - 200
+///   `~128 bytes`. This is because the `Expected` structure is `192 - 216
 ///   bytes` large on 64 bit systems and successful parses may be hindered by
 ///   the time to move the `Result<T, Expected>` value. By boxing `Expected` the
 ///   size becomes only `8 bytes`. When in doubt, write a benchmark.
@@ -67,16 +67,15 @@ where
     S: BacktraceBuilder,
 {
     #[inline(always)]
-    fn add_context(&mut self, input: impl Input<'i>, context: impl Context) {
-        if self.input.clone().into_bytes().is_within(&input) {
+    fn add_input(&mut self, input: impl Input<'i>) {
+        if self.input.span().is_within(input.span()) {
             self.input = input.into_maybe_string()
         }
-        self.trace.push(context);
     }
 
     #[inline(always)]
-    fn add_child_context(&mut self, context: impl Context) {
-        self.trace.push_child(context);
+    fn add_context(&mut self, context: impl Context) {
+        self.trace.push(context);
     }
 
     fn from_kind(kind: ExpectedKind<'i>) -> Self {
@@ -99,14 +98,6 @@ where
 {
     fn input(&self) -> MaybeString<'i> {
         self.input.clone()
-    }
-
-    fn span(&self) -> Bytes<'i> {
-        match &self.kind {
-            ExpectedKind::Value(err) => err.found(),
-            ExpectedKind::Valid(err) => err.span(),
-            ExpectedKind::Length(err) => err.span(),
-        }
     }
 
     fn expected(&self) -> Option<Value<'i>> {
@@ -165,13 +156,13 @@ where
 {
     const PASSTHROUGH: bool = S::PASSTHROUGH;
 
-    fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
-        self.add_context(input, context);
+    fn with_input(mut self, input: impl Input<'i>) -> Self {
+        self.add_input(input);
         self
     }
 
-    fn with_child_context(mut self, context: impl Context) -> Self {
-        self.add_child_context(context);
+    fn with_context(mut self, context: impl Context) -> Self {
+        self.add_context(context);
         self
     }
 }
@@ -183,13 +174,13 @@ where
 {
     const PASSTHROUGH: bool = S::PASSTHROUGH;
 
-    fn with_context(mut self, input: impl Input<'i>, context: impl Context) -> Self {
-        self.add_context(input, context);
+    fn with_input(mut self, input: impl Input<'i>) -> Self {
+        self.add_input(input);
         self
     }
 
-    fn with_child_context(mut self, context: impl Context) -> Self {
-        self.add_child_context(context);
+    fn with_context(mut self, context: impl Context) -> Self {
+        self.add_context(context);
         self
     }
 }
@@ -277,13 +268,13 @@ mod tests {
     #[cfg(all(target_pointer_width = "64", not(feature = "full-backtrace")))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 176);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 192);
     }
 
     #[test]
     #[cfg(all(target_pointer_width = "64", feature = "full-backtrace"))]
     fn test_expected_size() {
         // Update the docs if this value changes.
-        assert_eq!(core::mem::size_of::<Expected<'_>>(), 200);
+        assert_eq!(core::mem::size_of::<Expected<'_>>(), 216);
     }
 }

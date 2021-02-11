@@ -1,8 +1,8 @@
 use crate::input::{Input, Pattern, Prefix, PrivateExt};
 
 use crate::error::{
-    with_context, Context, ExpectedLength, ExpectedValid, ExpectedValue, External,
-    OperationContext, Value, WithContext,
+    with_context, Context, CoreContext, CoreOperation, ExpectedLength, ExpectedValid,
+    ExpectedValue, External, Value, WithContext,
 };
 
 use super::{Peek, Reader};
@@ -36,7 +36,7 @@ where
         E: WithContext<'i>,
         F: FnOnce(&mut Self) -> Result<T, E>,
     {
-        with_context(self.input.clone(), context, || f(self))
+        with_context(context, self.input.clone(), || f(self))
     }
 
     /// Immutably use the `Reader` with a given context.
@@ -51,7 +51,7 @@ where
         E: WithContext<'i>,
         F: FnOnce(&Self) -> Result<T, E>,
     {
-        with_context(self.input.clone(), context, || f(self))
+        with_context(context, self.input.clone(), || f(self))
     }
 
     /// Read a length of input that was successfully consumed from a sub-parse.
@@ -88,7 +88,7 @@ where
         E: WithContext<'i>,
         F: FnOnce(&mut Self) -> Result<(), E>,
     {
-        self.try_advance(|input| input.try_split_consumed(consumer, "try take consumed"))
+        self.try_advance(|input| input.try_split_consumed(consumer, CoreOperation::TakeConsumed))
     }
 
     /// Read and verify a value without returning it.
@@ -111,7 +111,7 @@ where
                     }
                 },
                 expected,
-                "verify",
+                CoreOperation::Verify,
             )
         })
     }
@@ -135,7 +135,7 @@ where
                     Err(err) => Err(err),
                 },
                 expected,
-                "try verify",
+                CoreOperation::Verify,
             )
         })
     }
@@ -150,7 +150,7 @@ where
         F: FnOnce(&mut Self) -> Option<T>,
         E: From<ExpectedValid<'i>>,
     {
-        self.try_advance(|input| input.split_expect(f, expected, "expect"))
+        self.try_advance(|input| input.split_expect(f, expected, CoreOperation::Expect))
     }
 
     /// Expect a value to be read successfully and returned as `Some(O)`.
@@ -165,7 +165,7 @@ where
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Self) -> Result<Option<T>, E>,
     {
-        self.try_advance(|input| input.try_split_expect(f, expected, "try expect"))
+        self.try_advance(|input| input.try_split_expect(f, expected, CoreOperation::Expect))
     }
 
     /// Tries to read an expected value with support for an external error.
@@ -232,7 +232,7 @@ where
         R: External<'i>,
     {
         self.try_advance(|input| {
-            input.try_split_expect_external(f, expected, "try expect external")
+            input.try_split_expect_external(f, expected, CoreOperation::ExpectExternal)
         })
     }
 
@@ -280,7 +280,12 @@ where
                     self.input = checkpoint;
                     Ok(None)
                 } else {
-                    Err(err.with_context(checkpoint, OperationContext("recover if")))
+                    Err(err
+                        .with_context(CoreContext::from_operation(
+                            CoreOperation::RecoverIf,
+                            checkpoint.span(),
+                        ))
+                        .with_input(checkpoint))
                 }
             }
         }
@@ -343,7 +348,7 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_at(len, "skip"))
+        self.try_advance(|input| input.split_at(len, CoreOperation::Skip))
             .map(drop)
     }
 
@@ -366,7 +371,7 @@ where
         E: WithContext<'i>,
         F: FnMut(I::Token) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.try_split_while(pred, "try skip while"))
+        self.try_advance(|input| input.try_split_while(pred, CoreOperation::SkipWhile))
             .map(drop)
     }
 
@@ -380,7 +385,7 @@ where
         E: From<ExpectedValue<'i>>,
         P: Pattern<I> + Into<Value<'i>> + Copy,
     {
-        self.try_advance(|input| input.split_until(pattern, "skip until"))
+        self.try_advance(|input| input.split_until(pattern, CoreOperation::SkipUntil))
             .map(drop)
     }
 
@@ -395,8 +400,10 @@ where
         E: From<ExpectedValue<'i>>,
         P: Pattern<I> + Into<Value<'i>> + Copy,
     {
-        self.try_advance(|input| input.split_until_consume(pattern, "skip until consume"))
-            .map(drop)
+        self.try_advance(|input| {
+            input.split_until_consume(pattern, CoreOperation::SkipUntilConsume)
+        })
+        .map(drop)
     }
 
     /// Skip a length of input until a pattern optionally matches.
@@ -428,7 +435,7 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_at(len, "take"))
+        self.try_advance(|input| input.split_at(len, CoreOperation::Take))
     }
 
     /// Read a length of input while a pattern matches.
@@ -468,7 +475,7 @@ where
         E: WithContext<'i>,
         F: FnMut(I::Token) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.try_split_while(pred, "try take while"))
+        self.try_advance(|input| input.try_split_while(pred, CoreOperation::TakeWhile))
     }
 
     /// Read a length of input until a expected pattern matches.
@@ -499,7 +506,7 @@ where
         E: From<ExpectedValue<'i>>,
         P: Pattern<I> + Into<Value<'i>> + Copy,
     {
-        self.try_advance(|input| input.split_until(pattern, "take until"))
+        self.try_advance(|input| input.split_until(pattern, CoreOperation::TakeUntil))
     }
 
     /// Read a length of input until a pattern matches and consumes the matched
@@ -531,7 +538,9 @@ where
         E: From<ExpectedValue<'i>>,
         P: Pattern<I> + Into<Value<'i>> + Copy,
     {
-        self.try_advance(|input| input.split_until_consume(pattern, "take until consume"))
+        self.try_advance(|input| {
+            input.split_until_consume(pattern, CoreOperation::TakeUntilConsume)
+        })
     }
 
     /// Read a length of input until a pattern optionally matches.
@@ -583,7 +592,7 @@ where
     where
         E: From<ExpectedLength<'i>>,
     {
-        match self.input.clone().split_at(len, "peek") {
+        match self.input.clone().split_at(len, CoreOperation::Peek) {
             Ok((head, _)) => Ok(Peek::new(head)),
             Err(err) => Err(err),
         }
@@ -625,7 +634,7 @@ where
         E: From<ExpectedValue<'i>>,
         P: Prefix<I> + Into<Value<'i>>,
     {
-        self.try_advance(|input| input.split_prefix(prefix, "consume"))
+        self.try_advance(|input| input.split_prefix(prefix, CoreOperation::Consume))
             .map(drop)
     }
 

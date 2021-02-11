@@ -4,7 +4,7 @@ use core::{iter, str};
 
 use crate::display::InputDisplay;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, Length, OperationContext,
+    with_context, CoreContext, CoreExpected, CoreOperation, ExpectedLength, ExpectedValid, Length,
     WithContext,
 };
 use crate::fmt;
@@ -84,79 +84,12 @@ impl<'i> Bytes<'i> {
         E: From<ExpectedLength<'i>>,
     {
         str::from_utf8(self.as_dangerous()).map_err(|err| {
-            self.clone()
-                .map_utf8_error(err.error_len(), err.valid_up_to(), "convert input to str")
+            self.clone().map_utf8_error(
+                err.error_len(),
+                err.valid_up_to(),
+                CoreOperation::IntoString,
+            )
         })
-    }
-
-    /// Returns the underlying byte slice if it is not empty.
-    ///
-    /// See [`Bytes::as_dangerous`] for naming.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ExpectedLength`] if the input is empty.
-    pub fn to_dangerous_non_empty<E>(&self) -> Result<&'i [u8], E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        if self.is_empty() {
-            Err(E::from(ExpectedLength {
-                len: Length::AtLeast(1),
-                span: self.as_dangerous(),
-                input: self.clone().into_maybe_string(),
-                context: ExpectedContext {
-                    operation: "convert input to non-empty slice",
-                    expected: "non-empty input",
-                },
-            }))
-        } else {
-            Ok(self.as_dangerous())
-        }
-    }
-
-    /// Decodes the underlying byte slice into a UTF-8 `str` slice.
-    ///
-    /// See [`Bytes::as_dangerous`] for naming.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ExpectedLength`] if the input is empty or [`ExpectedValid`] if
-    /// the input is not valid UTF-8.
-    pub fn to_dangerous_non_empty_str<E>(&self) -> Result<&'i str, E>
-    where
-        E: From<ExpectedValid<'i>>,
-        E: From<ExpectedLength<'i>>,
-    {
-        if self.is_empty() {
-            Err(E::from(ExpectedLength {
-                len: Length::AtLeast(1),
-                span: self.as_dangerous(),
-                input: self.clone().into_maybe_string(),
-                context: ExpectedContext {
-                    operation: "convert input to non-empty str",
-                    expected: "non empty input",
-                },
-            }))
-        } else {
-            self.to_dangerous_str()
-        }
-    }
-
-    /// Decodes the underlying byte slice into a UTF-8 [`String`].
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
-    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
-    #[inline(always)]
-    pub fn into_string<E>(self) -> Result<String<'i>, E>
-    where
-        E: From<ExpectedValid<'i>>,
-        E: From<ExpectedLength<'i>>,
-    {
-        self.to_dangerous_str()
-            .map(|s| String::new(s, self.bound()))
     }
 }
 
@@ -192,6 +125,15 @@ impl<'i> Input<'i> for Bytes<'i> {
     }
 
     #[inline(always)]
+    fn into_string<E>(self) -> Result<String<'i>, E>
+    where
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        String::from_utf8(self)
+    }
+
+    #[inline(always)]
     fn into_maybe_string(self) -> MaybeString<'i> {
         MaybeString::Bytes(self)
     }
@@ -209,7 +151,7 @@ impl<'i> Bytes<'i> {
     pub(crate) fn split_str_while<F, E>(
         self,
         mut f: F,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> Result<(String<'i>, Bytes<'i>), E>
     where
         E: From<ExpectedValid<'i>>,
@@ -251,7 +193,7 @@ impl<'i> Bytes<'i> {
     pub(crate) fn try_split_str_while<F, E>(
         self,
         mut f: F,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> Result<(String<'i>, Bytes<'i>), E>
     where
         E: WithContext<'i>,
@@ -266,8 +208,14 @@ impl<'i> Bytes<'i> {
         while let Some(result) = chars.next() {
             match result {
                 Ok(c) => {
+                    // TODO: remove with_contexts?
                     // Check if the char doesn't match the predicate.
-                    if with_context(self.clone(), OperationContext(operation), || f(c))? {
+                    let should_continue = with_context(
+                        CoreContext::from_operation(operation, self.span()),
+                        self.clone(),
+                        || f(c),
+                    )?;
+                    if should_continue {
                         consumed = chars.as_forward();
                     } else {
                         // Because we hit the predicate it doesn't matter if we
@@ -293,7 +241,10 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
-    pub(crate) fn split_arr_2<E>(self, operation: &'static str) -> Result<([u8; 2], Bytes<'i>), E>
+    pub(crate) fn split_array_2<E>(
+        self,
+        operation: CoreOperation,
+    ) -> Result<([u8; 2], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -304,7 +255,10 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
-    pub(crate) fn split_arr_4<E>(self, operation: &'static str) -> Result<([u8; 4], Bytes<'i>), E>
+    pub(crate) fn split_array_4<E>(
+        self,
+        operation: CoreOperation,
+    ) -> Result<([u8; 4], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -315,7 +269,10 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
-    pub(crate) fn split_arr_8<E>(self, operation: &'static str) -> Result<([u8; 8], Bytes<'i>), E>
+    pub(crate) fn split_array_8<E>(
+        self,
+        operation: CoreOperation,
+    ) -> Result<([u8; 8], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -326,7 +283,10 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
-    pub(crate) fn split_arr_16<E>(self, operation: &'static str) -> Result<([u8; 16], Bytes<'i>), E>
+    pub(crate) fn split_array_16<E>(
+        self,
+        operation: CoreOperation,
+    ) -> Result<([u8; 16], Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -340,7 +300,7 @@ impl<'i> Bytes<'i> {
         self,
         error_len: Option<usize>,
         valid_up_to: usize,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> E
     where
         E: From<ExpectedValid<'i>>,
@@ -356,25 +316,25 @@ impl<'i> Bytes<'i> {
                 let first_invalid = unsafe { slice::first_unchecked(invalid) };
                 E::from(ExpectedLength {
                     len: Length::AtLeast(utf8::char_len(first_invalid)),
-                    span: invalid,
-                    input: self.into_maybe_string(),
-                    context: ExpectedContext {
+                    context: CoreContext {
+                        span: invalid.into(),
                         operation,
-                        expected: "complete utf-8 code point",
+                        expected: CoreExpected::EnoughInputFor("utf-8 code point"),
                     },
+                    input: self.into_maybe_string(),
                 })
             }
             Some(error_len) => {
                 let error_end = valid_up_to + error_len;
                 E::from(ExpectedValid {
-                    span: &bytes[valid_up_to..error_end],
-                    input: self.into_maybe_string(),
-                    context: ExpectedContext {
-                        operation,
-                        expected: "utf-8 code point",
-                    },
                     #[cfg(feature = "retry")]
                     retry_requirement: None,
+                    context: CoreContext {
+                        span: bytes[valid_up_to..error_end].into(),
+                        operation,
+                        expected: CoreExpected::Valid("utf-8 code point"),
+                    },
+                    input: self.into_maybe_string(),
                 })
             }
         }
@@ -409,9 +369,9 @@ impl<'i> Private<'i> for Bytes<'i> {
     }
 
     #[inline(always)]
-    fn verify_token_boundary(&self, index: usize) -> Result<(), &'static str> {
+    fn verify_token_boundary(&self, index: usize) -> Result<(), CoreExpected> {
         if index > self.len() {
-            Err("byte index")
+            Err(CoreExpected::EnoughInputFor("byte index"))
         } else {
             Ok(())
         }
@@ -482,7 +442,7 @@ impl<'i> PartialEq<Bytes<'i>> for [u8] {
 
 impl<'i> fmt::Debug for Bytes<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let display = InputDisplay::from_formatter(self, f);
+        let display = self.display().with_formatter(f);
         f.debug_struct("Bytes")
             .field("bound", &self.bound())
             .field("value", &display)
@@ -498,6 +458,6 @@ impl<'i> fmt::DisplayBase for Bytes<'i> {
 
 impl<'i> fmt::Display for Bytes<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        InputDisplay::from_formatter(self, f).fmt(f)
+        self.display().with_formatter(f).fmt(f)
     }
 }

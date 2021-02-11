@@ -13,4 +13,9 @@ fn main() {
     dbg!(&dangerous::input(b"hello")
         .read_all::<_, _, Expected<'_>>(|r| r.consume(b"world"))
         .unwrap_err());
+    // Expecte value: fatal
+    dbg!(&dangerous::input(b"hello")
+        .into_bound()
+        .read_all::<_, _, Expected<'_>>(|r| r.consume(b"world"))
+        .unwrap_err());
 }

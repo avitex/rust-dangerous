@@ -77,13 +77,15 @@ fn bench_peek_eq(c: &mut Criterion) {
     c.bench_function("peek_u8_eq", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 2]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| {
-                    if r.peek_eq(1) {
-                        r.skip(2)
-                    } else {
-                        r.skip(0)
-                    }
-                })
+                .read_all(
+                    |r: &mut BytesReader<'_, Invalid>| {
+                        if r.peek_eq(1) {
+                            r.skip(2)
+                        } else {
+                            r.skip(0)
+                        }
+                    },
+                )
                 .unwrap();
         })
     });

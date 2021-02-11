@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::input::{Bytes, Input, MaybeString};
+use crate::input::{Input, MaybeString, Span};
 
 use super::{Backtrace, Context, ExpectedLength, ExpectedValid, ExpectedValue, Value};
 #[cfg(feature = "retry")]
@@ -59,18 +59,13 @@ pub trait WithContext<'i>: Sized {
     /// collected backtrace.
     const PASSTHROUGH: bool = false;
 
-    /// Return `Self` with a parent context.
-    ///
-    /// This method is used for adding parent contexts to errors bubbling up.
-    fn with_context(self, input: impl Input<'i>, context: impl Context) -> Self;
+    /// Returns `Self` with a parent [`Input`].
+    fn with_input(self, input: impl Input<'i>) -> Self;
 
-    /// Return `Self` with a child context attached to the last parent context
-    /// added.
+    /// Return `Self` with a context.
     ///
-    /// This method is used for adding child contexts to errors bubbling up.
-    fn with_child_context(self, _context: impl Context) -> Self {
-        self
-    }
+    /// This method is used for adding contexts to errors bubbling up.
+    fn with_context(self, context: impl Context) -> Self;
 }
 
 /// Required details around an error to produce a verbose report on what went
@@ -90,9 +85,6 @@ pub trait Details<'i> {
     /// that caused the error. This value simply allows us to see the bigger
     /// picture given granular errors in a large amount of input.
     fn input(&self) -> MaybeString<'i>;
-
-    /// The specific section of input that caused an error.
-    fn span(&self) -> Bytes<'i>;
 
     /// The expected value, if applicable.
     fn expected(&self) -> Option<Value<'_>>;
@@ -117,25 +109,11 @@ pub trait Details<'i> {
 /// External errors are consumed with [`Input::into_external()`] or
 /// [`Reader::try_expect_external()`].
 ///
-/// If either or both [`External::operation()`] and [`External::expected()`]
-/// return a value, a context will be added to the bottom of the backtrace. Keep
-/// this in mind if you use [`External::push_child_backtrace()`].
-///
 /// [`Input::into_external()`]: crate::Input::into_external()
 /// [`Reader::try_expect_external()`]: crate::Reader::try_expect_external()
 pub trait External<'i>: Sized {
     /// The specific section of input that caused an error.
-    fn span(&self) -> Option<&'i [u8]> {
-        None
-    }
-
-    /// The operation that was attempted when an error occurred.
-    fn operation(&self) -> Option<&'static str> {
-        None
-    }
-
-    /// The expected value.
-    fn expected(&self) -> Option<&'static str> {
+    fn span(&self) -> Option<Span> {
         None
     }
 
@@ -149,7 +127,7 @@ pub trait External<'i>: Sized {
     /// Pushes a child backtrace to the base error generated.
     ///
     /// Push from the bottom of the trace (from the source of the error) up.
-    fn push_child_backtrace<E>(self, error: E) -> E
+    fn push_backtrace<E>(self, error: E) -> E
     where
         E: WithContext<'i>,
     {

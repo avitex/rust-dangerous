@@ -1,17 +1,15 @@
 use core::convert::Infallible;
-use core::ops::Range;
 
 use crate::display::InputDisplay;
 use crate::error::{
-    with_context, ExpectedContext, ExpectedLength, ExpectedValid, ExpectedValue, External, Length,
-    OperationContext, Value, WithContext,
+    with_context, CoreContext, CoreExpected, CoreOperation, ExpectedLength, ExpectedValid,
+    ExpectedValue, External, Length, Value, WithChildContext, WithContext,
 };
 use crate::fmt::{Debug, Display, DisplayBase};
 use crate::input::pattern::Pattern;
 use crate::reader::Reader;
-use crate::util::slice;
 
-use super::{Bound, Bytes, MaybeString, Prefix, String};
+use super::{Bound, Bytes, MaybeString, Prefix, Span, String};
 
 /// Implemented for immutable wrappers around bytes to be processed ([`Bytes`]/[`String`]).
 ///
@@ -57,6 +55,17 @@ pub trait Input<'i>: Private<'i> {
     /// Consumes `self` into [`Bytes`].
     fn into_bytes(self) -> Bytes<'i>;
 
+    /// Decodes the underlying byte slice into a UTF-8 [`String`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
+    fn into_string<E>(self) -> Result<String<'i>, E>
+    where
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>;
+
     /// Consumes `self` into [`MaybeString`] returning `MaybeString::String` if
     /// the underlying bytes are known `UTF-8`.
     fn into_maybe_string(self) -> MaybeString<'i>;
@@ -88,51 +97,9 @@ pub trait Input<'i>: Private<'i> {
         self.bound() == Bound::Both
     }
 
-    /// Returns `true` if the underlying byte slice for `parent` contains that
-    /// of `self` in the same section of memory with no bounds out of range.
-    #[must_use]
-    fn is_within<'p>(&self, parent: &impl Input<'p>) -> bool {
-        slice::is_sub_slice(parent.as_dangerous_bytes(), self.as_dangerous_bytes())
-    }
-
-    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
-    /// within the `parent`. `None` is returned if `self` is not within in the
-    /// `parent`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use dangerous::Input;
-    ///
-    /// let parent = dangerous::input(&[1, 2, 3, 4]);
-    /// let sub_range = 1..2;
-    /// let sub = dangerous::input(&parent.as_dangerous()[sub_range.clone()]);
-    ///
-    /// assert_eq!(sub.span_of(&parent), Some(sub_range))
-    /// ```
-    #[must_use]
-    fn span_of<'p>(&self, parent: &impl Input<'p>) -> Option<Range<usize>> {
-        if self.is_within(parent) {
-            let parent_bounds = parent.as_dangerous_bytes().as_ptr_range();
-            let sub_bounds = self.as_dangerous_bytes().as_ptr_range();
-            let start_offset = sub_bounds.start as usize - parent_bounds.start as usize;
-            let end_offset = sub_bounds.end as usize - parent_bounds.start as usize;
-            Some(start_offset..end_offset)
-        } else {
-            None
-        }
-    }
-
-    /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
-    /// within the `parent`. `None` is returned if `self` is not within in the
-    /// `parent` or `self` is empty.
-    #[must_use]
-    fn span_of_non_empty<'p>(&self, parent: &impl Input<'p>) -> Option<Range<usize>> {
-        if self.is_empty() {
-            None
-        } else {
-            self.span_of(parent)
-        }
+    #[inline(always)]
+    fn span(&self) -> Span {
+        Span::from(self.as_dangerous_bytes())
     }
 
     /// Create a reader with the expectation all of the input is read.
@@ -149,16 +116,19 @@ pub trait Input<'i>: Private<'i> {
         E: From<ExpectedLength<'i>>,
     {
         let mut r = Reader::new(self.clone());
-        match r.context(OperationContext("read all"), f) {
+        match r.context(
+            CoreContext::from_operation(CoreOperation::ReadAll, self.span()),
+            f,
+        ) {
             Ok(ok) if r.at_end() => Ok(ok),
             Ok(_) => Err(E::from(ExpectedLength {
                 len: Length::Exactly(0),
-                span: r.take_remaining().as_dangerous_bytes(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
-                    operation: "read all",
-                    expected: "no trailing input",
+                context: CoreContext {
+                    span: r.take_remaining().span(),
+                    operation: CoreOperation::ReadAll,
+                    expected: CoreExpected::NoTrailingInput,
                 },
+                input: self.into_maybe_string(),
             })),
             Err(err) => Err(err),
         }
@@ -175,8 +145,11 @@ pub trait Input<'i>: Private<'i> {
         F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, E>,
         E: WithContext<'i>,
     {
-        let mut r = Reader::new(self);
-        match r.context(OperationContext("read partial"), f) {
+        let mut r = Reader::new(self.clone());
+        match r.context(
+            CoreContext::from_operation(CoreOperation::ReadPartial, self.span()),
+            f,
+        ) {
             Ok(ok) => Ok((ok, r.take_remaining())),
             Err(err) => Err(err),
         }
@@ -212,8 +185,34 @@ pub trait Input<'i>: Private<'i> {
         E: From<ExpectedValid<'i>>,
         Ex: External<'i>,
     {
-        f(self.clone())
-            .map_err(|external| self.map_external_error(external, expected, "into external"))
+        f(self.clone()).map_err(|external| {
+            self.map_external_error(external, expected, CoreOperation::IntoExternal)
+        })
+    }
+
+    /// Returns `self` if it is not empty.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedLength`] if the input is empty.
+    fn into_non_empty<E>(self) -> Result<Self, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        if self.is_empty() {
+            Err(E::from(ExpectedLength {
+                len: Length::AtLeast(1),
+
+                context: CoreContext {
+                    span: self.span(),
+                    operation: CoreOperation::IntoNonEmpty,
+                    expected: CoreExpected::NonEmpty,
+                },
+                input: self.into_maybe_string(),
+            }))
+        } else {
+            Ok(self)
+        }
     }
 }
 
@@ -244,7 +243,7 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     /// considered to be boundaries.
     ///
     /// Returns what was expected at that index.
-    fn verify_token_boundary(&self, index: usize) -> Result<(), &'static str>;
+    fn verify_token_boundary(&self, index: usize) -> Result<(), CoreExpected>;
 
     /// Split the input at the token index `mid`.
     ///
@@ -275,19 +274,20 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if `mid > self.len()`.
     #[inline(always)]
-    fn split_at<E>(self, mid: usize, operation: &'static str) -> Result<(Self, Self), E>
+    fn split_at<E>(self, mid: usize, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedLength<'i>>,
     {
         self.clone().split_at_opt(mid).ok_or_else(|| {
             E::from(ExpectedLength {
                 len: Length::AtLeast(mid),
-                span: self.as_dangerous_bytes(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
+
+                context: CoreContext {
+                    span: self.span(),
                     operation,
-                    expected: "enough input",
+                    expected: CoreExpected::EnoughInputFor("split"),
                 },
+                input: self.into_maybe_string(),
             })
         })
     }
@@ -299,7 +299,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     /// Returns [`ExpectedLength`] if `mid > self.len()` and [`ExpectedValid`]
     /// if `mid` is not a valid token boundary.
     #[inline(always)]
-    fn split_at_byte<E>(self, mid: usize, operation: &'static str) -> Result<(Self, Self), E>
+    fn split_at_byte<E>(self, mid: usize, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
@@ -307,12 +307,13 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         if self.byte_len() < mid {
             Err(E::from(ExpectedLength {
                 len: Length::AtLeast(mid),
-                span: self.as_dangerous_bytes(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
+
+                context: CoreContext {
+                    span: self.span(),
                     operation,
-                    expected: "enough input",
+                    expected: CoreExpected::EnoughInputFor("split"),
                 },
+                input: self.into_maybe_string(),
             }))
         } else {
             match self.verify_token_boundary(mid) {
@@ -322,13 +323,14 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                     Ok(unsafe { self.split_at_byte_unchecked(mid) })
                 }
                 Err(expected) => Err(E::from(ExpectedValid {
-                    span: &self.as_dangerous_bytes()[mid..mid],
-                    input: self.into_maybe_string(),
+                    #[cfg(feature = "retry")]
                     retry_requirement: None,
-                    context: ExpectedContext {
+                    context: CoreContext {
+                        span: self.as_dangerous_bytes()[mid..mid].into(),
                         operation,
                         expected,
                     },
+                    input: self.into_maybe_string(),
                 })),
             }
         }
@@ -336,7 +338,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 
     /// Splits the input into the first token and whatever remains.
     #[inline(always)]
-    fn split_first_opt(self) -> Option<(Self::Token, Self)> {
+    fn split_token_opt(self) -> Option<(Self::Token, Self)> {
         self.clone().tokens().next().map(|(_, t)| {
             // SAFETY: ByteLength guarantees a correct implementation for
             // returning the length of a token. The token iterator returned a
@@ -352,19 +354,20 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if the input is empty.
     #[inline(always)]
-    fn split_first<E>(self, operation: &'static str) -> Result<(Self::Token, Self), E>
+    fn split_token<E>(self, operation: CoreOperation) -> Result<(Self::Token, Self), E>
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.clone().split_first_opt().ok_or_else(|| {
+        self.clone().split_token_opt().ok_or_else(|| {
             E::from(ExpectedLength {
                 len: Length::AtLeast(1),
-                span: self.as_dangerous_bytes(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
+
+                context: CoreContext {
+                    span: self.span(),
                     operation,
-                    expected: "enough input",
+                    expected: CoreExpected::EnoughInputFor("token"),
                 },
+                input: self.into_maybe_string(),
             })
         })
     }
@@ -391,7 +394,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if the input does not have the prefix.
     #[inline(always)]
-    fn split_prefix<P, E>(self, prefix: P, operation: &'static str) -> Result<(Self, Self), E>
+    fn split_prefix<P, E>(self, prefix: P, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValue<'i>>,
         P: Prefix<Self> + Into<Value<'i>>,
@@ -407,13 +410,13 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                     &bytes
                 };
                 Err(E::from(ExpectedValue {
-                    actual,
                     expected: prefix.into(),
-                    input: self.into_maybe_string(),
-                    context: ExpectedContext {
+                    context: CoreContext {
+                        span: actual.into(),
                         operation,
-                        expected: "exact value",
+                        expected: CoreExpected::ExactValue,
                     },
+                    input: self.into_maybe_string(),
                 }))
             }
         }
@@ -447,20 +450,20 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 
     /// Splits the input up to when the pattern matches.
     #[inline(always)]
-    fn split_until<P, E>(self, pattern: P, operation: &'static str) -> Result<(Self, Self), E>
+    fn split_until<P, E>(self, pattern: P, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValue<'i>>,
         P: Pattern<Self> + Into<Value<'i>> + Copy,
     {
         self.clone().split_until_opt(pattern).ok_or_else(|| {
             E::from(ExpectedValue {
-                actual: self.as_dangerous_bytes(),
                 expected: pattern.into(),
-                input: self.into_maybe_string(),
-                context: ExpectedContext {
+                context: CoreContext {
+                    span: self.span(),
                     operation,
-                    expected: "pattern match",
+                    expected: CoreExpected::PatternMatch,
                 },
+                input: self.into_maybe_string(),
             })
         })
     }
@@ -474,7 +477,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     fn split_until_consume<P, E>(
         self,
         pattern: P,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValue<'i>>,
@@ -484,13 +487,13 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             .split_until_consume_opt(pattern)
             .ok_or_else(|| {
                 E::from(ExpectedValue {
-                    actual: self.as_dangerous_bytes(),
                     expected: pattern.into(),
-                    input: self.into_maybe_string(),
-                    context: ExpectedContext {
+                    context: CoreContext {
+                        span: self.span(),
                         operation,
-                        expected: "pattern match",
+                        expected: CoreExpected::PatternMatch,
                     },
+                    input: self.into_maybe_string(),
                 })
             })
     }
@@ -514,7 +517,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error from the provided function if it fails.
     #[inline(always)]
-    fn try_split_while<F, E>(self, mut f: F, operation: &'static str) -> Result<(Self, Self), E>
+    fn try_split_while<F, E>(self, mut f: F, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: WithContext<'i>,
         F: FnMut(Self::Token) -> Result<bool, E>,
@@ -522,7 +525,12 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         // For each token, lets make sure it matches the predicate.
         for (i, token) in self.clone().tokens() {
             // Check if the token doesn't match the predicate.
-            if !with_context(self.clone(), OperationContext(operation), || f(token))? {
+            let should_continue = with_context(
+                CoreContext::from_operation(operation, self.span()),
+                self.clone(),
+                || f(token),
+            )?;
+            if !should_continue {
                 // Split the input up to, but not including the token.
                 // `i` derived from the token iterator is always a valid index
                 // for the input.
@@ -568,14 +576,14 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error from the provided function if it fails.
     #[inline(always)]
-    fn try_split_consumed<F, E>(self, f: F, operation: &'static str) -> Result<(Self, Self), E>
+    fn try_split_consumed<F, E>(self, f: F, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: WithContext<'i>,
         F: FnOnce(&mut Reader<'i, E, Self>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self.clone());
         // Consume input.
-        reader.context(OperationContext(operation), f)?;
+        reader.context(CoreContext::from_operation(operation, self.span()), f)?;
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
@@ -605,28 +613,27 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self,
         f: F,
         expected: &'static str,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> Result<(T, Self), E>
     where
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Reader<'i, E, Self>) -> Option<T>,
     {
-        let context = ExpectedContext {
-            expected,
-            operation,
-        };
         let mut reader = Reader::new(self.clone());
         if let Some(ok) = f(&mut reader) {
             Ok((ok, reader.take_remaining()))
         } else {
             let tail = reader.take_remaining();
-            let span = &self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()];
+            let span = self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()].into();
             Err(E::from(ExpectedValid {
-                span,
-                input: self.into_maybe_string(),
-                context,
                 #[cfg(feature = "retry")]
                 retry_requirement: None,
+                context: CoreContext {
+                    span,
+                    expected: CoreExpected::Valid(expected),
+                    operation,
+                },
+                input: self.into_maybe_string(),
             }))
         }
     }
@@ -642,15 +649,16 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self,
         f: F,
         expected: &'static str,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> Result<(T, Self), E>
     where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         F: FnOnce(&mut Reader<'i, E, Self>) -> Result<Option<T>, E>,
     {
-        let context = ExpectedContext {
-            expected,
+        let mut context = CoreContext {
+            span: self.span(),
+            expected: CoreExpected::Valid(expected),
             operation,
         };
         let mut reader = Reader::new(self.clone());
@@ -658,13 +666,13 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             Ok(Some(ok)) => Ok((ok, reader.take_remaining())),
             Ok(None) => {
                 let tail = reader.take_remaining();
-                let span = &self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()];
+                context.span =
+                    self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()].into();
                 Err(E::from(ExpectedValid {
-                    span,
-                    input: self.into_maybe_string(),
-                    context,
                     #[cfg(feature = "retry")]
                     retry_requirement: None,
+                    context,
+                    input: self.into_maybe_string(),
                 }))
             }
             Err(err) => Err(err),
@@ -691,7 +699,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self,
         f: F,
         expected: &'static str,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> Result<(T, Self), E>
     where
         F: FnOnce(Self) -> Result<(T, usize), Ex>,
@@ -712,33 +720,26 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         self,
         external: Ex,
         expected: &'static str,
-        operation: &'static str,
+        operation: CoreOperation,
     ) -> E
     where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         Ex: External<'i>,
     {
-        let bytes = self.as_dangerous_bytes();
         let error = E::from(ExpectedValid {
-            span: external.span().unwrap_or(bytes),
-            input: self.into_maybe_string(),
-            context: ExpectedContext {
-                expected,
+            #[cfg(feature = "retry")]
+            retry_requirement: external.retry_requirement(),
+            context: CoreContext {
+                span: external.span().unwrap_or_else(|| self.span()),
+                expected: CoreExpected::Valid(expected),
                 operation,
             },
-            retry_requirement: external.retry_requirement(),
+            input: self.into_maybe_string(),
         });
-        let error = match (external.operation(), external.expected()) {
-            (None, None) => error,
-            (None, Some(expected)) => error.with_child_context(expected),
-            (Some(operation), None) => error.with_child_context(OperationContext(operation)),
-            (Some(operation), Some(expected)) => error.with_child_context(ExpectedContext {
-                expected,
-                operation,
-            }),
-        };
-        external.push_child_backtrace(error)
+        external
+            .push_backtrace(WithChildContext::new(error))
+            .unwrap()
     }
 }
 

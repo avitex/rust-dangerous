@@ -1,7 +1,12 @@
+use crate::error::WithContext;
+
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl<'i> crate::error::External<'i> for std::net::AddrParseError {
-    fn expected(&self) -> Option<&'static str> {
-        Some("IP address")
+    fn push_backtrace<E>(self, error: E) -> E
+    where
+        E: WithContext<'i>,
+    {
+        error.with_context("IP address")
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::error::{ExpectedLength, ExpectedValid, WithContext};
+use crate::error::{CoreOperation, ExpectedLength, ExpectedValid, WithContext};
 use crate::input::{PrivateExt, String};
 
 use super::BytesReader;
@@ -16,7 +16,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
     {
-        self.try_advance(|input| input.split_str_while(pred, "skip str while"))
+        self.try_advance(|input| input.split_str_while(pred, CoreOperation::SkipStrWhile))
             .map(drop)
     }
 
@@ -35,7 +35,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.try_split_str_while(pred, "try skip str while"))
+        self.try_advance(|input| input.try_split_str_while(pred, CoreOperation::SkipStrWhile))
             .map(drop)
     }
 
@@ -50,7 +50,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_str_while(|_| true, "take remaining str"))
+        self.try_advance(|input| input.split_str_while(|_| true, CoreOperation::TakeRemainingStr))
     }
 
     /// Read a length of string input while a predicate check remains true.
@@ -65,7 +65,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
     {
-        self.try_advance(|input| input.split_str_while(pred, "take str while"))
+        self.try_advance(|input| input.split_str_while(pred, CoreOperation::TakeStrWhile))
     }
 
     /// Try read a length of string input while a predicate check remains true.
@@ -82,7 +82,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.try_split_str_while(pred, "try take str while"))
+        self.try_advance(|input| input.try_split_str_while(pred, CoreOperation::TakeStrWhile))
     }
 
     /// Peek the next byte in the input without mutating the `Reader`.
@@ -97,7 +97,7 @@ impl<'i, E> BytesReader<'i, E> {
     {
         self.input
             .clone()
-            .split_first("peek u8")
+            .split_token(CoreOperation::PeekU8)
             .map(|(byte, _)| byte)
     }
 
@@ -108,7 +108,7 @@ impl<'i, E> BytesReader<'i, E> {
     #[inline]
     #[must_use = "peek result must be used"]
     pub fn peek_u8_opt(&self) -> Option<u8> {
-        self.input.clone().split_first_opt().map(|(byte, _)| byte)
+        self.input.clone().split_token_opt().map(|(byte, _)| byte)
     }
 
     /// Read a byte.
@@ -121,7 +121,7 @@ impl<'i, E> BytesReader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_first("read u8"))
+        self.try_advance(|input| input.split_token(CoreOperation::ReadU8))
     }
 
     /// Read a `i8`.
@@ -134,18 +134,58 @@ impl<'i, E> BytesReader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_first("read i8"))
+        self.try_advance(|input| input.split_token(CoreOperation::ReadI8))
             .map(|v| i8::from_ne_bytes([v]))
     }
 
-    impl_read_num!(u16, le: read_u16_le, be: read_u16_be);
-    impl_read_num!(i16, le: read_i16_le, be: read_i16_be);
-    impl_read_num!(u32, le: read_u32_le, be: read_u32_be);
-    impl_read_num!(i32, le: read_i32_le, be: read_i32_be);
-    impl_read_num!(u64, le: read_u64_le, be: read_u64_be);
-    impl_read_num!(i64, le: read_i64_le, be: read_i64_be);
-    impl_read_num!(u128, le: read_u128_le, be: read_u128_be);
-    impl_read_num!(i128, le: read_i128_le, be: read_i128_be);
-    impl_read_num!(f32, le: read_f32_le, be: read_f32_be);
-    impl_read_num!(f64, le: read_f64_le, be: read_f64_be);
+    impl_read_num!(
+        u16,
+        le: (read_u16_le, CoreOperation::ReadU16LE),
+        be: (read_u16_be, CoreOperation::ReadU16BE)
+    );
+    impl_read_num!(
+        i16,
+        le: (read_i16_le, CoreOperation::ReadI16LE),
+        be: (read_i16_be, CoreOperation::ReadI16BE)
+    );
+    impl_read_num!(
+        u32,
+        le: (read_u32_le, CoreOperation::ReadU32LE),
+        be: (read_u32_be, CoreOperation::ReadU32BE)
+    );
+    impl_read_num!(
+        i32,
+        le: (read_i32_le, CoreOperation::ReadU32LE),
+        be: (read_i32_be, CoreOperation::ReadU32BE)
+    );
+    impl_read_num!(
+        u64,
+        le: (read_u64_le, CoreOperation::ReadU64LE),
+        be: (read_u64_be, CoreOperation::ReadU64BE)
+    );
+    impl_read_num!(
+        i64,
+        le: (read_i64_le, CoreOperation::ReadI64LE),
+        be: (read_i64_be, CoreOperation::ReadI64BE)
+    );
+    impl_read_num!(
+        u128,
+        le: (read_u128_le, CoreOperation::ReadU128LE),
+        be: (read_u128_be, CoreOperation::ReadU128BE)
+    );
+    impl_read_num!(
+        i128,
+        le: (read_i128_le, CoreOperation::ReadI128LE),
+        be: (read_i128_be, CoreOperation::ReadI128BE)
+    );
+    impl_read_num!(
+        f32,
+        le: (read_f32_le, CoreOperation::ReadF32LE),
+        be: (read_f32_be, CoreOperation::ReadF32BE)
+    );
+    impl_read_num!(
+        f64,
+        le: (read_f64_le, CoreOperation::ReadF64LE),
+        be: (read_f64_be, CoreOperation::ReadF64BE)
+    );
 }

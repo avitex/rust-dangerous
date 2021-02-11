@@ -1,39 +1,49 @@
-impl<'i> crate::error::External<'i> for core::num::ParseFloatError {
-    fn operation(&self) -> Option<&'static str> {
-        Some("from str")
-    }
+use crate::error::{ExternalContext, WithContext};
 
-    fn expected(&self) -> Option<&'static str> {
-        Some("float")
+impl<'i> crate::error::External<'i> for core::num::ParseFloatError {
+    fn push_backtrace<E>(self, error: E) -> E
+    where
+        E: WithContext<'i>,
+    {
+        error.with_context(ExternalContext {
+            operation: Some("parse from string"),
+            expected: Some("float"),
+        })
     }
 }
 
 impl<'i> crate::error::External<'i> for core::num::ParseIntError {
-    fn operation(&self) -> Option<&'static str> {
-        Some("from str")
-    }
-
-    fn expected(&self) -> Option<&'static str> {
-        Some("integer")
+    fn push_backtrace<E>(self, error: E) -> E
+    where
+        E: WithContext<'i>,
+    {
+        error.with_context(ExternalContext {
+            operation: Some("parse from string"),
+            expected: Some("integer"),
+        })
     }
 }
 
 impl<'i> crate::error::External<'i> for core::str::ParseBoolError {
-    fn operation(&self) -> Option<&'static str> {
-        Some("from str")
-    }
-
-    fn expected(&self) -> Option<&'static str> {
-        Some("bool")
+    fn push_backtrace<E>(self, error: E) -> E
+    where
+        E: WithContext<'i>,
+    {
+        error.with_context(ExternalContext {
+            operation: Some("parse from string"),
+            expected: Some("boolean"),
+        })
     }
 }
 
 impl<'i> crate::error::External<'i> for core::char::ParseCharError {
-    fn operation(&self) -> Option<&'static str> {
-        Some("from str")
-    }
-
-    fn expected(&self) -> Option<&'static str> {
-        Some("char")
+    fn push_backtrace<E>(self, error: E) -> E
+    where
+        E: WithContext<'i>,
+    {
+        error.with_context(ExternalContext {
+            operation: Some("parse from string"),
+            expected: Some("char"),
+        })
     }
 }

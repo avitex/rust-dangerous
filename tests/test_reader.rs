@@ -42,15 +42,8 @@ fn test_context() {
     #[cfg(not(feature = "full-backtrace"))]
     assert_eq!(err.backtrace().count(), 1);
     err.backtrace().walk(&mut |i, c| {
-        // i == 1 is an operation context which cannot be downcast
-        if i == 2 {
-            let c = Any::downcast_ref::<&'static str>(c.as_any());
-            assert_eq!(c, Some(&"bob"));
-        }
-        if i == 3 {
-            let c = Any::downcast_ref::<ExpectedContext>(c.as_any());
-            assert!(c.is_some());
-        }
+        let c = Any::downcast_ref::<CoreOperation>(c.operation().as_any());
+        assert!(c.is_some());
         assert!(i != 5);
         true
     });
