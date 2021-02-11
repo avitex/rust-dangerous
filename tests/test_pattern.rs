@@ -100,7 +100,7 @@ fn test_match_u8() {
 }
 
 #[test]
-fn test_match_u8_empty() {
+fn test_match_u8_all() {
     assert_eq!(
         read_all_ok!(b"!", |r| {
             let v = r.take_until(b'!')?;
@@ -163,7 +163,7 @@ fn test_match_char() {
 }
 
 #[test]
-fn test_match_char_empty() {
+fn test_match_char_all() {
     assert_eq!(
         read_all_ok!("!", |r| {
             let v = r.take_until('!')?;
@@ -210,6 +210,18 @@ fn test_reject_bytes_none() {
     );
 }
 
+#[test]
+fn test_reject_bytes_empty() {
+    assert_eq!(
+        read_all_ok!(b"!", |r| {
+            let v = r.take_while(b"");
+            r.consume("!")?;
+            Ok(v)
+        }),
+        b""[..]
+    );
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // match: bytes
 
@@ -226,7 +238,7 @@ fn test_match_bytes() {
 }
 
 #[test]
-fn test_match_bytes_empty() {
+fn test_match_bytes_all() {
     assert_eq!(
         read_all_ok!(b"!!", |r| {
             let v = r.take_until(b"!!")?;
@@ -242,6 +254,15 @@ fn test_match_bytes_none() {
     let _ = read_all_err!(b"hello", |r| {
         let v = r.take_until(b"!!")?;
         r.consume("!!")?;
+        Ok(v)
+    });
+}
+
+#[test]
+fn test_match_bytes_empty() {
+    let _ = read_all_err!(b"hello", |r| {
+        let v = r.take_until(b"")?;
+        r.consume("hello")?;
         Ok(v)
     });
 }
@@ -273,6 +294,18 @@ fn test_reject_string_none() {
     );
 }
 
+#[test]
+fn test_reject_string_empty() {
+    assert_eq!(
+        read_all_ok!("!", |r| {
+            let v = r.take_while("");
+            r.consume("!")?;
+            Ok(v)
+        }),
+        ""[..]
+    );
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // match: string
 
@@ -289,7 +322,7 @@ fn test_match_string() {
 }
 
 #[test]
-fn test_match_string_empty() {
+fn test_match_string_all() {
     assert_eq!(
         read_all_ok!("!!", |r| {
             let v = r.take_until("!!")?;
@@ -305,6 +338,15 @@ fn test_match_string_none() {
     let _ = read_all_err!("hello", |r| {
         let v = r.take_until("!!")?;
         r.consume("!!")?;
+        Ok(v)
+    });
+}
+
+#[test]
+fn test_match_string_empty() {
+    let _ = read_all_err!("hello", |r| {
+        let v = r.take_until("")?;
+        r.consume("hello")?;
         Ok(v)
     });
 }
@@ -371,7 +413,7 @@ fn test_match_bytes_regex() {
 
 #[test]
 #[cfg(feature = "regex")]
-fn test_match_bytes_regex_empty() {
+fn test_match_bytes_regex_all() {
     assert_eq!(
         read_all_ok!(b"1234", |r| {
             let regex = regex::bytes::Regex::new("\\d+").unwrap();
@@ -460,7 +502,7 @@ fn test_match_string_regex() {
 
 #[test]
 #[cfg(feature = "regex")]
-fn test_match_string_regex_empty() {
+fn test_match_string_regex_all() {
     assert_eq!(
         read_all_ok!("1234", |r| {
             let regex = regex::Regex::new("\\d+").unwrap();

@@ -101,10 +101,7 @@ pub(crate) fn find_slice_match(needle: &[u8], haystack: &[u8]) -> Option<usize> 
 
 // FIXME: impl SIMD variant
 pub(crate) fn find_slice_reject(needle: &[u8], haystack: &[u8]) -> Option<usize> {
-    if haystack.is_empty() || needle.is_empty() {
-        return None;
-    }
-    if haystack.len() < needle.len() {
+    if haystack.is_empty() || needle.is_empty() || haystack.len() < needle.len() {
         return Some(0);
     }
     haystack
