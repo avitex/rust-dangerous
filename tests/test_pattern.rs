@@ -184,6 +184,78 @@ fn test_match_char_none() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// match: bytes
+
+#[test]
+fn test_match_bytes() {
+    assert_eq!(
+        read_all_ok!(b"1111!!", |r| {
+            let v = r.take_until(b"!!")?;
+            r.consume("!!")?;
+            Ok(v)
+        }),
+        b"1111"[..]
+    );
+}
+
+#[test]
+fn test_match_bytes_empty() {
+    assert_eq!(
+        read_all_ok!(b"!!", |r| {
+            let v = r.take_until(b"!!")?;
+            r.consume("!!")?;
+            Ok(v)
+        }),
+        b""[..]
+    );
+}
+
+#[test]
+fn test_match_bytes_none() {
+    let _ = read_all_err!(b"hello", |r| {
+        let v = r.take_until(b"!!")?;
+        r.consume("!!")?;
+        Ok(v)
+    });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// match: string
+
+#[test]
+fn test_match_string() {
+    assert_eq!(
+        read_all_ok!("1111!!", |r| {
+            let v = r.take_until("!!")?;
+            r.consume("!!")?;
+            Ok(v)
+        }),
+        "1111"[..]
+    );
+}
+
+#[test]
+fn test_match_string_empty() {
+    assert_eq!(
+        read_all_ok!("!!", |r| {
+            let v = r.take_until("!!")?;
+            r.consume("!!")?;
+            Ok(v)
+        }),
+        ""[..]
+    );
+}
+
+#[test]
+fn test_match_string_none() {
+    let _ = read_all_err!("hello", |r| {
+        let v = r.take_until("!!")?;
+        r.consume("!!")?;
+        Ok(v)
+    });
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // reject: bytes regex
 
 #[test]

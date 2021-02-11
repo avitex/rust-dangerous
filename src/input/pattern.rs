@@ -148,6 +148,24 @@ unsafe impl<'i> Pattern<Bytes<'i>> for &[u8] {
     }
 }
 
+macro_rules! impl_bytes_pattern {
+    ($($n:expr),*) => {
+        $(
+            unsafe impl<'i> Pattern<Bytes<'i>> for &[u8; $n] {
+                fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
+                    fast::find_slice_match(self, input.as_dangerous()).map(|index| (index, self.len()))
+                }
+
+                fn find_reject(self, input: &Bytes<'i>) -> Option<usize> {
+                    fast::find_slice_reject(self, input.as_dangerous())
+                }
+            }
+        )*
+    };
+}
+
+for_common_array_sizes!(impl_bytes_pattern);
+
 unsafe impl<'i> Pattern<Bytes<'i>> for &str {
     fn find_match(self, input: &Bytes<'i>) -> Option<(usize, usize)> {
         fast::find_slice_match(self.as_bytes(), input.as_dangerous())

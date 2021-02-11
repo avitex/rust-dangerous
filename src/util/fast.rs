@@ -4,6 +4,7 @@ use crate::util::utf8::CharBytes;
 // u8
 
 #[cfg(feature = "bytecount")]
+#[inline(always)]
 pub(crate) fn count_u8(needle: u8, haystack: &[u8]) -> usize {
     bytecount::count(haystack, needle)
 }
@@ -14,6 +15,7 @@ pub(crate) fn count_u8(needle: u8, haystack: &[u8]) -> usize {
 }
 
 #[cfg(feature = "memchr")]
+#[inline(always)]
 pub(crate) fn find_u8_match(needle: u8, haystack: &[u8]) -> Option<usize> {
     memchr::memchr(needle, haystack)
 }
@@ -32,20 +34,24 @@ pub(crate) fn find_u8_reject(needle: u8, haystack: &[u8]) -> Option<usize> {
 // char
 
 #[cfg(feature = "bytecount")]
+#[inline(always)]
 pub(crate) fn num_chars(s: &str) -> usize {
     bytecount::num_chars(s.as_bytes())
 }
 
 #[cfg(not(feature = "bytecount"))]
+#[inline(always)]
 pub(crate) fn num_chars(s: &str) -> usize {
     s.chars().count()
 }
 
+#[inline(always)]
 pub(crate) fn find_char_match(needle: char, haystack: &[u8]) -> Option<usize> {
     let needle = CharBytes::from(needle);
     find_slice_match(needle.as_bytes(), haystack)
 }
 
+#[inline(always)]
 pub(crate) fn find_char_reject(needle: char, haystack: &[u8]) -> Option<usize> {
     let needle = CharBytes::from(needle);
     find_slice_reject(needle.as_bytes(), haystack)
@@ -67,10 +73,17 @@ pub(crate) fn find_slice_match(needle: &[u8], haystack: &[u8]) -> Option<usize> 
     loop {
         match find_u8_match(needle_first, &haystack[last_fail..]) {
             None => return None,
-            Some(index) if haystack[last_fail + index..needle.len()] == *needle => {
-                return Some(index);
+            Some(index) => {
+                let maybe_match_start = last_fail + index;
+                let maybe_match_end = maybe_match_start + needle.len();
+                if haystack.len() < maybe_match_end {
+                    return None;
+                } else if haystack[maybe_match_start..maybe_match_end] == *needle {
+                    return Some(index);
+                } else {
+                    last_fail = index
+                }
             }
-            Some(next_fail) => last_fail = next_fail,
         }
     }
 }
