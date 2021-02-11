@@ -27,6 +27,15 @@
 //! | `nom`            | _Disabled_  | Enables `nom` crate error support.                 |
 //! | `regex`          | _Disabled_  | Enables `regex` pattern support.                   |
 
+///////////////////////////////////////////////////////////////////////////////
+// Library quirks & hacks
+//
+// # `as_any` on selected traits when used with &dyn
+//
+// An ideal implementation wouldn't require this function and we would just lean
+// on the super trait requirement, but doesn't seem possible today with trait
+// objects. See: https://github.com/rust-lang/rfcs/issues/2035
+
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(

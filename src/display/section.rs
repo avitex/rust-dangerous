@@ -667,7 +667,6 @@ mod tests {
 
     #[test]
     fn test_computed_head_str_min_width_bad_utf8() {
-        // FIXME: make this better (aka output str instead)?
         assert_computed_visible_eq!(from_head, {
             input: &[b'a', b'b', b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j', b'k', BAD_UTF8],
             format: PreferredFormat::Str,
@@ -731,7 +730,6 @@ mod tests {
 
     #[test]
     fn test_computed_tail_str_min_width_bad_utf8() {
-        // FIXME: make this better (aka output str instead)?
         assert_computed_visible_eq!(from_tail, {
             input: &[BAD_UTF8, b'p', b'q', b'r', b's', b't', b'u', b'v', b'w', b'x', b'y', b'z'],
             format: PreferredFormat::Str,

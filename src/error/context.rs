@@ -36,11 +36,6 @@ pub trait Context: Any {
     }
 
     /// Return a reference of self as [`Any`].
-    // FIXME: an ideal implementation wouldn't require this function and we
-    // would just lean on the super trait requirement, but doesn't seem possible
-    // today with trait objects.
-    //
-    // See: https://github.com/rust-lang/rfcs/issues/2035
     fn as_any(&self) -> &dyn Any;
 }
 

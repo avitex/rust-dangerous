@@ -292,9 +292,6 @@ impl<'i> Bytes<'i> {
         Ok((String::new(consumed, self.bound()), self.end()))
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // FIXME: use `split_array` once stable in 1.51
-
     #[inline(always)]
     pub(crate) fn split_arr_2<E>(self, operation: &'static str) -> Result<([u8; 2], Bytes<'i>), E>
     where
