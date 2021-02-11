@@ -30,6 +30,11 @@ use crate::util::fast;
 /// You can search for a `char` or `&str` within either `Bytes` or `String`, but
 /// only a `u8` and `&[u8]` within `Bytes`.
 ///
+/// Empty slices are invalid patterns and have the following behaviour:
+///
+/// - Finding a match of a empty slice pattern will return `None.
+/// - Finding a reject of a empty slice pattern will return `Some(0)`.
+///
 /// With the `simd` feature enabled pattern searches are SIMD optimised where
 /// possible.
 ///
