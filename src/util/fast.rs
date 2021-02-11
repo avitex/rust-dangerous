@@ -104,8 +104,17 @@ pub(crate) fn find_slice_reject(needle: &[u8], haystack: &[u8]) -> Option<usize>
     if haystack.is_empty() || needle.is_empty() {
         return None;
     }
+    if haystack.len() < needle.len() {
+        return Some(0);
+    }
     haystack
-        .windows(needle.len())
+        .chunks(needle.len())
         .enumerate()
-        .find_map(|(i, w)| if w == needle { None } else { Some(i) })
+        .find_map(|(i, w)| {
+            if w == needle {
+                None
+            } else {
+                Some(i * needle.len())
+            }
+        })
 }

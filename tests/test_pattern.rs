@@ -184,6 +184,33 @@ fn test_match_char_none() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// reject: bytes
+
+#[test]
+fn test_reject_bytes() {
+    assert_eq!(
+        read_all_ok!(b"1111!", |r| {
+            let v = r.take_while(b"11");
+            r.consume("!")?;
+            Ok(v)
+        }),
+        b"1111"[..]
+    );
+}
+
+#[test]
+fn test_reject_bytes_none() {
+    assert_eq!(
+        read_all_ok!(b"!", |r| {
+            let v = r.take_while(b"11");
+            r.consume("!")?;
+            Ok(v)
+        }),
+        b""[..]
+    );
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // match: bytes
 
 #[test]
@@ -217,6 +244,33 @@ fn test_match_bytes_none() {
         r.consume("!!")?;
         Ok(v)
     });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// reject: string
+
+#[test]
+fn test_reject_string() {
+    assert_eq!(
+        read_all_ok!("1111!", |r| {
+            let v = r.take_while("11");
+            r.consume("!")?;
+            Ok(v)
+        }),
+        "1111"[..]
+    );
+}
+
+#[test]
+fn test_reject_string_none() {
+    assert_eq!(
+        read_all_ok!("!", |r| {
+            let v = r.take_while("11");
+            r.consume("!")?;
+            Ok(v)
+        }),
+        ""[..]
+    );
 }
 
 ///////////////////////////////////////////////////////////////////////////////
