@@ -267,6 +267,24 @@ fn test_match_bytes_empty() {
     });
 }
 
+#[test]
+fn test_match_bytes_half_middle() {
+    let _ = read_all_err!(b"hel!lo", |r| {
+        let v = r.take_until(b"!!")?;
+        r.consume("hel!lo")?;
+        Ok(v)
+    });
+}
+
+#[test]
+fn test_match_bytes_half_end() {
+    let _ = read_all_err!(b"hello!", |r| {
+        let v = r.take_until(b"!!")?;
+        r.consume("hello!!")?;
+        Ok(v)
+    });
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // reject: string
 
