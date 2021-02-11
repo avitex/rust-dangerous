@@ -51,12 +51,15 @@ fuzz_target!(|data: &[u8]| {
     read_partial!(input_full.clone(), |r| r.take(rng.gen()));
     read_partial!(input_full.clone(), |r| r.skip(rng.gen()));
     // (take/skip/try_take/try_skip)_while
+    read_partial!(input_full.clone(), |r| Ok(r.skip_while(rng.gen::<u8>())));
+    read_partial!(input_full.clone(), |r| Ok(r.skip_while(input_a.as_dangerous())));
     read_partial!(input_full.clone(), |r| Ok(r.take_while(|c| c == rng.gen())));
     read_partial!(input_full.clone(), |r| Ok(r.skip_while(|c| c == rng.gen())));
     read_partial!(input_full.clone(), |r| r.try_take_while(|c| Ok(c == rng.gen())));
     read_partial!(input_full.clone(), |r| r.try_skip_while(|c| Ok(c == rng.gen())));
     // (take/skip)_until
     read_partial!(input_full.clone(), |r| Ok(r.take_until(rng.gen::<u8>())));
+    read_partial!(input_full.clone(), |r| Ok(r.take_until(input_a.as_dangerous())));
     read_partial!(input_full.clone(), |r| Ok(r.take_until_opt(|c| c == rng.gen())));
     read_partial!(input_full.clone(), |r| Ok(r.take_until_opt(|c| c == rng.gen())));
     // (take/skip/try_take/try_skip)_str_while
