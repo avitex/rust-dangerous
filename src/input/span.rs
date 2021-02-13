@@ -21,6 +21,18 @@ impl Span {
         }
     }
 
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Span;
+    ///
+    /// let parent = &[1, 2, 3, 4][..];
+    /// let sub = &parent[1..2];
+    /// assert_eq!(Span::from(sub).of(parent), Some(sub));
+    ///
+    /// let non_span = Span::from(&[1, 2, 2, 4][..]);
+    /// assert_eq!(non_span.of(parent), None);
+    /// ```
     #[must_use]
     pub fn of(self, parent: &[u8]) -> Option<&[u8]> {
         if self.is_within(parent.into()) {
@@ -37,7 +49,7 @@ impl Span {
     /// # Example
     ///
     /// ```
-    /// use dangerous::{Input, Span};
+    /// use dangerous::Span;
     ///
     /// let parent = &[1, 2, 3, 4][..];
     /// let sub_range = 1..2;
@@ -82,6 +94,17 @@ impl Span {
         self.end.as_ptr() as usize - self.start.as_ptr() as usize
     }
 
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Span;
+    ///
+    /// let bytes = &[0][..];
+    /// assert!(Span::from(bytes).non_empty().is_some());
+    ///
+    /// let bytes = &[][..];
+    /// assert!(Span::from(bytes).non_empty().is_none());
+    /// ```
     #[must_use]
     #[inline(always)]
     pub fn is_empty(self) -> bool {

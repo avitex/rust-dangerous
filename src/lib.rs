@@ -47,7 +47,7 @@
 #![deny(
     unused,
     rustdoc,
-    // missing_docs,
+    missing_docs,
     rust_2018_idioms,
     clippy::all,
     clippy::correctness,
