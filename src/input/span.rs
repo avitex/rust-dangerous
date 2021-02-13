@@ -21,6 +21,7 @@ impl Span {
         }
     }
 
+    #[must_use]
     pub fn of(self, parent: &[u8]) -> Option<&[u8]> {
         if self.is_within(parent.into()) {
             unsafe { Some(slice::from_raw_parts(self.start.as_ptr(), self.len())) }
@@ -65,6 +66,7 @@ impl Span {
         }
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn non_empty(self) -> Option<Self> {
         if self.is_empty() {
@@ -74,21 +76,25 @@ impl Span {
         }
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn len(self) -> usize {
         self.end.as_ptr() as usize - self.start.as_ptr() as usize
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn is_empty(self) -> bool {
         self.start == self.end
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn is_within(self, other: Span) -> bool {
         other.start <= self.start && other.end >= self.end
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn offset_within(self, other: Span) -> Option<usize> {
         if self.is_within(other) {
@@ -98,11 +104,13 @@ impl Span {
         }
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn is_start_of(self, other: Span) -> bool {
         self.is_empty() && other.start == self.start
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn is_end_of(self, other: Span) -> bool {
         self.is_empty() && other.end == self.end
@@ -120,17 +128,21 @@ impl Span {
     /// assert!(a.is_overlapping_start_of(b));
     ///
     /// ```
+    #[must_use]
     #[inline(always)]
     pub fn is_overlapping_start_of(self, other: Span) -> bool {
         other.start > self.start
     }
 
+    #[must_use]
     #[inline(always)]
     pub fn is_overlapping_end_of(self, other: Span) -> bool {
         other.end < self.end
     }
 
+    #[must_use]
     #[inline(always)]
+    #[allow(clippy::suspicious_operation_groupings)]
     pub fn is_start_within(self, other: Span) -> bool {
         other.start <= self.start && other.end > self.start
     }

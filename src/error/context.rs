@@ -189,6 +189,7 @@ impl fmt::Debug for CoreContext {
     }
 }
 
+#[must_use]
 pub struct DebugFor<'i> {
     input: MaybeString<'i>,
     context: CoreContext,

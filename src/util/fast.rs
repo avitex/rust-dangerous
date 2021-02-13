@@ -80,9 +80,8 @@ pub(crate) fn find_slice_match(needle: &[u8], haystack: &[u8]) -> Option<usize> 
                     return None;
                 } else if haystack[maybe_match_start..maybe_match_end] == *needle {
                     return Some(index);
-                } else {
-                    search_from = index + 1
                 }
+                search_from = index + 1
             }
         }
     }
