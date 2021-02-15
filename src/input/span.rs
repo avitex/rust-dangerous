@@ -225,7 +225,7 @@ impl Span {
         }
     }
 
-    /// Returns `None` if the span is empty, Some(Self) if not.
+    /// Returns `None` if the span is empty, `Some(Self)` if not.
     ///
     /// # Example
     ///

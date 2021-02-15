@@ -1,45 +1,17 @@
 use crate::fmt;
 use crate::input::{Input, MaybeString, Span};
 
-use super::{Backtrace, Context, ExpectedLength, ExpectedValid, ExpectedValue, Value};
 #[cfg(feature = "retry")]
-use super::{RetryRequirement, ToRetryRequirement};
+use super::RetryRequirement;
+use super::{Backtrace, Context, ExpectedLength, ExpectedValid, ExpectedValue, Value};
 
 /// Auto-trait for both [`WithContext`] and [`From`] for [`ExpectedValue`],
 /// [`ExpectedLength`] and [`ExpectedValid`].
-///
-/// Also requires [`ToRetryRequirement`] if the `retry` feature is enabled.
-#[cfg(feature = "retry")]
-pub trait Error<'i>:
-    WithContext<'i>
-    + From<ExpectedValue<'i>>
-    + From<ExpectedLength<'i>>
-    + From<ExpectedValid<'i>>
-    + ToRetryRequirement
-{
-}
-
-#[cfg(feature = "retry")]
-impl<'i, T> Error<'i> for T where
-    T: WithContext<'i>
-        + From<ExpectedValue<'i>>
-        + From<ExpectedLength<'i>>
-        + From<ExpectedValid<'i>>
-        + ToRetryRequirement
-{
-}
-
-/// Trait requiring [`WithContext`] and [`From`] for [`ExpectedValue`],
-/// [`ExpectedLength`] and [`ExpectedValid`].
-///
-/// Also requires [`ToRetryRequirement`] if the `retry` feature is enabled.
-#[cfg(not(feature = "retry"))]
 pub trait Error<'i>:
     WithContext<'i> + From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
 {
 }
 
-#[cfg(not(feature = "retry"))]
 impl<'i, T> Error<'i> for T where
     T: WithContext<'i>
         + From<ExpectedValue<'i>>
