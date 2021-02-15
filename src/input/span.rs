@@ -38,7 +38,33 @@ impl Span {
         self.start == self.end
     }
 
-    /// Returns `true` if the span is completely within the bounds of the specified parent.
+    /// Returns `true` if the span is completely within the bounds of the
+    /// specified parent.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Within
+    /// let parent = Span::from(&bytes[16..32]);
+    /// let child = Span::from(&bytes[20..24]);
+    /// assert!(child.is_within(parent));
+    /// assert!(parent.is_within(parent));
+    ///
+    /// // Left out of bound
+    /// let parent = Span::from(&bytes[16..32]);
+    /// let child = Span::from(&bytes[15..24]);
+    /// assert!(!child.is_within(parent));
+    ///
+    /// // Right out of bound
+    /// let parent = Span::from(&bytes[16..32]);
+    /// let child = Span::from(&bytes[20..33]);
+    /// assert!(!child.is_within(parent));
+    ///
+    /// // Both out of bound
+    /// let parent = Span::from(&bytes[16..32]);
+    /// let child = Span::from(&bytes[15..33]);
+    /// assert!(!child.is_within(parent));
+    /// ```
     #[must_use]
     #[inline(always)]
     pub fn is_within(self, other: Span) -> bool {
