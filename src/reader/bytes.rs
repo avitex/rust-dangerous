@@ -140,52 +140,52 @@ impl<'i, E> BytesReader<'i, E> {
 
     impl_read_num!(
         u16,
-        le: (read_u16_le, CoreOperation::ReadU16LE),
-        be: (read_u16_be, CoreOperation::ReadU16BE)
+        le: (read_u16_le, CoreOperation::ReadU16Le),
+        be: (read_u16_be, CoreOperation::ReadU16Be)
     );
     impl_read_num!(
         i16,
-        le: (read_i16_le, CoreOperation::ReadI16LE),
-        be: (read_i16_be, CoreOperation::ReadI16BE)
+        le: (read_i16_le, CoreOperation::ReadI16Le),
+        be: (read_i16_be, CoreOperation::ReadI16Be)
     );
     impl_read_num!(
         u32,
-        le: (read_u32_le, CoreOperation::ReadU32LE),
-        be: (read_u32_be, CoreOperation::ReadU32BE)
+        le: (read_u32_le, CoreOperation::ReadU32Le),
+        be: (read_u32_be, CoreOperation::ReadU32Be)
     );
     impl_read_num!(
         i32,
-        le: (read_i32_le, CoreOperation::ReadU32LE),
-        be: (read_i32_be, CoreOperation::ReadU32BE)
+        le: (read_i32_le, CoreOperation::ReadU32Le),
+        be: (read_i32_be, CoreOperation::ReadU32Be)
     );
     impl_read_num!(
         u64,
-        le: (read_u64_le, CoreOperation::ReadU64LE),
-        be: (read_u64_be, CoreOperation::ReadU64BE)
+        le: (read_u64_le, CoreOperation::ReadU64Le),
+        be: (read_u64_be, CoreOperation::ReadU64Be)
     );
     impl_read_num!(
         i64,
-        le: (read_i64_le, CoreOperation::ReadI64LE),
-        be: (read_i64_be, CoreOperation::ReadI64BE)
+        le: (read_i64_le, CoreOperation::ReadI64Le),
+        be: (read_i64_be, CoreOperation::ReadI64Be)
     );
     impl_read_num!(
         u128,
-        le: (read_u128_le, CoreOperation::ReadU128LE),
-        be: (read_u128_be, CoreOperation::ReadU128BE)
+        le: (read_u128_le, CoreOperation::ReadU128Le),
+        be: (read_u128_be, CoreOperation::ReadU128Be)
     );
     impl_read_num!(
         i128,
-        le: (read_i128_le, CoreOperation::ReadI128LE),
-        be: (read_i128_be, CoreOperation::ReadI128BE)
+        le: (read_i128_le, CoreOperation::ReadI128Le),
+        be: (read_i128_be, CoreOperation::ReadI128Be)
     );
     impl_read_num!(
         f32,
-        le: (read_f32_le, CoreOperation::ReadF32LE),
-        be: (read_f32_be, CoreOperation::ReadF32BE)
+        le: (read_f32_le, CoreOperation::ReadF32Le),
+        be: (read_f32_be, CoreOperation::ReadF32Be)
     );
     impl_read_num!(
         f64,
-        le: (read_f64_le, CoreOperation::ReadF64LE),
-        be: (read_f64_be, CoreOperation::ReadF64BE)
+        le: (read_f64_le, CoreOperation::ReadF64Le),
+        be: (read_f64_be, CoreOperation::ReadF64Be)
     );
 }

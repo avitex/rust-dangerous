@@ -244,26 +244,26 @@ pub enum CoreOperation {
     // Reading
     ReadU8,
     ReadI8,
-    ReadU16LE,
-    ReadI16LE,
-    ReadU16BE,
-    ReadI16BE,
-    ReadU32LE,
-    ReadI32LE,
-    ReadU32BE,
-    ReadI32BE,
-    ReadU64LE,
-    ReadI64LE,
-    ReadU64BE,
-    ReadI64BE,
-    ReadU128LE,
-    ReadI128LE,
-    ReadU128BE,
-    ReadI128BE,
-    ReadF32LE,
-    ReadF32BE,
-    ReadF64LE,
-    ReadF64BE,
+    ReadU16Le,
+    ReadI16Le,
+    ReadU16Be,
+    ReadI16Be,
+    ReadU32Le,
+    ReadI32Le,
+    ReadU32Be,
+    ReadI32Be,
+    ReadU64Le,
+    ReadI64Le,
+    ReadU64Be,
+    ReadI64Be,
+    ReadU128Le,
+    ReadI128Le,
+    ReadU128Be,
+    ReadI128Be,
+    ReadF32Le,
+    ReadF32Be,
+    ReadF64Le,
+    ReadF64Be,
     ReadChar,
     // Errors
     RecoverIf,
@@ -310,26 +310,26 @@ impl CoreOperation {
             Self::PeekChar => "peek a char",
             Self::ReadU8 => "read a u8",
             Self::ReadI8 => "read a i8",
-            Self::ReadU16LE => "read a little-endian encoded u16",
-            Self::ReadI16LE => "read a little-endian encoded i16",
-            Self::ReadU16BE => "read a big-endian encoded u16",
-            Self::ReadI16BE => "read a big-endian encoded i16",
-            Self::ReadU32LE => "read a little-endian encoded u32",
-            Self::ReadI32LE => "read a little-endian encoded i32",
-            Self::ReadU32BE => "read a big-endian encoded u32",
-            Self::ReadI32BE => "read a big-endian encoded i32",
-            Self::ReadU64LE => "read a little-endian encoded u64",
-            Self::ReadI64LE => "read a little-endian encoded i64",
-            Self::ReadU64BE => "read a big-endian encoded u64",
-            Self::ReadI64BE => "read a big-endian encoded i64",
-            Self::ReadU128LE => "read a little-endian encoded u128",
-            Self::ReadI128LE => "read a little-endian encoded i128",
-            Self::ReadU128BE => "read a big-endian encoded u128",
-            Self::ReadI128BE => "read a big-endian encoded i128",
-            Self::ReadF32LE => "read a little-endian encoded f32",
-            Self::ReadF32BE => "read a big-endian encoded f32",
-            Self::ReadF64LE => "read a little-endian encoded f64",
-            Self::ReadF64BE => "read a big-endian encoded f64",
+            Self::ReadU16Le => "read a little-endian encoded u16",
+            Self::ReadI16Le => "read a little-endian encoded i16",
+            Self::ReadU16Be => "read a big-endian encoded u16",
+            Self::ReadI16Be => "read a big-endian encoded i16",
+            Self::ReadU32Le => "read a little-endian encoded u32",
+            Self::ReadI32Le => "read a little-endian encoded i32",
+            Self::ReadU32Be => "read a big-endian encoded u32",
+            Self::ReadI32Be => "read a big-endian encoded i32",
+            Self::ReadU64Le => "read a little-endian encoded u64",
+            Self::ReadI64Le => "read a little-endian encoded i64",
+            Self::ReadU64Be => "read a big-endian encoded u64",
+            Self::ReadI64Be => "read a big-endian encoded i64",
+            Self::ReadU128Le => "read a little-endian encoded u128",
+            Self::ReadI128Le => "read a little-endian encoded i128",
+            Self::ReadU128Be => "read a big-endian encoded u128",
+            Self::ReadI128Be => "read a big-endian encoded i128",
+            Self::ReadF32Le => "read a little-endian encoded f32",
+            Self::ReadF32Be => "read a big-endian encoded f32",
+            Self::ReadF64Le => "read a little-endian encoded f64",
+            Self::ReadF64Be => "read a big-endian encoded f64",
             Self::ReadChar => "read a char",
             Self::RecoverIf => "recover if a condition returns true",
             Self::Verify => "read and verify input",
@@ -388,23 +388,6 @@ impl fmt::DisplayBase for CoreExpected {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// FIXME
-#[inline(always)]
-pub(crate) fn with_context<'i, F, T, E>(
-    context: impl Context,
-    input: impl Input<'i>,
-    f: F,
-) -> Result<T, E>
-where
-    E: WithContext<'i>,
-    F: FnOnce() -> Result<T, E>,
-{
-    match f() {
-        Ok(ok) => Ok(ok),
-        Err(err) => Err(err.with_context(context).with_input(input)),
-    }
-}
-
 /// Wraps an error making all contexts added to it children of the last
 /// operation.
 pub struct WithChildContext<E>(E);
@@ -427,10 +410,12 @@ where
 {
     const PASSTHROUGH: bool = E::PASSTHROUGH;
 
+    #[inline(always)]
     fn with_input(self, _input: impl Input<'i>) -> Self {
         self
     }
 
+    #[inline(always)]
     fn with_context(self, context: impl Context) -> Self {
         Self(self.0.with_context(ChildContext(context)))
     }
@@ -456,5 +441,23 @@ where
 
     fn is_child(&self) -> bool {
         true
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+#[inline(always)]
+pub(crate) fn with_context<'i, F, T, E>(
+    context: impl Context,
+    input: impl Input<'i>,
+    f: F,
+) -> Result<T, E>
+where
+    E: WithContext<'i>,
+    F: FnOnce() -> Result<T, E>,
+{
+    match f() {
+        Ok(ok) => Ok(ok),
+        Err(err) => Err(err.with_context(context).with_input(input)),
     }
 }

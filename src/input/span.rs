@@ -190,6 +190,8 @@ impl Span {
     #[must_use]
     pub fn of(self, parent: &[u8]) -> Option<&[u8]> {
         if self.is_within(parent.into()) {
+            // SAFETY: we have checked that the slice is valid within the
+            // parent, so we can create a slice from our bounds.
             unsafe { Some(slice::from_raw_parts(self.start.as_ptr(), self.len())) }
         } else {
             None
@@ -273,6 +275,8 @@ impl From<&[u8]> for Span {
     #[inline(always)]
     fn from(value: &[u8]) -> Self {
         let range = value.as_ptr_range();
+        // SAFETY: it is invalid for a slice ptr to be null.
+        // See: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html
         unsafe {
             Self {
                 start: NonNull::new_unchecked(range.start as _),

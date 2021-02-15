@@ -208,7 +208,6 @@ impl<'i> Bytes<'i> {
         while let Some(result) = chars.next() {
             match result {
                 Ok(c) => {
-                    // TODO: remove with_contexts?
                     // Check if the char doesn't match the predicate.
                     let should_continue = with_context(
                         CoreContext::from_operation(operation, self.span()),

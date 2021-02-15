@@ -319,7 +319,7 @@ fn take_str_head_tail(bytes: &[u8], width: usize, cjk: bool) -> Visible<'_> {
         // SAFETY: all chars are checked from the char iterator
         unsafe {
             if start == end {
-                let s = utf8::from_unchecked(&bytes[..]);
+                let s = utf8::from_unchecked(bytes);
                 if cjk {
                     return Visible::StrCjk(s);
                 }
@@ -341,9 +341,9 @@ fn take_bytes_head_tail(bytes: &[u8], width: usize, show_ascii: bool) -> Visible
     let (start, end) = take_head_tail(iter, width, true, HEAD_TAIL_HAS_MORE_COST).unwrap();
     if start == end {
         if show_ascii {
-            Visible::BytesAscii(&bytes[..])
+            Visible::BytesAscii(bytes)
         } else {
-            Visible::Bytes(&bytes[..])
+            Visible::Bytes(bytes)
         }
     } else {
         let left = &bytes[..start];
