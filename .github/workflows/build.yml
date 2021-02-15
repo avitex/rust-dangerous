@@ -38,7 +38,7 @@ jobs:
         run: cargo test --no-default-features --features retry
       - name: Lint code
         if: ${{ matrix.rust-toolchain == 'stable' }}
-        run: cargo fmt -- --check && cargo clippy
+        run: cargo fmt -- --check && cargo clippy --all-features
   code_coverage:
     runs-on: ubuntu-latest
     steps:

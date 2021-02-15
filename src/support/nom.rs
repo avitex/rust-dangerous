@@ -177,7 +177,7 @@ where
     where
         E: WithContext<'i>,
     {
-        for (input, kind) in self.errors.into_iter() {
+        for (input, kind) in self.errors {
             error = error.with_context(NomVerboseContext {
                 span: input.as_bytes().into(),
                 kind,
