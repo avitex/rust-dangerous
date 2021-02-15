@@ -44,6 +44,10 @@ impl Span {
     /// # Examples
     ///
     /// ```
+    /// use dangerous::Span;
+    ///
+    /// let bytes = [0_u8; 64];
+    ///
     /// // Within
     /// let parent = Span::from(&bytes[16..32]);
     /// let child = Span::from(&bytes[20..24]);
