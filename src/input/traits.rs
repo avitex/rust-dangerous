@@ -97,6 +97,7 @@ pub trait Input<'i>: Private<'i> {
         self.bound() == Bound::Both
     }
 
+    /// Returns a [`Span`] from the start of `self` to the end.
     #[inline(always)]
     fn span(&self) -> Span {
         Span::from(self.as_dangerous_bytes())

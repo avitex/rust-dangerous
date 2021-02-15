@@ -26,6 +26,7 @@ impl<'i> MaybeString<'i> {
         }
     }
 
+    /// Returns a [`Span`] from the start of `self` to the end.
     pub fn span(&self) -> Span {
         match self {
             Self::Bytes(v) => v.span(),

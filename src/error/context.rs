@@ -7,6 +7,7 @@ use super::WithContext;
 
 /// Information surrounding an error.
 pub trait Context: 'static {
+    /// Returns the [`Span`] of input the error occurred if known.
     fn span(&self) -> Option<Span> {
         None
     }
@@ -28,6 +29,9 @@ pub trait Context: 'static {
         Err(fmt::Error)
     }
 
+    /// Returns `true` if the context belongs to a parent operation.
+    ///
+    /// This is used in adding external backtraces.
     fn is_child(&self) -> bool {
         false
     }
@@ -137,6 +141,7 @@ where
 #[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct CoreContext {
+    /// The section of input that points to the cause of the error.
     pub span: Span,
     /// Value for [`Context::operation()`].
     pub operation: CoreOperation,
@@ -145,18 +150,20 @@ pub struct CoreContext {
 }
 
 impl CoreContext {
-    pub fn debug_for(self, input: MaybeString<'_>) -> DebugFor<'_> {
-        DebugFor {
-            input,
-            context: self,
-        }
-    }
-
     pub(crate) fn from_operation(operation: CoreOperation, span: Span) -> Self {
         Self {
             span,
             operation,
             expected: CoreExpected::Unknown,
+        }
+    }
+
+    /// Wraps the context with improved debugging support given the containing
+    /// input.
+    pub fn debug_for(self, input: MaybeString<'_>) -> DebugFor<'_> {
+        DebugFor {
+            input,
+            context: self,
         }
     }
 }
@@ -398,13 +405,17 @@ where
     }
 }
 
+/// Wraps an error making all contexts added to it children of the last
+/// operation.
 pub struct WithChildContext<E>(E);
 
 impl<E> WithChildContext<E> {
+    /// Wrap the error.
     pub fn new(inner: E) -> Self {
         Self(inner)
     }
 
+    /// Unwrap the error from the behaviour.
     pub fn unwrap(self) -> E {
         self.0
     }

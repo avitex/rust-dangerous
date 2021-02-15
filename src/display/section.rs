@@ -148,8 +148,8 @@ impl<'a> Section<'a> {
         width: usize,
         format: PreferredFormat,
     ) -> Self {
-        let span_offset = if let Some(span_offset) = span.offset_within(full.into()) {
-            span_offset
+        let span_offset = if let Some(span_range) = span.range_of(full.into()) {
+            span_range.start
         } else {
             return Self::from_head_tail(full, width, format);
         };

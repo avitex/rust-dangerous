@@ -6,6 +6,16 @@ use crate::display::InputDisplay;
 use crate::fmt;
 use crate::input::MaybeString;
 
+/// Range of [`Input`].
+///
+/// Spans are specific to the input chain they were created in as the range is
+/// stored as raw start and end pointers.
+///
+/// You can create a span from either [`Input::span()`] or from a raw slice via
+/// [`Span::from()`].
+///
+/// [`Input`]: crate::Input  
+/// [`Input::span()`]: crate::Input::span()
 #[must_use]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Span {
@@ -14,13 +24,127 @@ pub struct Span {
 }
 
 impl Span {
+    /// Returns the number of bytes spanned.
+    #[must_use]
+    #[inline(always)]
+    pub fn len(self) -> usize {
+        self.end.as_ptr() as usize - self.start.as_ptr() as usize
+    }
+
+    /// Returns `true` if no bytes are spanned.
+    #[must_use]
+    #[inline(always)]
+    pub fn is_empty(self) -> bool {
+        self.start == self.end
+    }
+
+    /// Returns `true` if the span is completely within the bounds of the specified parent.
+    #[must_use]
+    #[inline(always)]
+    pub fn is_within(self, other: Span) -> bool {
+        other.start <= self.start && other.end >= self.end
+    }
+
+    /// Returns `true` if `self` points to the start of `other`, spanning no bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Span;
+    ///
+    /// let bytes = &[1, 2, 3, 4][..];
+    /// let span = Span::from(bytes);
+    ///
+    /// assert!(span.start().is_start_of(span));
+    /// assert!(!span.is_start_of(span));
+    /// ```
+    #[must_use]
+    #[inline(always)]
+    pub fn is_start_of(self, other: Span) -> bool {
+        self.is_empty() && other.start == self.start
+    }
+
+    /// Returns `true` if `self` points to the end of `other`, spanning no bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Span;
+    ///
+    /// let bytes = &[1, 2, 3, 4][..];
+    /// let span = Span::from(bytes);
+    ///
+    /// assert!(span.end().is_end_of(span));
+    /// assert!(!span.is_end_of(span));
+    /// ```
+    #[must_use]
+    #[inline(always)]
+    pub fn is_end_of(self, other: Span) -> bool {
+        self.is_empty() && other.end == self.end
+    }
+
+    /// Returns `true` if `self` overlaps the start of `other`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dangerous::Span;
+    ///
+    /// let all = b"0123456789";
+    /// let a = Span::from(&all[0..9]);
+    /// let b = Span::from(&all[6..9]);
+    ///
+    /// assert!(a.is_overlapping_start_of(b));
+    ///
+    /// ```
+    #[must_use]
+    #[inline(always)]
+    pub fn is_overlapping_start_of(self, other: Span) -> bool {
+        other.start > self.start
+    }
+
+    /// Returns `true` if `self` overlaps the end of `other`.
+    #[must_use]
+    #[inline(always)]
+    pub fn is_overlapping_end_of(self, other: Span) -> bool {
+        other.end < self.end
+    }
+
+    /// Returns `true` if `self`'s start is within `other`.
+    #[must_use]
+    #[inline(always)]
+    #[allow(clippy::suspicious_operation_groupings)]
+    pub fn is_start_within(self, other: Span) -> bool {
+        self.start >= other.start && self.start < other.end
+    }
+
+    /// Returns `true` if `self`'s end is within `other`.
+    #[must_use]
+    #[inline(always)]
+    #[allow(clippy::suspicious_operation_groupings)]
+    pub fn is_end_within(self, other: Span) -> bool {
+        self.end >= other.start && self.end < other.end
+    }
+
+    /// Returns a span pointing to the start of self, spanning no bytes.
     pub fn start(self) -> Self {
         Self {
             start: self.start,
+            end: self.start,
+        }
+    }
+
+    /// Returns a span pointing to the end of self, spanning no bytes.
+    pub fn end(self) -> Self {
+        Self {
+            start: self.end,
             end: self.end,
         }
     }
 
+    /// Returns the sub slice of the provided parent `self` refers to or `None`
+    /// if `self` is not within the parent.
+    ///
     /// # Example
     ///
     /// ```
@@ -58,6 +182,7 @@ impl Span {
     /// assert_eq!(Span::from(sub).range_of(parent.into()), Some(sub_range))
     /// ```
     #[must_use]
+    #[inline(always)]
     pub fn range_of(self, parent: Span) -> Option<Range<usize>> {
         if self.is_within(parent) {
             let start_offset = self.start.as_ptr() as usize - parent.start.as_ptr() as usize;
@@ -68,32 +193,8 @@ impl Span {
         }
     }
 
-    #[inline(always)]
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn debug_for(self, input: MaybeString<'_>) -> DebugFor<'_> {
-        DebugFor {
-            bytes: input.as_dangerous_bytes(),
-            str_hint: input.is_string(),
-            span: self,
-        }
-    }
-
-    #[must_use]
-    #[inline(always)]
-    pub fn non_empty(self) -> Option<Self> {
-        if self.is_empty() {
-            None
-        } else {
-            Some(self)
-        }
-    }
-
-    #[must_use]
-    #[inline(always)]
-    pub fn len(self) -> usize {
-        self.end.as_ptr() as usize - self.start.as_ptr() as usize
-    }
-
+    /// Returns `None` if the span is empty, Some(Self) if not.
+    ///
     /// # Example
     ///
     /// ```
@@ -107,67 +208,24 @@ impl Span {
     /// ```
     #[must_use]
     #[inline(always)]
-    pub fn is_empty(self) -> bool {
-        self.start == self.end
-    }
-
-    #[must_use]
-    #[inline(always)]
-    pub fn is_within(self, other: Span) -> bool {
-        other.start <= self.start && other.end >= self.end
-    }
-
-    #[must_use]
-    #[inline(always)]
-    pub fn offset_within(self, other: Span) -> Option<usize> {
-        if self.is_within(other) {
-            Some(self.start.as_ptr() as usize - other.start.as_ptr() as usize)
-        } else {
+    pub fn non_empty(self) -> Option<Self> {
+        if self.is_empty() {
             None
+        } else {
+            Some(self)
         }
     }
 
-    #[must_use]
+    /// Wraps the span with improved debugging support given the containing
+    /// input.
     #[inline(always)]
-    pub fn is_start_of(self, other: Span) -> bool {
-        self.is_empty() && other.start == self.start
-    }
-
-    #[must_use]
-    #[inline(always)]
-    pub fn is_end_of(self, other: Span) -> bool {
-        self.is_empty() && other.end == self.end
-    }
-
-    /// # Example
-    ///
-    /// ```
-    /// use dangerous::Span;
-    ///
-    /// let all = b"0123456789";
-    /// let a = Span::from(&all[0..9]);
-    /// let b = Span::from(&all[6..9]);
-    ///
-    /// assert!(a.is_overlapping_start_of(b));
-    ///
-    /// ```
-    #[must_use]
-    #[inline(always)]
-    pub fn is_overlapping_start_of(self, other: Span) -> bool {
-        other.start > self.start
-    }
-
-    #[must_use]
-    #[inline(always)]
-    pub fn is_overlapping_end_of(self, other: Span) -> bool {
-        other.end < self.end
-    }
-
-    #[must_use]
-    #[inline(always)]
-    #[allow(clippy::suspicious_operation_groupings)]
-    pub fn is_start_within(self, other: Span) -> bool {
-        other.start <= self.start && other.end > self.start
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn debug_for(self, input: MaybeString<'_>) -> DebugFor<'_> {
+        DebugFor {
+            bytes: input.as_dangerous_bytes(),
+            str_hint: input.is_string(),
+            span: self,
+        }
     }
 }
 
