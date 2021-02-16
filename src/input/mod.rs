@@ -51,13 +51,13 @@ pub enum Bound {
     /// The end of the [`Input`](crate::Input) may however change in further passes.
     Start,
     /// Both sides of the [`Input`](crate::Input) in further passes will not change.
-    Both,
+    StartEnd,
 }
 
 impl Bound {
     #[inline(always)]
     pub(crate) fn force_close() -> Self {
-        Bound::Both
+        Bound::StartEnd
     }
 
     /// An end is opened when it is detected a `take_consumed` reader could have
@@ -66,7 +66,7 @@ impl Bound {
     pub(crate) fn open_end(self) -> Self {
         match self {
             // If at least the start is bound make sure the end is unbound.
-            Bound::Both | Bound::Start => Bound::Start,
+            Bound::StartEnd | Bound::Start => Bound::Start,
             // If the start is unbound both sides of the input are unbound.
             Bound::None => Bound::None,
         }
@@ -89,7 +89,7 @@ impl Bound {
     pub(crate) fn for_end(self) -> Self {
         match self {
             // If both sides are bounded nothing will change.
-            Bound::Both => Bound::Both,
+            Bound::StartEnd => Bound::StartEnd,
             // As we have skipped to the end without checking, we don't know
             // where the start is, perhaps the true end is not known yet!
             Bound::Start | Bound::None => Bound::None,

@@ -90,11 +90,11 @@ pub trait Input<'i>: Private<'i> {
         self.byte_len() == 0
     }
 
-    /// Returns `true` if [`Self::bound()`] is [`Bound::Both`].
+    /// Returns `true` if [`Self::bound()`] is [`Bound::StartEnd`].
     #[must_use]
     #[inline(always)]
     fn is_bound(&self) -> bool {
-        self.bound() == Bound::Both
+        self.bound() == Bound::StartEnd
     }
 
     /// Returns a [`Span`] from the start of `self` to the end.

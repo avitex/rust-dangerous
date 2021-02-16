@@ -165,7 +165,7 @@ fn test_take_while_partial() {
         Ok(input)
     });
     assert_eq!(input, b"hello"[..]);
-    assert_eq!(input.bound(), Bound::Both);
+    assert_eq!(input.bound(), Bound::StartEnd);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -188,7 +188,7 @@ fn test_try_take_while_partial() {
         Ok(v)
     });
     assert_eq!(input, b"hello"[..]);
-    assert_eq!(input.bound(), Bound::Both);
+    assert_eq!(input.bound(), Bound::StartEnd);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ fn test_take_consumed_all_bound() {
         }))
     });
     assert_eq!(consumed, b"hello"[..]);
-    assert_eq!(consumed.bound(), Bound::Both);
+    assert_eq!(consumed.bound(), Bound::StartEnd);
 }
 
 #[test]
@@ -227,7 +227,7 @@ fn test_take_consumed_partial_bound() {
         Ok(consumed)
     });
     assert_eq!(consumed, b"hel"[..]);
-    assert_eq!(consumed.bound(), Bound::Both);
+    assert_eq!(consumed.bound(), Bound::StartEnd);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -254,7 +254,7 @@ fn test_try_take_consumed_all_bound() {
         })
     });
     assert_eq!(consumed, b"hello"[..]);
-    assert_eq!(consumed.bound(), Bound::Both);
+    assert_eq!(consumed.bound(), Bound::StartEnd);
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn test_try_take_consumed_partial_bound() {
         Ok(consumed)
     });
     assert_eq!(consumed, b"hel"[..]);
-    assert_eq!(consumed.bound(), Bound::Both);
+    assert_eq!(consumed.bound(), Bound::StartEnd);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

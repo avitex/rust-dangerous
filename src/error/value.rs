@@ -32,7 +32,7 @@ impl<'i> Value<'i> {
 
     /// Returns an [`InputDisplay`] for formatting.
     pub fn display(&self) -> InputDisplay<'_> {
-        let display = Bytes::new(self.as_bytes(), Bound::Both).display();
+        let display = Bytes::new(self.as_bytes(), Bound::StartEnd).display();
         match self.0 {
             ValueInner::Byte(_) | ValueInner::Bytes(_) => display,
             ValueInner::Char(_) | ValueInner::String(_) => display.str_hint(),

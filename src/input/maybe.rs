@@ -47,10 +47,10 @@ impl<'i> MaybeString<'i> {
         }
     }
 
-    /// Returns `true` if [`Self::bound()`] is [`Bound::Both`].
+    /// Returns `true` if [`Self::bound()`] is [`Bound::StartEnd`].
     #[must_use]
     pub fn is_bound(&self) -> bool {
-        self.bound() == Bound::Both
+        self.bound() == Bound::StartEnd
     }
 
     /// Returns the inner [`Input`]s [`Bound`].
