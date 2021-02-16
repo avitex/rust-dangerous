@@ -11,12 +11,10 @@ unsafe impl zc::NoInteriorMut for crate::error::CoreContext {}
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
 unsafe impl zc::NoInteriorMut for crate::error::Fatal {}
 
-#[cfg(feature = "retry")]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "zc", feature = "retry"))))]
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
 unsafe impl zc::NoInteriorMut for crate::error::Invalid {}
 
-#[cfg(feature = "retry")]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "zc", feature = "retry"))))]
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
 unsafe impl zc::NoInteriorMut for crate::error::RetryRequirement {}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]

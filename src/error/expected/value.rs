@@ -1,11 +1,7 @@
 use crate::error::Value;
+use crate::error::{CoreContext, RetryRequirement, ToRetryRequirement};
 use crate::fmt;
 use crate::input::MaybeString;
-
-use super::CoreContext;
-
-#[cfg(feature = "retry")]
-use super::{RetryRequirement, ToRetryRequirement};
 
 /// An error representing a failed exact value requirement of
 /// [`Input`](crate::Input).
@@ -49,14 +45,11 @@ impl<'i> fmt::Debug for ExpectedValue<'i> {
 
 impl<'i> fmt::DisplayBase for ExpectedValue<'i> {
     fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        #[cfg(feature = "retry")]
         if self.is_fatal() {
             w.write_str("found a different value to the exact expected")
         } else {
             w.write_str("not enough input to match expected value")
         }
-        #[cfg(not(feature = "retry"))]
-        w.write_str("found a different value to the exact expected")
     }
 }
 
@@ -66,7 +59,6 @@ impl<'i> fmt::Display for ExpectedValue<'i> {
     }
 }
 
-#[cfg(feature = "retry")]
 impl<'i> ToRetryRequirement for ExpectedValue<'i> {
     #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {

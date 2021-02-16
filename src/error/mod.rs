@@ -23,10 +23,8 @@ mod backtrace;
 mod context;
 mod expected;
 mod fatal;
-#[cfg(feature = "retry")]
 mod invalid;
 mod length;
-#[cfg(feature = "retry")]
 mod retry;
 mod traits;
 mod value;
@@ -39,10 +37,8 @@ pub use self::context::{
 };
 pub use self::expected::{Expected, ExpectedLength, ExpectedValid, ExpectedValue};
 pub use self::fatal::Fatal;
-#[cfg(feature = "retry")]
 pub use self::invalid::Invalid;
 pub use self::length::Length;
-#[cfg(feature = "retry")]
 pub use self::retry::{RetryRequirement, ToRetryRequirement};
 pub use self::traits::{Details, Error, External, WithContext};
 pub use self::value::Value;

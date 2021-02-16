@@ -1,11 +1,7 @@
 use crate::display::byte_count;
-use crate::error::Length;
+use crate::error::{CoreContext, Length, RetryRequirement, ToRetryRequirement};
 use crate::fmt;
 use crate::input::MaybeString;
-
-use super::CoreContext;
-#[cfg(feature = "retry")]
-use super::{RetryRequirement, ToRetryRequirement};
 
 /// An error representing a failed requirement for a length of
 /// [`Input`](crate::Input).
@@ -22,8 +18,9 @@ impl<'i> ExpectedLength<'i> {
     ///
     /// This doesn't not take into account the section of input being processed
     /// when this error occurred. If you wish to work out the requirement to
-    /// continue processing input use
-    /// [`ToRetryRequirement::to_retry_requirement()`].
+    /// continue processing input use [`to_retry_requirement()`].
+    ///
+    /// [`to_retry_requirement()`]: Self::to_retry_requirement()
     #[inline(always)]
     pub fn len(&self) -> Length {
         self.len
@@ -69,7 +66,6 @@ impl<'i> fmt::Display for ExpectedLength<'i> {
     }
 }
 
-#[cfg(feature = "retry")]
 impl<'i> ToRetryRequirement for ExpectedLength<'i> {
     #[inline]
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {

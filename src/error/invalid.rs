@@ -30,7 +30,6 @@ use super::{
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[must_use = "error must be handled"]
-#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub struct Invalid {
     retry_requirement: Option<RetryRequirement>,
 }

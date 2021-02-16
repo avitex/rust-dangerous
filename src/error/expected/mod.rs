@@ -10,21 +10,19 @@ pub use self::value::ExpectedValue;
 use alloc::boxed::Box;
 
 use crate::display::ErrorDisplay;
+use crate::error::{
+    Backtrace, BacktraceBuilder, Context, Details, RetryRequirement, ToRetryRequirement, Value,
+    WithContext,
+};
 use crate::fmt;
 use crate::input::{Input, MaybeString};
-
-use super::{Backtrace, BacktraceBuilder, Context, CoreContext, Details, Value, WithContext};
-
-#[cfg(feature = "retry")]
-use super::{RetryRequirement, ToRetryRequirement};
 
 #[cfg(feature = "full-backtrace")]
 type ExpectedBacktrace = crate::error::FullBacktrace;
 #[cfg(not(feature = "full-backtrace"))]
 type ExpectedBacktrace = crate::error::RootBacktrace;
 
-/// An error that [`Details`] what went wrong while reading and may be retried
-/// with the `retry` feature enabled.
+/// An error that [`Details`] what went wrong while reading and may be retried.
 ///
 /// - Enable the `full-backtrace` feature (enabled by default), to collect of
 ///   all contexts with [`Expected`].
@@ -120,7 +118,6 @@ where
     }
 }
 
-#[cfg(feature = "retry")]
 impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         match &self.kind {
@@ -139,7 +136,7 @@ impl<'i, S> ToRetryRequirement for Expected<'i, S> {
     }
 }
 
-#[cfg(all(feature = "alloc", feature = "retry"))]
+#[cfg(feature = "alloc")]
 impl<'i, S> ToRetryRequirement for Box<Expected<'i, S>> {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         (**self).to_retry_requirement()

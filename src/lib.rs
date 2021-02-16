@@ -19,7 +19,6 @@
 //! | ---------------- | ----------- | -------------------------------------------------- |
 //! | `std`            | **Enabled** | Enables `std::error::Error` support and `alloc`    |
 //! | `alloc`          | **Enabled** | Enables allocations.                               |
-//! | `retry`          | **Enabled** | Enables retry support.                             |
 //! | `simd`           | **Enabled** | Enables all supported SIMD optimisations.          |
 //! | `unicode`        | **Enabled** | Enables improved unicode printing support.         |
 //! | `full-backtrace` | **Enabled** | Enables collection of all contexts for `Expected`. |
@@ -84,11 +83,8 @@ mod util;
 pub mod display;
 pub mod error;
 
-pub use self::error::{Error, Expected, Fatal};
-#[cfg(feature = "retry")]
-pub use self::error::{Invalid, ToRetryRequirement};
-pub use self::input::Bound;
-pub use self::input::{input, Bytes, Input, MaybeString, Pattern, Span, String};
+pub use self::error::{Error, Expected, Fatal, Invalid, ToRetryRequirement};
+pub use self::input::{input, Bound, Bytes, Input, MaybeString, Pattern, Span, String};
 pub use self::reader::{BytesReader, Peek, Reader, StringReader};
 
 // Re-exported types from core::fmt along with `DisplayBase` and `Write`.

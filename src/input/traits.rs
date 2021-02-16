@@ -324,7 +324,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                     Ok(unsafe { self.split_at_byte_unchecked(mid) })
                 }
                 Err(expected) => Err(E::from(ExpectedValid {
-                    #[cfg(feature = "retry")]
                     retry_requirement: None,
                     context: CoreContext {
                         span: self.as_dangerous_bytes()[mid..mid].into(),
@@ -627,7 +626,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             let tail = reader.take_remaining();
             let span = self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()].into();
             Err(E::from(ExpectedValid {
-                #[cfg(feature = "retry")]
                 retry_requirement: None,
                 context: CoreContext {
                     span,
@@ -670,7 +668,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                 context.span =
                     self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()].into();
                 Err(E::from(ExpectedValid {
-                    #[cfg(feature = "retry")]
                     retry_requirement: None,
                     context,
                     input: self.into_maybe_string(),
@@ -729,7 +726,6 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         Ex: External<'i>,
     {
         let error = E::from(ExpectedValid {
-            #[cfg(feature = "retry")]
             retry_requirement: external.retry_requirement(),
             context: CoreContext {
                 span: external.span().unwrap_or_else(|| self.span()),

@@ -32,10 +32,8 @@ jobs:
         run: cargo test
       - name: Test code with all features
         run: cargo test --all-features
-      - name: Check code with no features
-        run: cargo check --no-default-features
-      - name: Test code with only retry feature
-        run: cargo test --no-default-features --features retry
+      - name: Test code with no default features
+        run: cargo test --no-default-features
       - name: Lint code
         if: ${{ matrix.rust-toolchain == 'stable' }}
         run: cargo fmt -- --check && cargo clippy --all-features

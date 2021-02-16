@@ -10,7 +10,6 @@ use crate::fmt;
 /// result in a lot of wasted reprocessing of input if not handled correctly.
 #[must_use]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
 pub struct RetryRequirement(NonZeroUsize);
 
 impl RetryRequirement {
@@ -69,13 +68,18 @@ impl fmt::Display for RetryRequirement {
 }
 
 /// Implemented for errors that return a [`RetryRequirement`].
-#[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
+///
+
+///
+/// [`External`]: crate::error::External
 pub trait ToRetryRequirement {
     /// Returns the requirement, if applicable, to retry processing the `Input`.
     fn to_retry_requirement(&self) -> Option<RetryRequirement>;
 
-    /// Returns `true` if [`Self::to_retry_requirement()`] will return `None`,
-    /// or `false` if `Some(RetryRequirement)`.
+    /// Returns `true` if [`to_retry_requirement()`] will return `None`, or
+    /// `false` if `Some(RetryRequirement)`.
+    ///
+    /// [`to_retry_requirement()`]: Self::to_retry_requirement()
     fn is_fatal(&self) -> bool {
         self.to_retry_requirement().is_none()
     }

@@ -17,21 +17,13 @@ use super::{Bound, Input, MaybeString, Private, PrivateExt, String};
 #[must_use = "input must be consumed"]
 pub struct Bytes<'i> {
     value: &'i [u8],
-    #[cfg(feature = "retry")]
     bound: Bound,
 }
 
 impl<'i> Bytes<'i> {
-    #[cfg(feature = "retry")]
     #[inline(always)]
     pub(crate) fn new(value: &'i [u8], bound: Bound) -> Self {
         Self { value, bound }
-    }
-
-    #[cfg(not(feature = "retry"))]
-    #[inline(always)]
-    pub(crate) fn new(value: &'i [u8], _bound: Bound) -> Self {
-        Self { value }
     }
 
     /// Returns the underlying byte slice length.
@@ -94,28 +86,14 @@ impl<'i> Bytes<'i> {
 }
 
 impl<'i> Input<'i> for Bytes<'i> {
-    #[cfg(feature = "retry")]
     #[inline(always)]
     fn bound(&self) -> Bound {
         self.bound
     }
 
-    #[cfg(not(feature = "retry"))]
-    #[inline(always)]
-    fn bound(&self) -> Bound {
-        Bound::Both
-    }
-
-    #[cfg(feature = "retry")]
     #[inline(always)]
     fn into_bound(mut self) -> Self {
         self.bound = Bound::force_close();
-        self
-    }
-
-    #[cfg(not(feature = "retry"))]
-    #[inline(always)]
-    fn into_bound(self) -> Self {
         self
     }
 
@@ -326,7 +304,6 @@ impl<'i> Bytes<'i> {
             Some(error_len) => {
                 let error_end = valid_up_to + error_len;
                 E::from(ExpectedValid {
-                    #[cfg(feature = "retry")]
                     retry_requirement: None,
                     context: CoreContext {
                         span: bytes[valid_up_to..error_end].into(),
@@ -354,16 +331,9 @@ impl<'i> Private<'i> for Bytes<'i> {
         self.as_dangerous().iter().copied().enumerate()
     }
 
-    #[cfg(feature = "retry")]
     #[inline(always)]
     fn into_unbound_end(mut self) -> Self {
         self.bound = self.bound.open_end();
-        self
-    }
-
-    #[cfg(not(feature = "retry"))]
-    #[inline(always)]
-    fn into_unbound_end(self) -> Self {
         self
     }
 

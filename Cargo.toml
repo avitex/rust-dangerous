@@ -14,13 +14,11 @@ include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "C
 keywords = ["parsing", "simd", "untrusted"]
 
 [features]
-default = ["std", "retry", "full-backtrace", "simd", "unicode"]
+default = ["std", "full-backtrace", "simd", "unicode"]
 # Enables `std::error::Error` support.
 std = ["alloc"]
 # Enables allocations.
 alloc = []
-# Enables retry support.
-retry = []
 # Enables all supported SIMD optimisations.
 simd = ["std", "memchr/std", "bytecount/runtime-dispatch-simd"]
 # Enables improved unicode printing support.

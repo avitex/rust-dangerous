@@ -1,7 +1,6 @@
 use crate::fmt;
 use crate::input::{Input, MaybeString, Span};
 
-#[cfg(feature = "retry")]
 use super::RetryRequirement;
 use super::{Backtrace, Context, ExpectedLength, ExpectedValid, ExpectedValue, Value};
 
@@ -48,7 +47,7 @@ pub trait WithContext<'i>: Sized {
 /// concrete type [`Invalid`] and all of the computations around verbose
 /// erroring will be removed in compilation.
 ///
-/// [`Invalid`]: crate::error::Invalid
+/// [`Invalid`]: crate::Invalid
 pub trait Details<'i> {
     /// The input in its entirety that was being processed when an error
     /// occurred.
@@ -90,8 +89,13 @@ pub trait External<'i>: Sized {
     }
 
     /// Returns the requirement, if applicable, to retry processing the `Input`.
-    #[cfg(feature = "retry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "retry")))]
+    ///
+    /// [`External`] errors are designed for producers of errors and won't
+    /// expose themselves directly to consumers so they do not require
+    /// `ToRetryRequirement` implementations but can return a
+    /// [`RetryRequirement`].
+    ///
+    /// [`ToRetryRequirement`]: crate::ToRetryRequirement
     fn retry_requirement(&self) -> Option<RetryRequirement> {
         None
     }

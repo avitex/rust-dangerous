@@ -5,9 +5,7 @@ use nom::error::{Error, ErrorKind};
 use nom::error::{VerboseError, VerboseErrorKind};
 use nom::{Err, Needed};
 
-#[cfg(feature = "retry")]
-use crate::error::RetryRequirement;
-use crate::error::{Context, External, Operation, WithContext};
+use crate::error::{Context, External, Operation, RetryRequirement, WithContext};
 use crate::fmt;
 use crate::input::Span;
 
@@ -39,7 +37,6 @@ where
         }
     }
 
-    #[cfg(feature = "retry")]
     fn retry_requirement(&self) -> Option<RetryRequirement> {
         match self {
             Err::Error(_) | Err::Failure(_) => None,

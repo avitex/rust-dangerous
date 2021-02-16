@@ -68,11 +68,11 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// assert!(matches!(result, Ok(true)));
 /// ```
 ///
-/// [`Input`]: crate::input::Input  
+/// [`Input`]: crate::Input  
 /// [`Context`]: crate::error::Context  
-/// [`Input::read_all()`]: crate::input::Input::read_all()  
-/// [`Input::read_partial()`]: crate::input::Input::read_partial()  
-/// [`Input::read_infallible()`]: crate::input::Input::read_infallible()  
+/// [`Input::read_all()`]: crate::Input::read_all()  
+/// [`Input::read_partial()`]: crate::Input::read_partial()  
+/// [`Input::read_infallible()`]: crate::Input::read_infallible()  
 /// [`context()`]: Reader::context()  
 /// [`peek_context()`]: Reader::peek_context()  
 /// [`verify()`]: Reader::verify()  

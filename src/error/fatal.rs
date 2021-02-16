@@ -1,9 +1,10 @@
 use crate::fmt;
 use crate::input::Input;
 
-use super::{Context, ExpectedLength, ExpectedValid, ExpectedValue, WithContext};
-#[cfg(feature = "retry")]
-use super::{RetryRequirement, ToRetryRequirement};
+use super::{
+    Context, ExpectedLength, ExpectedValid, ExpectedValue, RetryRequirement, ToRetryRequirement,
+    WithContext,
+};
 
 /// An error that has no details around what went wrong and cannot be retried.
 ///
@@ -57,7 +58,6 @@ impl<'i> WithContext<'i> for Fatal {
     }
 }
 
-#[cfg(feature = "retry")]
 impl ToRetryRequirement for Fatal {
     fn to_retry_requirement(&self) -> Option<RetryRequirement> {
         None

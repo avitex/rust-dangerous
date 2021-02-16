@@ -1,10 +1,7 @@
 use crate::display::InputDisplay;
 use crate::fmt;
 
-use super::{Bytes, Input, Span, String};
-
-#[cfg(feature = "retry")]
-use super::Bound;
+use super::{Bound, Bytes, Input, Span, String};
 
 /// [`String`] if known UTF-8, [`Bytes`] if not.
 #[derive(Clone)]
@@ -50,13 +47,14 @@ impl<'i> MaybeString<'i> {
         }
     }
 
-    #[cfg(feature = "retry")]
-    pub(crate) fn is_bound(&self) -> bool {
+    /// Returns `true` if [`Self::bound()`] is [`Bound::Both`].
+    #[must_use]
+    pub fn is_bound(&self) -> bool {
         self.bound() == Bound::Both
     }
 
-    #[cfg(feature = "retry")]
-    pub(crate) fn bound(&self) -> Bound {
+    /// Returns the inner [`Input`]s [`Bound`].
+    pub fn bound(&self) -> Bound {
         match self {
             Self::Bytes(v) => v.bound(),
             Self::String(v) => v.bound(),
