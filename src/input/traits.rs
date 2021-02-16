@@ -236,6 +236,54 @@ pub trait Input<'i>: Private<'i> {
             Ok(self)
         }
     }
+
+    /// Splits the input into two at the token index `mid`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `mid > self.len()`.
+    #[inline]
+    fn split_at<E>(self, mid: usize) -> Result<(Self, Self), E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.split_at_op(mid, CoreOperation::SplitAt)
+    }
+
+    /// Splits the input into two at the token index `mid`.
+    ///
+    /// Returns `Some(Self)` if `mid` is a valid token index, `None` if `mid` is
+    /// out of bounds.
+    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)>;
+
+    /// Splits the input into two at the byte index `mid`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedLength`] if `mid > self.len()` and [`ExpectedValid`]
+    /// if `mid` is not a valid token boundary.
+    #[inline]
+    fn split_at_byte<E>(self, mid: usize) -> Result<(Self, Self), E>
+    where
+        E: From<ExpectedValid<'i>>,
+        E: From<ExpectedLength<'i>>,
+    {
+        self.split_at_byte_op(mid, CoreOperation::SplitAtByte)
+    }
+
+    /// Splits the input into two at the byte index `mid`.
+    ///
+    /// Returns `Some(Self)` if `mid` is a valid token index, `None` if `mid` is
+    /// out of bounds or not a valid token boundary.
+    fn split_at_byte_opt(self, mid: usize) -> Option<(Self, Self)> {
+        if self.verify_token_boundary(mid).is_ok() {
+            // SAFETY: we verified that the index is a token boundary so this is
+            // safe.
+            unsafe { Some(self.split_at_byte_unchecked(mid)) }
+        } else {
+            None
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -271,11 +319,6 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     /// Returns what was expected at that index.
     fn verify_token_boundary(&self, index: usize) -> Result<(), CoreExpected>;
 
-    /// Split the input at the token index `mid`.
-    ///
-    /// Return `Some` if mid is a valid index, `None` if not.
-    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)>;
-
     /// Splits the input at the byte index `mid` without any validation.
     ///
     /// # Safety
@@ -300,7 +343,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if `mid > self.len()`.
     #[inline(always)]
-    fn split_at<E>(self, mid: usize, operation: CoreOperation) -> Result<(Self, Self), E>
+    fn split_at_op<E>(self, mid: usize, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -325,7 +368,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     /// Returns [`ExpectedLength`] if `mid > self.len()` and [`ExpectedValid`]
     /// if `mid` is not a valid token boundary.
     #[inline(always)]
-    fn split_at_byte<E>(self, mid: usize, operation: CoreOperation) -> Result<(Self, Self), E>
+    fn split_at_byte_op<E>(self, mid: usize, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
@@ -379,7 +422,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if the input is empty.
     #[inline(always)]
-    fn split_token<E>(self, operation: CoreOperation) -> Result<(Self::Token, Self), E>
+    fn split_token_op<E>(self, operation: CoreOperation) -> Result<(Self::Token, Self), E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -419,7 +462,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if the input does not have the prefix.
     #[inline(always)]
-    fn split_prefix<P, E>(self, prefix: P, operation: CoreOperation) -> Result<(Self, Self), E>
+    fn split_prefix_op<P, E>(self, prefix: P, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValue<'i>>,
         P: Prefix<Self> + Into<Value<'i>>,
@@ -475,7 +518,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 
     /// Splits the input up to when the pattern matches.
     #[inline(always)]
-    fn split_until<P, E>(self, pattern: P, operation: CoreOperation) -> Result<(Self, Self), E>
+    fn split_until_op<P, E>(self, pattern: P, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: From<ExpectedValue<'i>>,
         P: Pattern<Self> + Into<Value<'i>> + Copy,
@@ -499,7 +542,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if the input does not have the pattern.
     #[inline(always)]
-    fn split_until_consume<P, E>(
+    fn split_until_consume_op<P, E>(
         self,
         pattern: P,
         operation: CoreOperation,
@@ -542,7 +585,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error from the provided function if it fails.
     #[inline(always)]
-    fn try_split_while<F, E>(self, mut f: F, operation: CoreOperation) -> Result<(Self, Self), E>
+    fn try_split_while_op<F, E>(self, mut f: F, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: WithContext<'i>,
         F: FnMut(Self::Token) -> Result<bool, E>,
@@ -601,7 +644,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error from the provided function if it fails.
     #[inline(always)]
-    fn try_split_consumed<F, E>(self, f: F, operation: CoreOperation) -> Result<(Self, Self), E>
+    fn try_split_consumed_op<F, E>(self, f: F, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: WithContext<'i>,
         F: FnOnce(&mut Reader<'i, E, Self>) -> Result<(), E>,
@@ -634,7 +677,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error if the expected value was not present.
     #[inline(always)]
-    fn split_expect<F, T, E>(
+    fn split_expect_op<F, T, E>(
         self,
         f: F,
         expected: &'static str,
@@ -669,7 +712,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     /// Returns an error from the provided function if it fails or if the
     /// expected value was not present.
     #[inline(always)]
-    fn try_split_expect<F, T, E>(
+    fn try_split_expect_op<F, T, E>(
         self,
         f: F,
         expected: &'static str,
@@ -718,7 +761,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     /// - the provided function returns an amount of input read that is greater
     ///   than the actual length
     #[inline(always)]
-    fn try_split_expect_external<F, T, E, Ex>(
+    fn try_split_expect_external_op<F, T, E, Ex>(
         self,
         f: F,
         expected: &'static str,
@@ -733,7 +776,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     {
         match f(self.clone()) {
             Ok((ok, read)) => self
-                .split_at_byte(read, operation)
+                .split_at_byte_op(read, operation)
                 .map(|(_, remaining)| (ok, remaining)),
             Err(external) => Err(self.map_external_error(external, expected, operation)),
         }

@@ -119,13 +119,25 @@ impl<'i> Input<'i> for Bytes<'i> {
     fn display(&self) -> InputDisplay<'i> {
         InputDisplay::new(self)
     }
+
+    #[inline(always)]
+    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
+        slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
+            // We split at a known length making the head input bound.
+            let head = Bytes::new(head, self.bound().close_end());
+            // For the tail we derive the bound constraint from self.
+            let tail = Bytes::new(tail, self.bound());
+            // Return the split input parts.
+            (head, tail)
+        })
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 impl<'i> Bytes<'i> {
     #[inline(always)]
-    pub(crate) fn split_str_while<F, E>(
+    pub(crate) fn split_str_while_op<F, E>(
         self,
         mut f: F,
         operation: CoreOperation,
@@ -167,7 +179,7 @@ impl<'i> Bytes<'i> {
     }
 
     #[inline(always)]
-    pub(crate) fn try_split_str_while<F, E>(
+    pub(crate) fn try_split_str_while_op<F, E>(
         self,
         mut f: F,
         operation: CoreOperation,
@@ -224,7 +236,7 @@ impl<'i> Bytes<'i> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        match self.split_at(N, operation) {
+        match self.split_at_op(N, operation) {
             Ok((head, tail)) => {
                 let ptr = head.as_dangerous().as_ptr().cast::<[u8; N]>();
                 // SAFETY: safe as we took only N amount and u8 is `Copy`.
@@ -312,18 +324,6 @@ impl<'i> Private<'i> for Bytes<'i> {
         } else {
             Ok(())
         }
-    }
-
-    #[inline(always)]
-    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
-        slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
-            // We split at a known length making the head input bound.
-            let head = Bytes::new(head, self.bound().close_end());
-            // For the tail we derive the bound constraint from self.
-            let tail = Bytes::new(tail, self.bound());
-            // Return the split input parts.
-            (head, tail)
-        })
     }
 
     #[inline(always)]

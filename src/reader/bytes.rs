@@ -16,7 +16,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
     {
-        self.try_advance(|input| input.split_str_while(pred, CoreOperation::SkipStrWhile))
+        self.try_advance(|input| input.split_str_while_op(pred, CoreOperation::SkipStrWhile))
             .map(drop)
     }
 
@@ -35,7 +35,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.try_split_str_while(pred, CoreOperation::SkipStrWhile))
+        self.try_advance(|input| input.try_split_str_while_op(pred, CoreOperation::SkipStrWhile))
             .map(drop)
     }
 
@@ -50,7 +50,9 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_str_while(|_| true, CoreOperation::TakeRemainingStr))
+        self.try_advance(|input| {
+            input.split_str_while_op(|_| true, CoreOperation::TakeRemainingStr)
+        })
     }
 
     /// Read a length of string input while a predicate check remains true.
@@ -65,7 +67,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> bool,
     {
-        self.try_advance(|input| input.split_str_while(pred, CoreOperation::TakeStrWhile))
+        self.try_advance(|input| input.split_str_while_op(pred, CoreOperation::TakeStrWhile))
     }
 
     /// Try read a length of string input while a predicate check remains true.
@@ -82,7 +84,7 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
         F: FnMut(char) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.try_split_str_while(pred, CoreOperation::TakeStrWhile))
+        self.try_advance(|input| input.try_split_str_while_op(pred, CoreOperation::TakeStrWhile))
     }
 
     /// Peek the next byte in the input without mutating the `Reader`.
@@ -97,7 +99,7 @@ impl<'i, E> BytesReader<'i, E> {
     {
         self.input
             .clone()
-            .split_token(CoreOperation::PeekU8)
+            .split_token_op(CoreOperation::PeekU8)
             .map(|(byte, _)| byte)
     }
 
@@ -133,7 +135,7 @@ impl<'i, E> BytesReader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_token(CoreOperation::ReadU8))
+        self.try_advance(|input| input.split_token_op(CoreOperation::ReadU8))
     }
 
     /// Read a `i8`.
@@ -146,7 +148,7 @@ impl<'i, E> BytesReader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_token(CoreOperation::ReadI8))
+        self.try_advance(|input| input.split_token_op(CoreOperation::ReadI8))
             .map(|v| i8::from_ne_bytes([v]))
     }
 
