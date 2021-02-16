@@ -1,18 +1,25 @@
 use crate::fmt;
 use crate::input::{Input, MaybeString, Span};
 
-use super::RetryRequirement;
-use super::{Backtrace, Context, ExpectedLength, ExpectedValid, ExpectedValue, Value};
+use super::{
+    Backtrace, Context, ExpectedLength, ExpectedValid, ExpectedValue, RetryRequirement,
+    ToRetryRequirement, Value,
+};
 
-/// Auto-trait for both [`WithContext`] and [`From`] for [`ExpectedValue`],
-/// [`ExpectedLength`] and [`ExpectedValid`].
+/// Auto-trait for [`WithContext`], [`ToRetryRequirement`] and
+/// `From<Expected(Value/Length/Valid)>`.
 pub trait Error<'i>:
-    WithContext<'i> + From<ExpectedValue<'i>> + From<ExpectedLength<'i>> + From<ExpectedValid<'i>>
+    WithContext<'i>
+    + ToRetryRequirement
+    + From<ExpectedValue<'i>>
+    + From<ExpectedLength<'i>>
+    + From<ExpectedValid<'i>>
 {
 }
 
 impl<'i, T> Error<'i> for T where
     T: WithContext<'i>
+        + ToRetryRequirement
         + From<ExpectedValue<'i>>
         + From<ExpectedLength<'i>>
         + From<ExpectedValid<'i>>
