@@ -114,6 +114,20 @@ where
         ok
     }
 
+    /// Optionally advances the reader's input given an operation.
+    #[inline(always)]
+    fn advance_opt<F, O>(&mut self, f: F) -> Option<O>
+    where
+        F: FnOnce(I) -> Option<(O, I)>,
+    {
+        if let Some((ok, next)) = f(self.input.clone()) {
+            self.input = next;
+            Some(ok)
+        } else {
+            None
+        }
+    }
+
     /// Tries to advance the reader's input given an operation.
     #[inline(always)]
     fn try_advance<F, SE, O>(&mut self, f: F) -> Result<O, SE>

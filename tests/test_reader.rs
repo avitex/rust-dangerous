@@ -58,6 +58,25 @@ fn test_skip() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Reader::skip_opt
+
+#[test]
+fn test_skip_opt_true() {
+    assert_eq!(
+        read_infallible!(b"hello", |r| { r.skip_opt(5) }),
+        (true, input!(b""))
+    );
+}
+
+#[test]
+fn test_skip_opt_false() {
+    assert_eq!(
+        read_infallible!(b"hello", |r| { r.skip_opt(6) }),
+        (false, input!(b"hello"))
+    );
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // Reader::skip_while
 
 #[test]
@@ -85,6 +104,25 @@ fn test_try_skip_while() {
 #[test]
 fn test_take() {
     assert_eq!(read_all_ok!(b"hello", |r| { r.take(5) }), b"hello"[..]);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Reader::take_opt
+
+#[test]
+fn test_take_opt_true() {
+    assert_eq!(
+        read_infallible!(b"hello", |r| { r.take_opt(5) }),
+        (Some(input!(b"hello"[..])), input!(b""))
+    );
+}
+
+#[test]
+fn test_take_opt_false() {
+    assert_eq!(
+        read_infallible!(b"hello", |r| { r.take_opt(6) }),
+        (None, input!(b"hello"))
+    );
 }
 
 ///////////////////////////////////////////////////////////////////////////////

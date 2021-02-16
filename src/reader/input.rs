@@ -153,7 +153,7 @@ where
         self.try_advance(|input| input.split_expect(f, expected, CoreOperation::Expect))
     }
 
-    /// Expect a value to be read successfully and returned as `Some(O)`.
+    /// Expect a value to be read successfully and returned as `Some(T)`.
     ///
     /// # Errors
     ///
@@ -236,7 +236,7 @@ where
         })
     }
 
-    /// Recovers from an error returning `Some(O)` if successful, or `None` if
+    /// Recovers from an error returning `Some(T)` if successful, or `None` if
     /// an error occurred.
     ///
     /// If an error is recovered from the `Reader`'s internal state is reset.
@@ -352,6 +352,13 @@ where
             .map(drop)
     }
 
+    /// Skip an optional length of input.
+    ///
+    /// Returns `true` if there was enough input, `false` if not.
+    pub fn skip_opt(&mut self, len: usize) -> bool {
+        self.advance_opt(|input| input.split_at_opt(len)).is_some()
+    }
+
     /// Skip a length of input while a pattern matches.
     pub fn skip_while<P>(&mut self, pattern: P)
     where
@@ -436,6 +443,13 @@ where
         E: From<ExpectedLength<'i>>,
     {
         self.try_advance(|input| input.split_at(len, CoreOperation::Take))
+    }
+
+    /// Read an optional length of input.
+    ///
+    /// Returns `Some(I)` if there was enough input, `None` if not.
+    pub fn take_opt(&mut self, len: usize) -> Option<I> {
+        self.advance_opt(|input| input.split_at_opt(len))
     }
 
     /// Read a length of input while a pattern matches.
