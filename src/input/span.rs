@@ -4,7 +4,7 @@ use core::slice;
 
 use crate::display::InputDisplay;
 use crate::fmt;
-use crate::input::MaybeString;
+use crate::input::{Input, MaybeString};
 
 /// Range of [`Input`].
 ///
@@ -17,7 +17,7 @@ use crate::input::MaybeString;
 /// [`Input`]: crate::Input  
 /// [`Input::span()`]: crate::Input::span()
 #[must_use]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Span {
     start: NonNull<u8>,
     end: NonNull<u8>,
@@ -173,7 +173,10 @@ impl Span {
     }
 
     /// Returns the sub slice of the provided parent `self` refers to or `None`
-    /// if `self` is not within the parent.
+    /// if `self` is not within the parent or does not align with start and end
+    /// token boundaries.
+    ///
+    /// You can get a span of [`Input`], `&str` or `&[u8]`.
     ///
     /// # Example
     ///
@@ -188,14 +191,11 @@ impl Span {
     /// assert_eq!(non_span.of(parent), None);
     /// ```
     #[must_use]
-    pub fn of(self, parent: &[u8]) -> Option<&[u8]> {
-        if self.is_within(parent.into()) {
-            // SAFETY: we have checked that the slice is valid within the
-            // parent, so we can create a slice from our bounds.
-            unsafe { Some(slice::from_raw_parts(self.start.as_ptr(), self.len())) }
-        } else {
-            None
-        }
+    pub fn of<P>(self, parent: P) -> Option<P>
+    where
+        P: Parent,
+    {
+        parent.extract(self)
     }
 
     /// Returns `Some(Range)` with the `start` and `end` offsets of `self`
@@ -261,6 +261,62 @@ impl Span {
     }
 }
 
+pub trait Parent: Sized {
+    fn extract(self, span: Span) -> Option<Self>;
+}
+
+impl Parent for &[u8] {
+    #[inline(always)]
+    fn extract(self, span: Span) -> Option<Self> {
+        if span.is_within(self.into()) {
+            // SAFETY: we have checked that the slice is valid within the
+            // parent, so we can create a slice from our bounds.
+            unsafe { Some(slice::from_raw_parts(span.start.as_ptr(), span.len())) }
+        } else {
+            None
+        }
+    }
+}
+
+impl Parent for &str {
+    #[inline]
+    fn extract(self, span: Span) -> Option<Self> {
+        span.range_of(self.into()).and_then(|range| {
+            if self.is_char_boundary(range.start) && self.is_char_boundary(range.end) {
+                Some(&self[range])
+            } else {
+                None
+            }
+        })
+    }
+}
+
+impl<'i, T> Parent for T
+where
+    T: Input<'i>,
+{
+    #[inline]
+    fn extract(self, span: Span) -> Option<Self> {
+        span.range_of(self.span()).and_then(|range| {
+            if self.verify_token_boundary(range.start).is_ok()
+                && self.verify_token_boundary(range.end).is_ok()
+            {
+                // SAFETY: we have checked that the range start and end are
+                // valid boundary indexes within the parent, so we can split
+                // with them.
+                let sub = unsafe {
+                    let (_, tail) = self.split_at_byte_unchecked(range.start);
+                    let (sub, _) = tail.split_at_byte_unchecked(range.end - range.start);
+                    sub
+                };
+                Some(sub)
+            } else {
+                None
+            }
+        })
+    }
+}
+
 impl fmt::DisplayBase for Span {
     fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         w.write_str("(ptr: ")?;
@@ -290,6 +346,15 @@ impl From<&str> for Span {
     #[inline(always)]
     fn from(value: &str) -> Self {
         Self::from(value.as_bytes())
+    }
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Span")
+            .field("ptr", &self.start)
+            .field("len", &self.len())
+            .finish()
     }
 }
 

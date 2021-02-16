@@ -1,5 +1,5 @@
-use dangerous::{BytesReader, Error, Expected, Input};
 use anyhow::Context;
+use dangerous::{BytesReader, Error, Expected, Input};
 
 fn main() {
     dangerous::input(b"hello")
