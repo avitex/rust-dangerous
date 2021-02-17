@@ -1,6 +1,6 @@
 //! Safely and explicitly parse untrusted aka `dangerous` data.
 //!
-//! See the [`intro`] module for a quick how to get started.
+//! See the [`guide`] module to see how to get started.
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(
@@ -48,8 +48,8 @@ mod util;
 
 pub mod display;
 pub mod error;
-#[cfg(feature = "intro")]
-pub mod intro;
+#[cfg(feature = "guide")]
+pub mod guide;
 
 pub use self::error::{Error, Expected, Fatal, Invalid, ToRetryRequirement};
 pub use self::input::{input, Bound, Bytes, Input, MaybeString, Pattern, Span, String};
