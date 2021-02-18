@@ -27,7 +27,7 @@ unicode = ["unicode-width"]
 full-backtrace = ["alloc"]
 
 [dependencies]
-zc = { version = "0.3", optional = true, default-features = false }
+zc = { version = "0.4", optional = true, default-features = false }
 nom = { version = "6", features = ["alloc"], optional = true, default-features = false }
 regex = { version = "1.4", optional = true }
 memchr = { version = "2.3", optional = true, default-features = false }
@@ -35,7 +35,7 @@ bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
 
 [dev-dependencies]
-zc = "0.3"
+zc = "0.4"
 paste = "1.0"
 indoc = "1.0"
 anyhow = "1.0"

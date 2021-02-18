@@ -1,47 +1,73 @@
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl zc::NoInteriorMut for crate::error::RootBacktrace {}
+unsafe impl<'o> zc::Dependant<'o> for crate::error::RootBacktrace {
+    type Static = crate::error::RootBacktrace;
+}
 
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "zc", feature = "alloc"))))]
-unsafe impl zc::NoInteriorMut for crate::error::FullBacktrace {}
+unsafe impl<'o> zc::Dependant<'o> for crate::error::FullBacktrace {
+    type Static = crate::error::FullBacktrace;
+}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl zc::NoInteriorMut for crate::error::CoreContext {}
+unsafe impl<'o> zc::Dependant<'o> for crate::error::CoreContext {
+    type Static = crate::error::CoreContext;
+}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl zc::NoInteriorMut for crate::error::Fatal {}
+unsafe impl<'o> zc::Dependant<'o> for crate::error::Fatal {
+    type Static = crate::error::Fatal;
+}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl zc::NoInteriorMut for crate::error::Invalid {}
+unsafe impl<'o> zc::Dependant<'o> for crate::error::Invalid {
+    type Static = crate::error::Invalid;
+}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl zc::NoInteriorMut for crate::error::RetryRequirement {}
+unsafe impl<'o> zc::Dependant<'o> for crate::error::RetryRequirement {
+    type Static = crate::error::RetryRequirement;
+}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i> zc::NoInteriorMut for crate::error::ExpectedLength<'i> {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i, S> zc::NoInteriorMut for crate::error::Expected<'i, S> where S: zc::NoInteriorMut {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i> zc::NoInteriorMut for crate::error::ExpectedValid<'i> {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i> zc::NoInteriorMut for crate::error::ExpectedValue<'i> {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i> zc::NoInteriorMut for crate::input::Bytes<'i> {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i> zc::NoInteriorMut for crate::input::String<'i> {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i> zc::NoInteriorMut for crate::input::MaybeString<'i> {}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
-unsafe impl<'i, E, I> zc::NoInteriorMut for crate::reader::Reader<'i, E, I>
+unsafe impl<'o, S> zc::Dependant<'o> for crate::error::Expected<'o, S>
 where
-    E: zc::NoInteriorMut,
-    I: zc::NoInteriorMut + crate::input::Input<'i>,
+    S: zc::Dependant<'o>,
 {
+    type Static = crate::error::Expected<'static, S::Static>;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
+unsafe impl<'o> zc::Dependant<'o> for crate::error::ExpectedLength<'o> {
+    type Static = crate::error::ExpectedLength<'static>;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
+unsafe impl<'o> zc::Dependant<'o> for crate::error::ExpectedValid<'o> {
+    type Static = crate::error::ExpectedValid<'static>;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
+unsafe impl<'o> zc::Dependant<'o> for crate::error::ExpectedValue<'o> {
+    type Static = crate::error::ExpectedValue<'static>;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
+unsafe impl<'o> zc::Dependant<'o> for crate::input::Span {
+    type Static = crate::input::Span;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
+unsafe impl<'o> zc::Dependant<'o> for crate::input::Bytes<'o> {
+    type Static = crate::input::Bytes<'static>;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
+unsafe impl<'o> zc::Dependant<'o> for crate::input::String<'o> {
+    type Static = crate::input::String<'static>;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "zc")))]
+unsafe impl<'o> zc::Dependant<'o> for crate::input::MaybeString<'o> {
+    type Static = crate::input::MaybeString<'static>;
 }

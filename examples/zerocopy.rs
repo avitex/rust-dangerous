@@ -1,25 +1,14 @@
-use core::convert::TryFrom;
 use dangerous::{BytesReader, Error, Expected, Input};
-use zc::Dependant;
-
-#[derive(Dependant, Debug)]
-pub struct ParsedResult<'a>(Vec<&'a str>);
-
-impl<'a> TryFrom<&'a [u8]> for ParsedResult<'a> {
-    type Error = String;
-
-    fn try_from(bytes: &'a [u8]) -> Result<Self, Self::Error> {
-        dangerous::input(bytes)
-            .read_all(parse)
-            .map(Self)
-            .map_err(|err: Expected| err.to_string())
-    }
-}
+use zc::Zc;
 
 fn main() {
     let buf = Vec::from(&b"thisisatag,thisisanothertag"[..]);
-    let result = zc::try_from!(buf, ParsedResult, [u8]);
+    let result = Zc::new(buf, parse_bytes);
     dbg!(&result);
+}
+
+fn parse_bytes<'i>(bytes: &'i [u8]) -> Result<Vec<&'i str>, Expected<'i>> {
+    dangerous::input(bytes).read_all(parse)
 }
 
 fn parse<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Vec<&'i str>, E>
@@ -28,7 +17,7 @@ where
 {
     let mut parts = Vec::new();
     loop {
-        let s = r.take_until(b',')?.to_dangerous_str::<E>()?;
+        let s = r.take_until_opt(b',').to_dangerous_str::<E>()?;
         parts.push(s);
         if !r.consume_opt(b',') {
             return Ok(parts);
