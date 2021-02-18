@@ -17,7 +17,7 @@ note: error span is not within the error input indicating the
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
     banner: bool,
-    format: Option<PreferredFormat>,
+    format: PreferredFormat,
     input_max_width: usize,
 }
 
@@ -27,9 +27,14 @@ where
 {
     /// Create a new `ErrorDisplay` given [`error::Details`].
     pub fn new(error: &'a T) -> Self {
+        let format = if error.input().is_string() {
+            PreferredFormat::Str
+        } else {
+            PreferredFormat::Bytes
+        };
         Self {
             error,
-            format: None,
+            format,
             banner: false,
             input_max_width: DEFAULT_MAX_WIDTH,
         }
@@ -37,7 +42,11 @@ where
 
     /// Derive an `ErrorDisplay` from a [`fmt::Formatter`] with defaults.
     pub fn from_formatter(error: &'a T, f: &fmt::Formatter<'_>) -> Self {
-        Self::new(error).str_hint(f.alternate())
+        if f.alternate() {
+            Self::new(error).str_hint()
+        } else {
+            Self::new(error)
+        }
     }
 
     /// Set whether or not a banner should printed around the error.
@@ -53,17 +62,18 @@ where
     }
 
     /// Hint to the formatter that the [`crate::Input`] is a UTF-8 `str`.
-    pub fn str_hint(self, value: bool) -> Self {
-        if self.error.input().is_string() || value {
-            self.format(PreferredFormat::Str)
-        } else {
-            self.format(PreferredFormat::Bytes)
+    pub fn str_hint(self) -> Self {
+        match self.format {
+            PreferredFormat::Bytes | PreferredFormat::BytesAscii => {
+                self.format(PreferredFormat::Str)
+            }
+            _ => self,
         }
     }
 
     /// Set the preferred way to format the [`Input`].
     pub fn format(mut self, format: PreferredFormat) -> Self {
-        self.format = Some(format);
+        self.format = format;
         self
     }
 
@@ -78,7 +88,6 @@ where
         w.write_char('\n')?;
         // Write inputs
         let input_display = self.configure_input_display(input.display());
-        let format = input_display.get_format();
         let input = input.into_bytes();
         if let Some(expected_value) = self.error.expected() {
             let expected_display = self.configure_input_display(expected_value.display());
@@ -96,7 +105,7 @@ where
         // Write additional
         w.write_str("additional:\n  ")?;
         if let Some(span_range) = root.span.range_of(input.span()) {
-            match format {
+            match self.format {
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
                     w.write_str("error line: ")?;
                     w.write_usize(line_offset(&input, span_range.start))?;
@@ -151,11 +160,7 @@ where
     }
 
     fn configure_input_display<'b>(&self, display: InputDisplay<'b>) -> InputDisplay<'b> {
-        if let Some(format) = self.format {
-            display.format(format)
-        } else {
-            display
-        }
+        display.format(self.format)
     }
 }
 

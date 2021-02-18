@@ -72,7 +72,7 @@ impl<'i> InputDisplay<'i> {
         }
     }
 
-    /// Derive an `InputDisplay` from a [`fmt::Formatter`] with defaults.
+    /// Derive options from a [`fmt::Formatter`].
     ///
     /// - Precision (eg. `{:.16}`) formatting sets the element limit.
     /// - Alternate/pretty (eg. `{:#}`) formatting enables the UTF-8 hint.
@@ -204,12 +204,6 @@ impl<'i> InputDisplay<'i> {
         let computed = self.section_opt.compute(self.input, self.format);
         self.section = Some(computed);
         self
-    }
-
-    /// Returns the preferred format.
-    #[must_use]
-    pub fn get_format(&self) -> PreferredFormat {
-        self.format
     }
 }
 
