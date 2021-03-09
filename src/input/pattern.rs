@@ -32,7 +32,7 @@ use crate::util::fast;
 ///
 /// Empty slices are invalid patterns and have the following behaviour:
 ///
-/// - Finding a match of a empty slice pattern will return `None.
+/// - Finding a match of a empty slice pattern will return `None`.
 /// - Finding a reject of a empty slice pattern will return `Some(0)`.
 ///
 /// With the `simd` feature enabled pattern searches are SIMD optimised where
