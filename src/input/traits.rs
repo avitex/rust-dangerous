@@ -103,6 +103,27 @@ pub trait Input<'i>: Private<'i> {
         Span::from(self.as_dangerous_bytes())
     }
 
+    /// Returns the `nth` token if any within the input.
+    #[must_use]
+    #[inline(always)]
+    fn nth(&self, index: usize) -> Option<Self::Token> {
+        self.clone().tokens().nth(index)
+    }
+
+    /// Returns the first token if any within the input.
+    #[must_use]
+    #[inline(always)]
+    fn first(&self) -> Option<Self::Token> {
+        self.clone().tokens().next()
+    }
+
+    /// Returns the last token if any within the input.
+    #[must_use]
+    #[inline(always)]
+    fn last(&self) -> Option<Self::Token> {
+        self.clone().tokens().next_back()
+    }
+
     /// Create a reader with the expectation all of the input is read.
     ///
     /// # Errors
@@ -225,15 +246,19 @@ pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     type Token: BytesLength + Copy + 'static;
 
     /// Iterator of tokens.
-    ///
-    /// Returns the byte index of the token and the token itself.
-    type TokenIter: Iterator<Item = (usize, Self::Token)>;
+    type TokenIter: DoubleEndedIterator<Item = Self::Token>;
+
+    /// Iterator of tokens and their associated byte indices.
+    type TokenIndicesIter: DoubleEndedIterator<Item = (usize, Self::Token)>;
 
     /// Returns an empty `Input` pointing the end of `self`.
     fn end(self) -> Self;
 
     /// Returns a token iterator.
     fn tokens(self) -> Self::TokenIter;
+
+    /// Returns a token indices iterator.
+    fn tokens_indices(self) -> Self::TokenIndicesIter;
 
     // Return self with its end bound removed.
     fn into_unbound_end(self) -> Self;
@@ -339,12 +364,12 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     /// Splits the input into the first token and whatever remains.
     #[inline(always)]
     fn split_token_opt(self) -> Option<(Self::Token, Self)> {
-        self.clone().tokens().next().map(|(_, t)| {
+        self.clone().tokens().next().map(|token| {
             // SAFETY: ByteLength guarantees a correct implementation for
             // returning the length of a token. The token iterator returned a
             // token for us, so we know we can split it off safely.
-            let (_, tail) = unsafe { self.split_at_byte_unchecked(t.byte_len()) };
-            (t, tail)
+            let (_, tail) = unsafe { self.split_at_byte_unchecked(token.byte_len()) };
+            (token, tail)
         })
     }
 
@@ -523,7 +548,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         F: FnMut(Self::Token) -> Result<bool, E>,
     {
         // For each token, lets make sure it matches the predicate.
-        for (i, token) in self.clone().tokens() {
+        for (i, token) in self.clone().tokens_indices() {
             // Check if the token doesn't match the predicate.
             let should_continue = with_context(
                 CoreContext::from_operation(operation, self.span()),

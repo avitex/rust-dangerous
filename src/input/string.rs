@@ -141,7 +141,8 @@ impl<'i> Input<'i> for String<'i> {
 
 impl<'i> Private<'i> for String<'i> {
     type Token = char;
-    type TokenIter = str::CharIndices<'i>;
+    type TokenIter = str::Chars<'i>;
+    type TokenIndicesIter = str::CharIndices<'i>;
 
     #[inline(always)]
     fn end(self) -> Self {
@@ -152,6 +153,11 @@ impl<'i> Private<'i> for String<'i> {
 
     #[inline(always)]
     fn tokens(self) -> Self::TokenIter {
+        self.as_dangerous().chars()
+    }
+
+    #[inline(always)]
+    fn tokens_indices(self) -> Self::TokenIndicesIter {
         self.as_dangerous().char_indices()
     }
 

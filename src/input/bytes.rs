@@ -319,7 +319,8 @@ impl<'i> Bytes<'i> {
 
 impl<'i> Private<'i> for Bytes<'i> {
     type Token = u8;
-    type TokenIter = iter::Enumerate<iter::Copied<SliceIter<'i, u8>>>;
+    type TokenIter = iter::Copied<SliceIter<'i, u8>>;
+    type TokenIndicesIter = iter::Enumerate<iter::Copied<SliceIter<'i, u8>>>;
 
     #[inline(always)]
     fn end(self) -> Self {
@@ -328,6 +329,11 @@ impl<'i> Private<'i> for Bytes<'i> {
 
     #[inline(always)]
     fn tokens(self) -> Self::TokenIter {
+        self.as_dangerous().iter().copied()
+    }
+
+    #[inline(always)]
+    fn tokens_indices(self) -> Self::TokenIndicesIter {
         self.as_dangerous().iter().copied().enumerate()
     }
 
