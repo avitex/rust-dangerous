@@ -338,101 +338,6 @@ where
         })
     }
 
-    /// Skip `len` number of tokens.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the length requirement to skip could not be met.
-    #[inline]
-    pub fn skip(&mut self, len: usize) -> Result<(), E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.try_advance(|input| input.split_at(len, CoreOperation::Skip))
-            .map(drop)
-    }
-
-    /// Skip an optional length of input.
-    ///
-    /// Returns `true` if there was enough input, `false` if not.
-    pub fn skip_opt(&mut self, len: usize) -> bool {
-        self.advance_opt(|input| input.split_at_opt(len)).is_some()
-    }
-
-    /// Skip a length of input while a pattern matches.
-    pub fn skip_while<P>(&mut self, pattern: P)
-    where
-        P: Pattern<I>,
-    {
-        let _skipped = self.take_while(pattern);
-    }
-
-    /// Try skip a length of input while a predicate check remains successful
-    /// and true.
-    ///
-    /// # Errors
-    ///
-    /// Returns any error the provided function does.
-    pub fn try_skip_while<F>(&mut self, pred: F) -> Result<(), E>
-    where
-        E: WithContext<'i>,
-        F: FnMut(I::Token) -> Result<bool, E>,
-    {
-        self.try_advance(|input| input.try_split_while(pred, CoreOperation::SkipWhile))
-            .map(drop)
-    }
-
-    /// Skip a length of input until a expected pattern matches.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ExpectedValue`] if the pattern could not be found.
-    pub fn skip_until<P>(&mut self, pattern: P) -> Result<(), E>
-    where
-        E: From<ExpectedValue<'i>>,
-        P: Pattern<I> + Into<Value<'i>> + Copy,
-    {
-        self.try_advance(|input| input.split_until(pattern, CoreOperation::SkipUntil))
-            .map(drop)
-    }
-
-    /// Skip a length of input until a pattern matches and consumes the matched
-    /// input if found.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ExpectedValue`] if the pattern could not be found.
-    pub fn skip_until_consume<P>(&mut self, pattern: P) -> Result<(), E>
-    where
-        E: From<ExpectedValue<'i>>,
-        P: Pattern<I> + Into<Value<'i>> + Copy,
-    {
-        self.try_advance(|input| {
-            input.split_until_consume(pattern, CoreOperation::SkipUntilConsume)
-        })
-        .map(drop)
-    }
-
-    /// Skip a length of input until a pattern optionally matches.
-    pub fn skip_until_opt<P>(&mut self, pattern: P)
-    where
-        P: Pattern<I>,
-    {
-        let _skipped = self.take_until_opt(pattern);
-    }
-
-    /// Skip a length of input until a pattern optionally matches and consumes
-    /// the matched input if found.
-    ///
-    /// Returns `true` if the pattern was consumed, `false` if not.
-    pub fn skip_until_consume_opt<P>(&mut self, pattern: P) -> bool
-    where
-        P: Pattern<I>,
-    {
-        let (_skipped, consumed) = self.take_until_consume_opt(pattern);
-        consumed
-    }
-
     /// Read a length of input.
     ///
     /// # Errors
@@ -593,6 +498,134 @@ where
         )
     }
 
+    /// Skip `len` number of tokens.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the length requirement to skip could not be met.
+    #[inline]
+    pub fn skip(&mut self, len: usize) -> Result<(), E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_at(len, CoreOperation::Skip))
+            .map(drop)
+    }
+
+    /// Skip an optional length of input.
+    ///
+    /// Returns `true` if there was enough input, `false` if not.
+    pub fn skip_opt(&mut self, len: usize) -> bool {
+        self.advance_opt(|input| input.split_at_opt(len)).is_some()
+    }
+
+    /// Skip a length of input while a pattern matches.
+    pub fn skip_while<P>(&mut self, pattern: P)
+    where
+        P: Pattern<I>,
+    {
+        let _skipped = self.take_while(pattern);
+    }
+
+    /// Try skip a length of input while a predicate check remains successful
+    /// and true.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function does.
+    pub fn try_skip_while<F>(&mut self, pred: F) -> Result<(), E>
+    where
+        E: WithContext<'i>,
+        F: FnMut(I::Token) -> Result<bool, E>,
+    {
+        self.try_advance(|input| input.try_split_while(pred, CoreOperation::SkipWhile))
+            .map(drop)
+    }
+
+    /// Skip a length of input until a expected pattern matches.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValue`] if the pattern could not be found.
+    pub fn skip_until<P>(&mut self, pattern: P) -> Result<(), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<I> + Into<Value<'i>> + Copy,
+    {
+        self.try_advance(|input| input.split_until(pattern, CoreOperation::SkipUntil))
+            .map(drop)
+    }
+
+    /// Skip a length of input until a pattern matches and consumes the matched
+    /// input if found.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExpectedValue`] if the pattern could not be found.
+    pub fn skip_until_consume<P>(&mut self, pattern: P) -> Result<(), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Pattern<I> + Into<Value<'i>> + Copy,
+    {
+        self.try_advance(|input| {
+            input.split_until_consume(pattern, CoreOperation::SkipUntilConsume)
+        })
+        .map(drop)
+    }
+
+    /// Skip a length of input until a pattern optionally matches.
+    pub fn skip_until_opt<P>(&mut self, pattern: P)
+    where
+        P: Pattern<I>,
+    {
+        let _skipped = self.take_until_opt(pattern);
+    }
+
+    /// Skip a length of input until a pattern optionally matches and consumes
+    /// the matched input if found.
+    ///
+    /// Returns `true` if the pattern was consumed, `false` if not.
+    pub fn skip_until_consume_opt<P>(&mut self, pattern: P) -> bool
+    where
+        P: Pattern<I>,
+    {
+        let (_skipped, consumed) = self.take_until_consume_opt(pattern);
+        consumed
+    }
+
+    /// Consume expected input.
+    ///
+    /// Doesn't effect the internal state of the `Reader` if the input couldn't
+    /// be consumed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input could not be consumed.
+    pub fn consume<P>(&mut self, prefix: P) -> Result<(), E>
+    where
+        E: From<ExpectedValue<'i>>,
+        P: Prefix<I> + Into<Value<'i>>,
+    {
+        self.try_advance(|input| input.split_prefix(prefix, CoreOperation::Consume))
+            .map(drop)
+    }
+
+    /// Consume optional input.
+    ///
+    /// Returns `true` if the input was consumed, `false` if not.
+    ///
+    /// Doesn't effect the internal state of the `Reader` if the input couldn't
+    /// be consumed.
+    pub fn consume_opt<P>(&mut self, prefix: P) -> bool
+    where
+        P: Prefix<I>,
+    {
+        self.advance(|input| {
+            let (prefix, next) = input.split_prefix_opt(prefix);
+            (prefix.is_some(), next)
+        })
+    }
+
     /// Peek a length of input.
     ///
     /// The function lifetime `'p` helps prevent the peeked [`Input`] being used
@@ -633,38 +666,5 @@ where
         P: Prefix<I>,
     {
         prefix.is_prefix_of(&self.input)
-    }
-
-    /// Consume expected input.
-    ///
-    /// Doesn't effect the internal state of the `Reader` if the input couldn't
-    /// be consumed.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the input could not be consumed.
-    pub fn consume<P>(&mut self, prefix: P) -> Result<(), E>
-    where
-        E: From<ExpectedValue<'i>>,
-        P: Prefix<I> + Into<Value<'i>>,
-    {
-        self.try_advance(|input| input.split_prefix(prefix, CoreOperation::Consume))
-            .map(drop)
-    }
-
-    /// Consume optional input.
-    ///
-    /// Returns `true` if the input was consumed, `false` if not.
-    ///
-    /// Doesn't effect the internal state of the `Reader` if the input couldn't
-    /// be consumed.
-    pub fn consume_opt<P>(&mut self, prefix: P) -> bool
-    where
-        P: Prefix<I>,
-    {
-        self.advance(|input| {
-            let (prefix, next) = input.split_prefix_opt(prefix);
-            (prefix.is_some(), next)
-        })
     }
 }

@@ -72,9 +72,6 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[macro_use]
-mod macros;
-
 mod input;
 mod reader;
 mod support;

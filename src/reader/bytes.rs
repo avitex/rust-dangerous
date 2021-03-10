@@ -4,39 +4,56 @@ use crate::input::{PrivateExt, String};
 use super::BytesReader;
 
 impl<'i, E> BytesReader<'i, E> {
-    /// Skip a length of string input while a predicate check remains true.
+    /// Read a byte.
     ///
     /// # Errors
     ///
-    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
-    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
-    pub fn skip_str_while<F>(&mut self, pred: F) -> Result<(), E>
+    /// Returns an error if there is no more input.
+    #[inline]
+    pub fn read_u8(&mut self) -> Result<u8, E>
     where
-        E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
-        F: FnMut(char) -> bool,
     {
-        self.try_advance(|input| input.split_str_while(pred, CoreOperation::SkipStrWhile))
-            .map(drop)
+        self.try_advance(|input| input.split_token(CoreOperation::ReadU8))
     }
 
-    /// Try skip a length of string input while a predicate check remains
-    /// successful and true.
+    /// Read an array from input.
     ///
     /// # Errors
     ///
-    /// Returns any error the provided function does, [`ExpectedValid`] if the
-    /// the input could never be valid UTF-8 and [`ExpectedLength`] if a UTF-8
-    /// code point was cut short.
-    pub fn try_skip_str_while<F>(&mut self, pred: F) -> Result<(), E>
+    /// Returns an error if the length requirement to read could not be met.
+    #[inline]
+    pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], E>
     where
-        E: WithContext<'i>,
-        E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
-        F: FnMut(char) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.try_split_str_while(pred, CoreOperation::SkipStrWhile))
-            .map(drop)
+        self.try_advance(|input| input.split_array(CoreOperation::ReadArray))
+    }
+
+    /// Peek the next byte in the input without mutating the `Reader`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `Reader` has no more input.
+    #[inline]
+    pub fn peek_u8(&self) -> Result<u8, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.input
+            .clone()
+            .split_token(CoreOperation::PeekU8)
+            .map(|(byte, _)| byte)
+    }
+
+    /// Peek the next byte in the input without mutating the `Reader`.
+    ///
+    /// This is equivalent to `peek_u8` but does not return an error. Don't use
+    /// this function if you want an error if there isn't enough input.
+    #[inline]
+    #[must_use = "peek result must be used"]
+    pub fn peek_u8_opt(&self) -> Option<u8> {
+        self.input.clone().split_token_opt().map(|(byte, _)| byte)
     }
 
     /// Read the remaining string input.
@@ -85,119 +102,38 @@ impl<'i, E> BytesReader<'i, E> {
         self.try_advance(|input| input.try_split_str_while(pred, CoreOperation::TakeStrWhile))
     }
 
-    /// Peek the next byte in the input without mutating the `Reader`.
+    /// Skip a length of string input while a predicate check remains true.
     ///
     /// # Errors
     ///
-    /// Returns an error if the `Reader` has no more input.
-    #[inline]
-    pub fn peek_u8(&self) -> Result<u8, E>
+    /// Returns [`ExpectedValid`] if the input could never be valid UTF-8 and
+    /// [`ExpectedLength`] if a UTF-8 code point was cut short.
+    pub fn skip_str_while<F>(&mut self, pred: F) -> Result<(), E>
     where
+        E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
+        F: FnMut(char) -> bool,
     {
-        self.input
-            .clone()
-            .split_token(CoreOperation::PeekU8)
-            .map(|(byte, _)| byte)
+        self.try_advance(|input| input.split_str_while(pred, CoreOperation::SkipStrWhile))
+            .map(drop)
     }
 
-    /// Peek the next byte in the input without mutating the `Reader`.
-    ///
-    /// This is equivalent to `peek_u8` but does not return an error. Don't use
-    /// this function if you want an error if there isn't enough input.
-    #[inline]
-    #[must_use = "peek result must be used"]
-    pub fn peek_u8_opt(&self) -> Option<u8> {
-        self.input.clone().split_token_opt().map(|(byte, _)| byte)
-    }
-
-    /// Read an array from input.
+    /// Try skip a length of string input while a predicate check remains
+    /// successful and true.
     ///
     /// # Errors
     ///
-    /// Returns an error if the length requirement to read could not be met.
-    pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], E>
+    /// Returns any error the provided function does, [`ExpectedValid`] if the
+    /// the input could never be valid UTF-8 and [`ExpectedLength`] if a UTF-8
+    /// code point was cut short.
+    pub fn try_skip_str_while<F>(&mut self, pred: F) -> Result<(), E>
     where
+        E: WithContext<'i>,
+        E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
+        F: FnMut(char) -> Result<bool, E>,
     {
-        self.try_advance(|input| input.split_array(CoreOperation::ReadArray))
+        self.try_advance(|input| input.try_split_str_while(pred, CoreOperation::SkipStrWhile))
+            .map(drop)
     }
-
-    /// Read a byte.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if there is no more input.
-    #[inline]
-    pub fn read_u8(&mut self) -> Result<u8, E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.try_advance(|input| input.split_token(CoreOperation::ReadU8))
-    }
-
-    /// Read a `i8`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if there is no more input.
-    #[inline]
-    pub fn read_i8(&mut self) -> Result<i8, E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.try_advance(|input| input.split_token(CoreOperation::ReadI8))
-            .map(|v| i8::from_ne_bytes([v]))
-    }
-
-    impl_read_num!(
-        u16,
-        le: (read_u16_le, CoreOperation::ReadU16Le),
-        be: (read_u16_be, CoreOperation::ReadU16Be)
-    );
-    impl_read_num!(
-        i16,
-        le: (read_i16_le, CoreOperation::ReadI16Le),
-        be: (read_i16_be, CoreOperation::ReadI16Be)
-    );
-    impl_read_num!(
-        u32,
-        le: (read_u32_le, CoreOperation::ReadU32Le),
-        be: (read_u32_be, CoreOperation::ReadU32Be)
-    );
-    impl_read_num!(
-        i32,
-        le: (read_i32_le, CoreOperation::ReadU32Le),
-        be: (read_i32_be, CoreOperation::ReadU32Be)
-    );
-    impl_read_num!(
-        u64,
-        le: (read_u64_le, CoreOperation::ReadU64Le),
-        be: (read_u64_be, CoreOperation::ReadU64Be)
-    );
-    impl_read_num!(
-        i64,
-        le: (read_i64_le, CoreOperation::ReadI64Le),
-        be: (read_i64_be, CoreOperation::ReadI64Be)
-    );
-    impl_read_num!(
-        u128,
-        le: (read_u128_le, CoreOperation::ReadU128Le),
-        be: (read_u128_be, CoreOperation::ReadU128Be)
-    );
-    impl_read_num!(
-        i128,
-        le: (read_i128_le, CoreOperation::ReadI128Le),
-        be: (read_i128_be, CoreOperation::ReadI128Be)
-    );
-    impl_read_num!(
-        f32,
-        le: (read_f32_le, CoreOperation::ReadF32Le),
-        be: (read_f32_be, CoreOperation::ReadF32Be)
-    );
-    impl_read_num!(
-        f64,
-        le: (read_f64_le, CoreOperation::ReadF64Le),
-        be: (read_f64_be, CoreOperation::ReadF64Be)
-    );
 }

@@ -4,6 +4,19 @@ use crate::input::PrivateExt;
 use super::StringReader;
 
 impl<'i, E> StringReader<'i, E> {
+    /// Read a char.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there is no more input.
+    #[inline]
+    pub fn read_char(&mut self) -> Result<char, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_token(CoreOperation::ReadChar))
+    }
+
     /// Peek the next char in the input without mutating the `Reader`.
     ///
     /// # Errors
@@ -17,7 +30,7 @@ impl<'i, E> StringReader<'i, E> {
         self.input
             .clone()
             .split_token(CoreOperation::PeekChar)
-            .map(|(byte, _)| byte)
+            .map(|(token, _)| token)
     }
 
     /// Peek the next char in the input without mutating the `Reader`.
@@ -27,19 +40,6 @@ impl<'i, E> StringReader<'i, E> {
     #[inline]
     #[must_use = "peek result must be used"]
     pub fn peek_char_opt(&self) -> Option<char> {
-        self.input.clone().split_token_opt().map(|(byte, _)| byte)
-    }
-
-    /// Read a char.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if there is no more input.
-    #[inline]
-    pub fn read_char(&mut self) -> Result<char, E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.try_advance(|input| input.split_token(CoreOperation::ReadChar))
+        self.input.clone().split_token_opt().map(|(token, _)| token)
     }
 }

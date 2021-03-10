@@ -24,6 +24,16 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// See [`BytesReader`] for [`Bytes`] specific functions and [`StringReader`]
 /// for [`String`] specific functions.
 ///
+/// # Conventions
+///
+/// - `take_*` functions _take_ [`Input`] from the reader.
+/// - `read_*` functions _read_ a primitive type from the reader and take a
+///   description of what it is for.
+/// - `peek_*` functions _peek_ either [`Input`] or a primitive type from the
+///   reader without effecting its internal state.
+/// - `try_*` functions accept a function that can return an error as an
+///   argument.
+///
 /// # Errors
 ///
 /// Functions on `Reader` are designed to provide a panic free interface and if

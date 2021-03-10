@@ -107,7 +107,7 @@ where
         // Expect version 1
         r.context("version", |r| r.consume(0x01))?;
         // Read the body length
-        let body_len = r.context("body len", |r| r.read_u8())?;
+        let body_len = r.context("body len", BytesReader::read_u8)?;
         // Take the body input
         let body = r.context("body", |r| {
             let body_input = r.take(body_len as usize)?;
