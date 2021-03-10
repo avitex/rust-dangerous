@@ -17,6 +17,14 @@ impl<'i, E> StringReader<'i, E> {
         self.try_advance(|input| input.split_token(CoreOperation::ReadChar))
     }
 
+    /// Read an optional char.
+    ///
+    /// Returns `Some(char)` if there was enough input, `None` if not.
+    #[inline]
+    pub fn read_char_opt(&mut self) -> Option<char> {
+        self.advance_opt(PrivateExt::split_token_opt)
+    }
+
     /// Peek the next char in the input without mutating the `Reader`.
     ///
     /// # Errors

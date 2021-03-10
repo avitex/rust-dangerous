@@ -235,6 +235,16 @@ impl<'i> Bytes<'i> {
         }
     }
 
+    #[inline(always)]
+    pub(crate) fn split_array_opt<const N: usize>(self) -> Option<([u8; N], Bytes<'i>)> {
+        self.split_at_opt(N).map(|(head, tail)| {
+            let ptr = head.as_dangerous().as_ptr().cast::<[u8; N]>();
+            // SAFETY: safe as we took only N amount and u8 is `Copy`.
+            let arr = unsafe { *ptr };
+            (arr, tail)
+        })
+    }
+
     fn map_utf8_error<E>(
         self,
         error_len: Option<usize>,

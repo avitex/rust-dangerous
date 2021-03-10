@@ -1,5 +1,5 @@
 use crate::error::{CoreOperation, ExpectedLength, ExpectedValid, WithContext};
-use crate::input::{PrivateExt, String};
+use crate::input::{Bytes, PrivateExt, String};
 
 use super::BytesReader;
 
@@ -17,6 +17,14 @@ impl<'i, E> BytesReader<'i, E> {
         self.try_advance(|input| input.split_token(CoreOperation::ReadU8))
     }
 
+    /// Read an optional byte.
+    ///
+    /// Returns `Some(u8)` if there was enough input, `None` if not.
+    #[inline]
+    pub fn read_u8_opt(&mut self) -> Option<u8> {
+        self.advance_opt(PrivateExt::split_token_opt)
+    }
+
     /// Read an array from input.
     ///
     /// # Errors
@@ -28,6 +36,14 @@ impl<'i, E> BytesReader<'i, E> {
         E: From<ExpectedLength<'i>>,
     {
         self.try_advance(|input| input.split_array(CoreOperation::ReadArray))
+    }
+
+    /// Read an optional array.
+    ///
+    /// Returns `Some([u8; N])` if there was enough input, `None` if not.
+    #[inline]
+    pub fn read_array_opt<const N: usize>(&mut self) -> Option<[u8; N]> {
+        self.advance_opt(Bytes::split_array_opt)
     }
 
     /// Peek the next byte in the input without mutating the `Reader`.
