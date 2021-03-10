@@ -226,7 +226,7 @@ impl<'i> Bytes<'i> {
     {
         match self.split_at(N, operation) {
             Ok((head, tail)) => {
-                let ptr = head.as_dangerous().as_ptr() as *const [u8; N];
+                let ptr = head.as_dangerous().as_ptr().cast::<[u8; N]>();
                 // SAFETY: safe as we took only N amount and u8 is `Copy`.
                 let arr = unsafe { *ptr };
                 Ok((arr, tail))

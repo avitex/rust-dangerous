@@ -6,8 +6,8 @@ pub use paste::paste;
 
 macro_rules! assert_str_eq {
     ($actual:expr, $expected:expr) => {{
-        let actual = &$actual[..];
-        let expected = &$expected[..];
+        let actual = &$actual;
+        let expected = &$expected;
         if actual != expected {
             panic!(
                 indoc! {"
