@@ -11,10 +11,10 @@ use crate::input::{Bytes, Input, String};
 pub use self::peek::Peek;
 
 /// [`Bytes`] specific [`Reader`].
-pub type BytesReader<'i, E> = Reader<'i, E, Bytes<'i>>;
+pub type BytesReader<'i, E> = Reader<'i, Bytes<'i>, E>;
 
 /// [`String`] specific [`Reader`].
-pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
+pub type StringReader<'i, E> = Reader<'i, String<'i>, E>;
 
 /// Created from and consumes an [`Input`].
 ///
@@ -45,7 +45,7 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// creating errors based off what was expected.
 ///
 /// [`try_expect_external()`] is provided for reading a custom type that does
-/// not support a `&mut Reader<'i, E, I>` interface, for example a type
+/// not support a `&mut Reader<'i, I, E>` interface, for example a type
 /// implementing `FromStr`.
 ///
 /// [`recover()`] and [`recover_if()`] are provided as an escape hatch when you
@@ -93,7 +93,7 @@ pub type StringReader<'i, E> = Reader<'i, E, String<'i>>;
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
 /// [`RetryRequirement`]: crate::error::RetryRequirement  
-pub struct Reader<'i, E, I>
+pub struct Reader<'i, I, E>
 where
     I: Input<'i>,
 {
@@ -101,7 +101,7 @@ where
     types: PhantomData<(&'i (), E)>,
 }
 
-impl<'i, E, I> Reader<'i, E, I>
+impl<'i, I, E> Reader<'i, I, E>
 where
     I: Input<'i>,
 {
@@ -154,7 +154,7 @@ where
     }
 }
 
-impl<'i, E, I> fmt::Debug for Reader<'i, E, I>
+impl<'i, I, E> fmt::Debug for Reader<'i, I, E>
 where
     I: Input<'i>,
 {

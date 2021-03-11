@@ -7,7 +7,7 @@ use crate::error::{
 
 use super::{Peek, Reader};
 
-impl<'i, E, I> Reader<'i, E, I>
+impl<'i, I, E> Reader<'i, I, E>
 where
     I: Input<'i>,
 {
@@ -329,7 +329,7 @@ where
     #[inline]
     pub fn error<F, T, S>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Reader<'i, S, I>) -> T,
+        F: FnOnce(&mut Reader<'i, I, S>) -> T,
     {
         self.advance(|input| {
             let mut sub = Reader::new(input);

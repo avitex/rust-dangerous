@@ -133,7 +133,7 @@ pub trait Input<'i>: Private<'i> {
     #[inline]
     fn read_all<F, T, E>(self, f: F) -> Result<T, E>
     where
-        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, E>,
+        F: FnOnce(&mut Reader<'i, Self, E>) -> Result<T, E>,
         E: WithContext<'i>,
         E: From<ExpectedLength<'i>>,
     {
@@ -164,7 +164,7 @@ pub trait Input<'i>: Private<'i> {
     #[inline]
     fn read_partial<F, T, E>(self, f: F) -> Result<(T, Self), E>
     where
-        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<T, E>,
+        F: FnOnce(&mut Reader<'i, Self, E>) -> Result<T, E>,
         E: WithContext<'i>,
     {
         let mut r = Reader::new(self.clone());
@@ -182,7 +182,7 @@ pub trait Input<'i>: Private<'i> {
     #[inline]
     fn read_infallible<F, T>(self, f: F) -> (T, Self)
     where
-        F: FnOnce(&mut Reader<'i, Infallible, Self>) -> T,
+        F: FnOnce(&mut Reader<'i, Self, Infallible>) -> T,
     {
         let mut r = Reader::new(self);
         let ok = f(&mut r);
@@ -571,7 +571,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     #[inline(always)]
     fn split_consumed<F, E>(self, f: F) -> (Self, Self)
     where
-        F: FnOnce(&mut Reader<'i, E, Self>),
+        F: FnOnce(&mut Reader<'i, Self, E>),
     {
         let mut reader = Reader::new(self.clone());
         // Consume input.
@@ -604,7 +604,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     fn try_split_consumed<F, E>(self, f: F, operation: CoreOperation) -> Result<(Self, Self), E>
     where
         E: WithContext<'i>,
-        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<(), E>,
+        F: FnOnce(&mut Reader<'i, Self, E>) -> Result<(), E>,
     {
         let mut reader = Reader::new(self.clone());
         // Consume input.
@@ -642,7 +642,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ) -> Result<(T, Self), E>
     where
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Reader<'i, E, Self>) -> Option<T>,
+        F: FnOnce(&mut Reader<'i, Self, E>) -> Option<T>,
     {
         let mut reader = Reader::new(self.clone());
         if let Some(ok) = f(&mut reader) {
@@ -678,7 +678,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
-        F: FnOnce(&mut Reader<'i, E, Self>) -> Result<Option<T>, E>,
+        F: FnOnce(&mut Reader<'i, Self, E>) -> Result<Option<T>, E>,
     {
         let mut context = CoreContext {
             span: self.span(),
