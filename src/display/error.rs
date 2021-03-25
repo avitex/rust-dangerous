@@ -1,6 +1,6 @@
 use crate::error::{self, Context};
 use crate::fmt::{self, Write};
-use crate::input::{Bytes, Input, Private};
+use crate::input::{Bytes, Input};
 
 use super::{DisplayBase, InputDisplay, PreferredFormat};
 

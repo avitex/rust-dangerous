@@ -221,6 +221,9 @@ pub enum CoreOperation {
     // Entry
     ReadAll,
     ReadPartial,
+    // Splitting
+    SplitAt,
+    SplitAtByte,
     // Consuming
     Consume,
     // Skipping
@@ -293,6 +296,8 @@ impl CoreOperation {
             Self::Context => "<context>",
             Self::ReadAll => "read all input",
             Self::ReadPartial => "read a partial length of input",
+            Self::SplitAt => "split input at a token index",
+            Self::SplitAtByte => "split input at a byte index",
             Self::Consume => "consume input",
             Self::Skip => "skip a length of input",
             Self::SkipWhile => "skip input while a pattern matches",

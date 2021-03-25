@@ -16,7 +16,7 @@ impl<'i, E> StringReader<'i, E> {
     {
         self.input
             .clone()
-            .split_token(CoreOperation::PeekChar)
+            .split_token_op(CoreOperation::PeekChar)
             .map(|(byte, _)| byte)
     }
 
@@ -40,6 +40,6 @@ impl<'i, E> StringReader<'i, E> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_token(CoreOperation::ReadChar))
+        self.try_advance(|input| input.split_token_op(CoreOperation::ReadChar))
     }
 }

@@ -298,21 +298,8 @@ where
     #[inline]
     fn extract(self, span: Span) -> Option<Self> {
         span.range_of(self.span()).and_then(|range| {
-            if self.verify_token_boundary(range.start).is_ok()
-                && self.verify_token_boundary(range.end).is_ok()
-            {
-                // SAFETY: we have checked that the range start and end are
-                // valid boundary indexes within the parent, so we can split
-                // with them.
-                let sub = unsafe {
-                    let (_, tail) = self.split_at_byte_unchecked(range.start);
-                    let (sub, _) = tail.split_at_byte_unchecked(range.end - range.start);
-                    sub
-                };
-                Some(sub)
-            } else {
-                None
-            }
+            self.split_at_byte_opt(range.end)
+                .and_then(|(before, _)| before.split_at_byte_opt(range.start).map(|(_, sub)| sub))
         })
     }
 }
