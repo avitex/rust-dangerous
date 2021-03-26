@@ -27,6 +27,20 @@ impl<'i, E> BytesReader<'i, E> {
 
     /// Read an array from input.
     ///
+    /// # Integers
+    ///
+    /// This function can be used to read integers like so:
+    ///
+    /// ```
+    /// use dangerous::{Input, Invalid};
+    ///
+    /// let result: Result<_, Invalid> = dangerous::input(&[1, 0, 0, 0]).read_all(|r| {
+    ///     r.read_array().map(u32::from_le_bytes)
+    /// });
+    ///
+    /// assert_eq!(result.unwrap(), 1);
+    /// ```
+    ///
     /// # Errors
     ///
     /// Returns an error if the length requirement to read could not be met.
