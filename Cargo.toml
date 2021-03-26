@@ -39,7 +39,7 @@ zc = "0.4"
 paste = "1.0"
 indoc = "1.0"
 anyhow = "1.0"
-imap-proto = "0.12"
+imap-proto = "0.14"
 colored-diff = "0.2.2"
 
 [[example]]
