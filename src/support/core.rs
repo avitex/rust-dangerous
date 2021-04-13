@@ -1,5 +1,7 @@
 use crate::error::{ExternalContext, WithContext};
 
+impl<'i> crate::error::External<'i> for () {}
+
 impl<'i> crate::error::External<'i> for core::num::ParseFloatError {
     fn push_backtrace<E>(self, error: E) -> E
     where
