@@ -18,6 +18,13 @@ where
         self.input.is_empty()
     }
 
+    /// Returns the number of input bytes left within the reader.
+    ///
+    /// This number is subject to change in future passes for streaming input.
+    pub fn remaining_bytes(&self) -> usize {
+        self.input.byte_len()
+    }
+
     /// Read all of the remaining input.
     #[inline(always)]
     pub fn take_remaining(&mut self) -> I {
