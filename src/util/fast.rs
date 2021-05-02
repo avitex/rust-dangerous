@@ -65,25 +65,11 @@ pub(crate) fn find_slice_match(needle: &[u8], haystack: &[u8]) -> Option<usize> 
     if haystack.is_empty() || needle.is_empty() {
         return None;
     }
-    let needle_first = needle[0];
-    if needle.len() == 1 {
-        return find_u8_match(needle_first, haystack);
-    }
-    let mut search_from = 0;
-    loop {
-        match find_u8_match(needle_first, &haystack[search_from..]) {
-            None => return None,
-            Some(index) => {
-                let maybe_match_start = search_from + index;
-                let maybe_match_end = maybe_match_start + needle.len();
-                if haystack.len() < maybe_match_end {
-                    return None;
-                } else if haystack[maybe_match_start..maybe_match_end] == *needle {
-                    return Some(index);
-                }
-                search_from = index + 1
-            }
-        }
+    match needle.len() {
+        1 => memchr::memchr(needle[0], haystack),
+        2 => memchr::memchr2(needle[0], needle[1], haystack),
+        3 => memchr::memchr3(needle[0], needle[1], needle[2], haystack),
+        _ => memchr::memmem::find(haystack, needle),
     }
 }
 
