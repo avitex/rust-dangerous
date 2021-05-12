@@ -67,8 +67,6 @@ pub(crate) fn find_slice_match(needle: &[u8], haystack: &[u8]) -> Option<usize> 
     }
     match needle.len() {
         1 => memchr::memchr(needle[0], haystack),
-        2 => memchr::memchr2(needle[0], needle[1], haystack),
-        3 => memchr::memchr3(needle[0], needle[1], needle[2], haystack),
         _ => memchr::memmem::find(haystack, needle),
     }
 }
