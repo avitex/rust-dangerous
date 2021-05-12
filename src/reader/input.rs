@@ -62,11 +62,14 @@ where
     }
 
     /// Read a length of input that was successfully consumed from a sub-parse.
-    pub fn take_consumed<F>(&mut self, consumer: F) -> I
+    pub fn take_consumed<F, T>(&mut self, consumer: F) -> (T, I)
     where
-        F: FnOnce(&mut Self),
+        F: FnOnce(&mut Self) -> T,
     {
-        self.advance(|input| input.split_consumed(consumer))
+        self.advance(|input| {
+            let (value, head, tail) = input.split_consumed(consumer);
+            ((value, head), tail)
+        })
     }
 
     /// Try read a length of input that was successfully consumed from a
@@ -78,10 +81,12 @@ where
     /// use dangerous::{Input, Invalid};
     ///
     /// let result: Result<_, Invalid> = dangerous::input(b"abc").read_all(|r| {
-    ///     r.try_take_consumed(|r| {
+    ///     let ((), consumed) = r.try_take_consumed(|r| {
     ///         r.skip(1)?;
-    ///         r.consume(b"bc")
-    ///     })
+    ///         r.consume(b"bc")?;
+    ///         Ok(())
+    ///     })?;
+    ///     Ok(consumed)
     /// });
     ///
     /// assert_eq!(result.unwrap(), b"abc"[..]);
@@ -90,12 +95,16 @@ where
     /// # Errors
     ///
     /// Returns any error the provided function does.
-    pub fn try_take_consumed<F>(&mut self, consumer: F) -> Result<I, E>
+    pub fn try_take_consumed<F, T>(&mut self, consumer: F) -> Result<(T, I), E>
     where
         E: WithContext<'i>,
-        F: FnOnce(&mut Self) -> Result<(), E>,
+        F: FnOnce(&mut Self) -> Result<T, E>,
     {
-        self.try_advance(|input| input.try_split_consumed(consumer, CoreOperation::TakeConsumed))
+        self.try_advance(|input| {
+            input
+                .try_split_consumed(consumer, CoreOperation::TakeConsumed)
+                .map(|(value, head, tail)| ((value, head), tail))
+        })
     }
 
     /// Read and verify a value without returning it.
@@ -203,7 +212,7 @@ where
     ///         r.try_expect_external("number", |i| {
     ///             // We map the parsed number along with the byte length
     ///             // of the input to tell the reader we read all of it.
-    ///             i.as_dangerous().parse().map(|number| (number, i.byte_len()))
+    ///             i.as_dangerous().parse().map(|number| (i.byte_len(), number))
     ///         })
     ///     })
     /// }
@@ -235,7 +244,7 @@ where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
-        F: FnOnce(I) -> Result<(T, usize), R>,
+        F: FnOnce(I) -> Result<(usize, T), R>,
         R: External<'i>,
     {
         self.try_advance(|input| {

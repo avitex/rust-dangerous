@@ -77,7 +77,7 @@ fn test_retry_footgun_with_take_consumed() {
     use dangerous::{BytesReader, Error, Input, Invalid};
 
     fn parse<'i, E: Error<'i>>(r: &mut BytesReader<'i, E>) -> Result<(), E> {
-        let consumed = r.try_take_consumed(|r| {
+        let (_, consumed) = r.try_take_consumed(|r| {
             // We take a exact length of input
             r.consume(b"blah")
         })?;

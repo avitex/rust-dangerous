@@ -567,15 +567,16 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         Ok((self.clone(), self.end()))
     }
 
-    /// Splits the input at what was read and what was remaining.
+    /// Splits the input at what was read, the input that was consumed and what
+    /// input was remaining.
     #[inline(always)]
-    fn split_consumed<F, E>(self, f: F) -> (Self, Self)
+    fn split_consumed<F, T, E>(self, f: F) -> (T, Self, Self)
     where
-        F: FnOnce(&mut Reader<'i, Self, E>),
+        F: FnOnce(&mut Reader<'i, Self, E>) -> T,
     {
         let mut reader = Reader::new(self.clone());
         // Consume input.
-        f(&mut reader);
+        let value = f(&mut reader);
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
@@ -589,9 +590,9 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         // longer if there was more available and as such makes the end of input
         // we return unbounded.
         if tail.bound() == Bound::None {
-            (head.into_unbound_end(), tail)
+            (value, head.into_unbound_end(), tail)
         } else {
-            (head, tail)
+            (value, head, tail)
         }
     }
 
@@ -601,14 +602,18 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     ///
     /// Returns an error from the provided function if it fails.
     #[inline(always)]
-    fn try_split_consumed<F, E>(self, f: F, operation: CoreOperation) -> Result<(Self, Self), E>
+    fn try_split_consumed<F, T, E>(
+        self,
+        f: F,
+        operation: CoreOperation,
+    ) -> Result<(T, Self, Self), E>
     where
         E: WithContext<'i>,
-        F: FnOnce(&mut Reader<'i, Self, E>) -> Result<(), E>,
+        F: FnOnce(&mut Reader<'i, Self, E>) -> Result<T, E>,
     {
         let mut reader = Reader::new(self.clone());
         // Consume input.
-        reader.context(CoreContext::from_operation(operation, self.span()), f)?;
+        let value = reader.context(CoreContext::from_operation(operation, self.span()), f)?;
         // We take the remaining input.
         let tail = reader.take_remaining();
         // For the head, we take what we consumed.
@@ -622,9 +627,9 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         // longer if there was more available and as such makes the end of input
         // we return unbounded.
         if tail.bound() == Bound::None {
-            Ok((head.into_unbound_end(), tail))
+            Ok((value, head.into_unbound_end(), tail))
         } else {
-            Ok((head, tail))
+            Ok((value, head, tail))
         }
     }
 
@@ -725,14 +730,14 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
         operation: CoreOperation,
     ) -> Result<(T, Self), E>
     where
-        F: FnOnce(Self) -> Result<(T, usize), Ex>,
+        F: FnOnce(Self) -> Result<(usize, T), Ex>,
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,
         E: From<ExpectedLength<'i>>,
         Ex: External<'i>,
     {
         match f(self.clone()) {
-            Ok((ok, read)) => self
+            Ok((read, ok)) => self
                 .split_at_byte(read, operation)
                 .map(|(_, remaining)| (ok, remaining)),
             Err(external) => Err(self.map_external_error(external, expected, operation)),

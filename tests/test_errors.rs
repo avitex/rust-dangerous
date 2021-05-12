@@ -288,7 +288,7 @@ fn test_external_error_deep_child() {
 
     let error = read_all_err!("hello world", |r| {
         r.try_expect_external("value", |_| {
-            Result::<((), usize), DeepExternalError>::Err(DeepExternalError)
+            Result::<(usize, ()), DeepExternalError>::Err(DeepExternalError)
         })
     });
 
@@ -535,7 +535,7 @@ fn test_invalid_error_details_span() {
 
     let error = read_all_err!("hello world", |r| {
         r.try_expect_external("value", |_| {
-            Result::<((), usize), BadExternalError>::Err(BadExternalError)
+            Result::<(usize, ()), BadExternalError>::Err(BadExternalError)
         })
     });
 

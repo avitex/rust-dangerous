@@ -174,6 +174,7 @@ where
             r.skip_while(|c: u8| c.is_ascii_digit() || c == b'.');
             Ok(())
         })?
+        .1
         .into_string::<E>()?
         .into_external("f64", |i| i.as_dangerous().parse())
     })

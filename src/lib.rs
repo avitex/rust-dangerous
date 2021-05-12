@@ -45,9 +45,9 @@
 )]
 #![deny(
     unused,
-    rustdoc,
     missing_docs,
     rust_2018_idioms,
+    rustdoc::all,
     clippy::all,
     clippy::correctness,
     clippy::style,

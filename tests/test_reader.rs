@@ -42,7 +42,7 @@ fn test_context() {
     #[cfg(not(feature = "full-backtrace"))]
     assert_eq!(err.backtrace().count(), 1);
     err.backtrace().walk(&mut |i, c| {
-        let c = Any::downcast_ref::<CoreOperation>(c.operation().as_any());
+        let c = <dyn Any>::downcast_ref::<CoreOperation>(c.operation().as_any());
         assert!(c.is_some());
         assert!(i != 5);
         true
@@ -196,7 +196,7 @@ fn test_try_take_while_partial() {
 
 #[test]
 fn test_take_consumed_all_unbound() {
-    let consumed = read_all_ok!(b"hello", |r| {
+    let (_, consumed) = read_all_ok!(b"hello", |r| {
         Ok(r.take_consumed(|r| {
             let _ = r.take_remaining();
         }))
@@ -207,7 +207,7 @@ fn test_take_consumed_all_unbound() {
 
 #[test]
 fn test_take_consumed_all_bound() {
-    let consumed = read_all_ok!(b"hello", |r| {
+    let (_, consumed) = read_all_ok!(b"hello", |r| {
         Ok(r.take_consumed(|r| {
             let _ = r.consume(b"hello");
         }))
@@ -218,7 +218,7 @@ fn test_take_consumed_all_bound() {
 
 #[test]
 fn test_take_consumed_partial_bound() {
-    let consumed = read_all_ok!(b"hello", |r| {
+    let (_, consumed) = read_all_ok!(b"hello", |r| {
         let consumed = r.take_consumed(|r| {
             let _ = r.take(2);
             let _ = r.take(1);
@@ -235,7 +235,7 @@ fn test_take_consumed_partial_bound() {
 
 #[test]
 fn test_try_take_consumed_all_unbound() {
-    let consumed = read_all_ok!(b"hello", |r| {
+    let (_, consumed) = read_all_ok!(b"hello", |r| {
         r.try_take_consumed(|r| {
             let _ = r.take_remaining();
             Ok(())
@@ -247,7 +247,7 @@ fn test_try_take_consumed_all_unbound() {
 
 #[test]
 fn test_try_take_consumed_all_bound() {
-    let consumed = read_all_ok!(b"hello", |r| {
+    let (_, consumed) = read_all_ok!(b"hello", |r| {
         r.try_take_consumed(|r| {
             r.consume(b"hello")?;
             Ok(())
@@ -259,7 +259,7 @@ fn test_try_take_consumed_all_bound() {
 
 #[test]
 fn test_try_take_consumed_partial_bound() {
-    let consumed = read_all_ok!(b"hello", |r| {
+    let (_, consumed) = read_all_ok!(b"hello", |r| {
         let consumed = r.try_take_consumed(|r| {
             let _ = r.take(2)?;
             let _ = r.take(1)?;
@@ -487,7 +487,7 @@ impl<'i> External<'i> for ExternalError {
 #[test]
 fn try_expect_external_ok() {
     read_all_ok!(b"", |r| {
-        r.try_expect_external("value", |i| Result::<_, ExternalError>::Ok(((), i.len())))
+        r.try_expect_external("value", |i| Result::<_, ExternalError>::Ok((i.len(), ())))
     });
 }
 
@@ -495,7 +495,7 @@ fn try_expect_external_ok() {
 fn try_expect_external_unconsumed() {
     let _ = read_all_err!(b"abc", |r| {
         r.try_expect_external("value", |i| {
-            Result::<_, ExternalError>::Ok(((), i.len() - 1))
+            Result::<_, ExternalError>::Ok((i.len() - 1, ()))
         })
     });
 }
@@ -504,7 +504,7 @@ fn try_expect_external_unconsumed() {
 fn try_expect_external_read_too_much() {
     let _ = read_all_err!(b"abc", |r| {
         r.try_expect_external("value", |i| {
-            Result::<_, ExternalError>::Ok(((), i.len() + 1))
+            Result::<_, ExternalError>::Ok((i.len() + 1, ()))
         })
     });
 }
@@ -514,7 +514,7 @@ fn try_expect_external_read_invalid_boundary() {
     assert_eq!('♥'.len_utf8(), 3);
     let _ = read_all_err!("♥", |r| {
         r.try_expect_external("value", |i| {
-            Result::<_, ExternalError>::Ok(((), i.byte_len() - 1))
+            Result::<_, ExternalError>::Ok((i.byte_len() - 1, ()))
         })
     });
 }
@@ -523,7 +523,7 @@ fn try_expect_external_read_invalid_boundary() {
 fn try_expect_external_err() {
     let error = read_all_err!(b"", |r| {
         r.try_expect_external("value", |_| {
-            Result::<((), usize), ExternalError>::Err(ExternalError(RetryRequirement::new(0)))
+            Result::<(usize, ()), ExternalError>::Err(ExternalError(RetryRequirement::new(0)))
         })
     });
     assert!(error.is_fatal());
@@ -533,7 +533,7 @@ fn try_expect_external_err() {
 fn try_expect_external_err_retry() {
     let error = read_all_err!(b"", |r| {
         r.try_expect_external("value", |_| {
-            Result::<((), usize), ExternalError>::Err(ExternalError(RetryRequirement::new(1)))
+            Result::<(usize, ()), ExternalError>::Err(ExternalError(RetryRequirement::new(1)))
         })
     });
     assert!(!error.is_fatal());
