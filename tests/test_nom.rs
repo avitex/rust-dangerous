@@ -65,7 +65,7 @@ where
     r.take_remaining().read_all(|r| {
         r.try_expect_external("hex color", |i| {
             color::parse(i.as_dangerous())
-                .map(|(remaining, response)| (response, i.byte_len() - remaining.len()))
+                .map(|(remaining, response)| (i.byte_len() - remaining.len(), response))
         })
     })
 }
@@ -77,7 +77,7 @@ where
     r.take_remaining().read_all(|r| {
         r.try_expect_external("value", |i| {
             verbose::parse(i.as_dangerous())
-                .map(|(remaining, response)| (response, i.byte_len() - remaining.len()))
+                .map(|(remaining, response)| (i.byte_len() - remaining.len(), response))
         })
     })
 }
