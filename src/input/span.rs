@@ -261,6 +261,81 @@ impl Span {
     }
 }
 
+impl fmt::DisplayBase for Span {
+    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        w.write_str("(ptr: ")?;
+        w.write_usize(self.start.as_ptr() as usize)?;
+        w.write_str(", len: ")?;
+        w.write_usize(self.len())?;
+        w.write_char(')')
+    }
+}
+
+impl From<&[u8]> for Span {
+    #[inline(always)]
+    fn from(value: &[u8]) -> Self {
+        let range = value.as_ptr_range();
+        // SAFETY: it is invalid for a slice ptr to be null.
+        // See: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html
+        unsafe {
+            Self {
+                start: NonNull::new_unchecked(range.start as _),
+                end: NonNull::new_unchecked(range.end as _),
+            }
+        }
+    }
+}
+
+impl From<&str> for Span {
+    #[inline(always)]
+    fn from(value: &str) -> Self {
+        Self::from(value.as_bytes())
+    }
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Span")
+            .field("ptr", &self.start)
+            .field("len", &self.len())
+            .finish()
+    }
+}
+
+// SAFETY: Span can only dereference the data pointed to if the data is present
+// and passed as a parent. This makes the internal pointers safe to alias across
+// threads as the parent data enforces the aliasing rules.
+unsafe impl Send for Span {}
+
+// SAFETY: Span can only dereference the data pointed to if the data is present
+// and passed as a parent. This makes the internal pointers safe to alias across
+// threads as the parent data enforces the aliasing rules.
+unsafe impl Sync for Span {}
+
+#[must_use]
+pub struct DebugFor<'a> {
+    span: Span,
+    str_hint: bool,
+    bytes: &'a [u8],
+}
+
+impl<'a> fmt::Debug for DebugFor<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.span.of(self.bytes) {
+            Some(valid) => {
+                let display = InputDisplay::from_bytes(valid).with_formatter(f);
+                let display = if self.str_hint {
+                    display.str_hint()
+                } else {
+                    display
+                };
+                f.debug_tuple("Span").field(&display).finish()
+            }
+            None => fmt::Debug::fmt(&self.span, f),
+        }
+    }
+}
+
 pub trait Parent: Sized {
     fn extract(self, span: Span) -> Option<Self>;
 }
@@ -314,70 +389,5 @@ where
                 None
             }
         })
-    }
-}
-
-impl fmt::DisplayBase for Span {
-    fn fmt(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        w.write_str("(ptr: ")?;
-        w.write_usize(self.start.as_ptr() as usize)?;
-        w.write_str(", len: ")?;
-        w.write_usize(self.len())?;
-        w.write_char(')')
-    }
-}
-
-impl From<&[u8]> for Span {
-    #[inline(always)]
-    fn from(value: &[u8]) -> Self {
-        let range = value.as_ptr_range();
-        // SAFETY: it is invalid for a slice ptr to be null.
-        // See: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html
-        unsafe {
-            Self {
-                start: NonNull::new_unchecked(range.start as _),
-                end: NonNull::new_unchecked(range.end as _),
-            }
-        }
-    }
-}
-
-impl From<&str> for Span {
-    #[inline(always)]
-    fn from(value: &str) -> Self {
-        Self::from(value.as_bytes())
-    }
-}
-
-impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Span")
-            .field("ptr", &self.start)
-            .field("len", &self.len())
-            .finish()
-    }
-}
-
-#[must_use]
-pub struct DebugFor<'a> {
-    span: Span,
-    str_hint: bool,
-    bytes: &'a [u8],
-}
-
-impl<'a> fmt::Debug for DebugFor<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.span.of(self.bytes) {
-            Some(valid) => {
-                let display = InputDisplay::from_bytes(valid).with_formatter(f);
-                let display = if self.str_hint {
-                    display.str_hint()
-                } else {
-                    display
-                };
-                f.debug_tuple("Span").field(&display).finish()
-            }
-            None => fmt::Debug::fmt(&self.span, f),
-        }
     }
 }

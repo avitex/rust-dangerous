@@ -6,7 +6,7 @@ use crate::input::{Input, MaybeString, Span};
 use super::WithContext;
 
 /// Information surrounding an error.
-pub trait Context: 'static {
+pub trait Context: 'static + Send + Sync {
     /// Returns the [`Span`] of input the error occurred if known.
     fn span(&self) -> Option<Span> {
         None
@@ -38,7 +38,7 @@ pub trait Context: 'static {
 }
 
 /// Operation that failed within a context.
-pub trait Operation: Any {
+pub trait Operation: Any + Send + Sync {
     /// Description of the operation in a simple manner, for informing a user
     /// what is trying to be achieved.
     ///
@@ -100,7 +100,7 @@ pub struct ExternalContext<O, E> {
 impl<O, E> Context for ExternalContext<O, E>
 where
     O: Operation,
-    E: fmt::DisplayBase + 'static,
+    E: fmt::DisplayBase + Send + Sync + 'static,
 {
     fn operation(&self) -> &dyn Operation {
         match &self.operation {
