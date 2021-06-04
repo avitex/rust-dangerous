@@ -26,6 +26,6 @@ where
 {
     r.try_expect_external("IMAP response", |i| {
         parser::parse_response(i.as_dangerous())
-            .map(|(remaining, response)| (response, i.len() - remaining.len()))
+            .map(|(remaining, response)| (i.len() - remaining.len(), response))
     })
 }
