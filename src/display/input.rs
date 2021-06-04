@@ -246,9 +246,9 @@ impl<'a> InputWriter<'a> {
     ) -> Self {
         Self {
             w,
+            underline,
             full,
             span,
-            underline,
         }
     }
 
