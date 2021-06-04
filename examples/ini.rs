@@ -14,7 +14,7 @@ fn main() {
         .read_to_end(&mut input_data)
         .expect("read input");
     let input = dangerous::input(input_data.as_slice());
-    match input.read_all::<_, _, Expected<'_>>(read_ini) {
+    match input.read_all(read_ini::<Expected<'_>>) {
         Ok(ini) => println!("{:#?}", ini),
         Err(e) => eprintln!("{:#}", e),
     };
@@ -192,7 +192,7 @@ type = manual
     #[test]
     fn test_section_without_values() {
         let section = dangerous::input(SECTION_WITHOUT_VALUES)
-            .read_all::<_, _, Expected>(read_section)
+            .read_all(read_section::<Expected<'_>>)
             .unwrap();
         assert_eq!(
             section,
@@ -206,7 +206,7 @@ type = manual
     #[test]
     fn test_complete_ini() {
         let document = dangerous::input(INI)
-            .read_all::<_, _, Expected>(read_ini)
+            .read_all(read_ini::<Expected<'_>>)
             .unwrap();
         assert_eq!(
             document,
@@ -241,7 +241,7 @@ type = manual
     #[test]
     fn test_global_values_with_comments() {
         let values = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
-            .read_all::<_, _, Expected>(read_zero_or_more_properties_until_section)
+            .read_all(read_zero_or_more_properties_until_section::<Expected<'_>>)
             .unwrap();
         assert_eq!(
             values,
@@ -261,7 +261,7 @@ type = manual
     #[test]
     fn test_document_without_sections() {
         let document = dangerous::input(GLOBALS_WITHOUT_SECTIONS)
-            .read_all::<_, _, Expected>(read_ini)
+            .read_all(read_ini::<Expected<'_>>)
             .unwrap();
         assert_eq!(
             document,
@@ -284,12 +284,12 @@ type = manual
     #[test]
     fn empty_input() {
         let ini = dangerous::input(b"")
-            .read_all::<_, _, Expected>(read_ini)
+            .read_all(read_ini::<Expected<'_>>)
             .unwrap();
         assert_eq!(ini, Document::default());
 
         let ini = dangerous::input(b"  \n ; empty ")
-            .read_all::<_, _, Expected>(read_ini)
+            .read_all(read_ini::<Expected<'_>>)
             .unwrap();
         assert_eq!(ini, Document::default())
     }

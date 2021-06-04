@@ -3,8 +3,8 @@ use dangerous::{BytesReader, Error, Expected, Input};
 
 fn main() {
     dangerous::input(b"hello")
-        .read_all::<_, _, Expected<'_>>(parse)
-        .map_err(|error| anyhow::Error::msg(error.to_string()))
+        .read_all(parse::<Expected<'_>>)
+        .map_err(|err| anyhow::Error::msg(err.to_string()))
         .context("my anyhow context 1")
         .context("my anyhow context 2")
         .unwrap();

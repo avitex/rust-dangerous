@@ -14,7 +14,7 @@ fn main() {
         .read_to_end(&mut input_data)
         .expect("read input");
     let input = dangerous::input(input_data.as_slice());
-    match input.read_all::<_, _, Box<Expected>>(read_value) {
+    match input.read_all(read_value::<Box<Expected<'_>>>) {
         Ok(json) => println!("{:#?}", json),
         Err(e) => eprintln!("{:#}", e),
     }
