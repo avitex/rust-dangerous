@@ -41,12 +41,12 @@
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
-    future_incompatible
 )]
 #![deny(
     unused,
     missing_docs,
     rust_2018_idioms,
+    future_incompatible,
     rustdoc::all,
     clippy::all,
     clippy::correctness,
