@@ -224,11 +224,23 @@ impl<'i> Bytes<'i> {
     where
         E: From<ExpectedLength<'i>>,
     {
+        self.split_array_ref(operation)
+            .map(|(arr, tail)| (*arr, tail))
+    }
+
+    #[inline(always)]
+    pub(crate) fn split_array_ref<E, const N: usize>(
+        self,
+        operation: CoreOperation,
+    ) -> Result<(&'i [u8; N], Bytes<'i>), E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
         match self.split_at(N, operation) {
             Ok((head, tail)) => {
                 let ptr = head.as_dangerous().as_ptr().cast::<[u8; N]>();
-                // SAFETY: safe as we took only N amount and u8 is `Copy`.
-                let arr = unsafe { *ptr };
+                // SAFETY: safe as we took only N amount.
+                let arr = unsafe { &*ptr };
                 Ok((arr, tail))
             }
             Err(err) => Err(err),
@@ -237,10 +249,15 @@ impl<'i> Bytes<'i> {
 
     #[inline(always)]
     pub(crate) fn split_array_opt<const N: usize>(self) -> Option<([u8; N], Bytes<'i>)> {
+        self.split_array_ref_opt().map(|(arr, tail)| (*arr, tail))
+    }
+
+    #[inline(always)]
+    pub(crate) fn split_array_ref_opt<const N: usize>(self) -> Option<(&'i [u8; N], Bytes<'i>)> {
         self.split_at_opt(N).map(|(head, tail)| {
             let ptr = head.as_dangerous().as_ptr().cast::<[u8; N]>();
-            // SAFETY: safe as we took only N amount and u8 is `Copy`.
-            let arr = unsafe { *ptr };
+            // SAFETY: safe as we took only N amount.
+            let arr = unsafe { &*ptr };
             (arr, tail)
         })
     }

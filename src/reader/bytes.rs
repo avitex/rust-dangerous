@@ -52,12 +52,33 @@ impl<'i, E> BytesReader<'i, E> {
         self.try_advance(|input| input.split_array(CoreOperation::ReadArray))
     }
 
+    /// Read a reference to an array from input.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the length requirement to read could not be met.
+    #[inline]
+    pub fn read_array_ref<const N: usize>(&mut self) -> Result<&'i [u8; N], E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_array_ref(CoreOperation::ReadArray))
+    }
+
     /// Read an optional array.
     ///
     /// Returns `Some([u8; N])` if there was enough input, `None` if not.
     #[inline]
     pub fn read_array_opt<const N: usize>(&mut self) -> Option<[u8; N]> {
         self.advance_opt(Bytes::split_array_opt)
+    }
+
+    /// Read an optional reference to an array.
+    ///
+    /// Returns `Some(&[u8; N])` if there was enough input, `None` if not.
+    #[inline]
+    pub fn read_array_ref_opt<const N: usize>(&mut self) -> Option<&'i [u8; N]> {
+        self.advance_opt(Bytes::split_array_ref_opt)
     }
 
     /// Peek the next byte in the input without mutating the `Reader`.
