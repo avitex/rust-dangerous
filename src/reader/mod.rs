@@ -41,10 +41,10 @@ pub type StringReader<'i, E> = Reader<'i, String<'i>, E>;
 ///
 /// To verify input and optionally return a type from that verification,
 /// [`verify()`], [`try_verify()`], [`expect()`], [`try_expect()`] and
-/// [`try_expect_external()`] is provided. These functions are the interface for
+/// [`try_external()`] is provided. These functions are the interface for
 /// creating errors based off what was expected.
 ///
-/// [`try_expect_external()`] is provided for reading a custom type that does
+/// [`try_external()`] is provided for reading a custom type that does
 /// not support a `&mut Reader<'i, I, E>` interface, for example a type
 /// implementing `FromStr`.
 ///
@@ -89,7 +89,7 @@ pub type StringReader<'i, E> = Reader<'i, String<'i>, E>;
 /// [`try_verify()`]: Reader::try_verify()  
 /// [`expect()`]: Reader::expect()  
 /// [`try_expect()`]: Reader::try_expect()  
-/// [`try_expect_external()`]: Reader::try_expect_external()  
+/// [`try_external()`]: Reader::try_external()  
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
 /// [`RetryRequirement`]: crate::error::RetryRequirement  

@@ -191,7 +191,7 @@ where
     ///
     /// # Usage
     ///
-    /// On success, the provided function must return `Ok((T, usize))` where `T`
+    /// On success, the provided function must return `Ok((usize, T))` where `T`
     /// is the type being read and `usize` being the length in bytes of input
     /// that was consumed. The length of bytes returned **MUST** align to a
     /// token boundary within the input, else an error will be returned. For a
@@ -209,7 +209,7 @@ where
     ///   E: Error<'i>,
     /// {
     ///     r.take_remaining_str()?.read_all(|r| {
-    ///         r.try_expect_external("number", |i| {
+    ///         r.try_external("number", |i| {
     ///             // We map the parsed number along with the byte length
     ///             // of the input to tell the reader we read all of it.
     ///             i.as_dangerous().parse().map(|number| (i.byte_len(), number))
@@ -239,7 +239,7 @@ where
     ///
     /// [`BytesReader`]: crate::BytesReader  
     /// [`StringReader`]: crate::StringReader
-    pub fn try_expect_external<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
+    pub fn try_external<F, T, R>(&mut self, expected: &'static str, f: F) -> Result<T, E>
     where
         E: WithContext<'i>,
         E: From<ExpectedValid<'i>>,

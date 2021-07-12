@@ -193,7 +193,7 @@ pub trait Input<'i>: Private<'i> {
     ///
     /// **Note**: it is the callers responsibility to ensure all of the input is
     /// handled. If the function may only consume a partial amount of input, use
-    /// [`Reader::try_expect_external()`] instead.
+    /// [`Reader::try_external()`] instead.
     ///
     /// # Errors
     ///

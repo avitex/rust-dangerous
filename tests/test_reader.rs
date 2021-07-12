@@ -474,7 +474,7 @@ fn test_try_expect_none() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Reader::try_expect_external
+// Reader::try_external
 
 struct ExternalError(Option<RetryRequirement>);
 
@@ -485,44 +485,44 @@ impl<'i> External<'i> for ExternalError {
 }
 
 #[test]
-fn try_expect_external_ok() {
+fn try_external_ok() {
     read_all_ok!(b"", |r| {
-        r.try_expect_external("value", |i| Result::<_, ExternalError>::Ok((i.len(), ())))
+        r.try_external("value", |i| Result::<_, ExternalError>::Ok((i.len(), ())))
     });
 }
 
 #[test]
-fn try_expect_external_unconsumed() {
+fn try_external_unconsumed() {
     let _ = read_all_err!(b"abc", |r| {
-        r.try_expect_external("value", |i| {
+        r.try_external("value", |i| {
             Result::<_, ExternalError>::Ok((i.len() - 1, ()))
         })
     });
 }
 
 #[test]
-fn try_expect_external_read_too_much() {
+fn try_external_read_too_much() {
     let _ = read_all_err!(b"abc", |r| {
-        r.try_expect_external("value", |i| {
+        r.try_external("value", |i| {
             Result::<_, ExternalError>::Ok((i.len() + 1, ()))
         })
     });
 }
 
 #[test]
-fn try_expect_external_read_invalid_boundary() {
+fn try_external_read_invalid_boundary() {
     assert_eq!('♥'.len_utf8(), 3);
     let _ = read_all_err!("♥", |r| {
-        r.try_expect_external("value", |i| {
+        r.try_external("value", |i| {
             Result::<_, ExternalError>::Ok((i.byte_len() - 1, ()))
         })
     });
 }
 
 #[test]
-fn try_expect_external_err() {
+fn try_external_err() {
     let error = read_all_err!(b"", |r| {
-        r.try_expect_external("value", |_| {
+        r.try_external("value", |_| {
             Result::<(usize, ()), ExternalError>::Err(ExternalError(RetryRequirement::new(0)))
         })
     });
@@ -530,9 +530,9 @@ fn try_expect_external_err() {
 }
 
 #[test]
-fn try_expect_external_err_retry() {
+fn try_external_err_retry() {
     let error = read_all_err!(b"", |r| {
-        r.try_expect_external("value", |_| {
+        r.try_external("value", |_| {
             Result::<(usize, ()), ExternalError>::Err(ExternalError(RetryRequirement::new(1)))
         })
     });
