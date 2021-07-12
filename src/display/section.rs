@@ -388,7 +388,7 @@ fn take_side(
         match unit_result {
             Ok(unit) => {
                 if calc.next(unit.display_cost, iter.has_next()) {
-                    len += unit.len_utf8
+                    len += unit.len_utf8;
                 } else {
                     break;
                 }
@@ -518,7 +518,7 @@ impl Calculator {
             self.budget -= unit_cost;
         } else {
             if has_next {
-                self.budget = self.budget.saturating_sub(self.has_more_cost)
+                self.budget = self.budget.saturating_sub(self.has_more_cost);
             }
             return false;
         }

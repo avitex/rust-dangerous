@@ -67,7 +67,7 @@ where
     #[inline(always)]
     fn add_input(&mut self, input: impl Input<'i>) {
         if self.input.span().is_within(input.span()) {
-            self.input = input.into_maybe_string()
+            self.input = input.into_maybe_string();
         }
     }
 

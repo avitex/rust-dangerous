@@ -105,13 +105,13 @@ where
         // Write additional
         w.write_str("additional:\n  ")?;
         if let Some(span_range) = root.span.range_of(input.span()) {
-            match self.format {
-                PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii => {
-                    w.write_str("error line: ")?;
-                    w.write_usize(line_offset(&input, span_range.start))?;
-                    w.write_str(", ")?;
-                }
-                _ => (),
+            if matches!(
+                self.format,
+                PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii
+            ) {
+                w.write_str("error line: ")?;
+                w.write_usize(line_offset(&input, span_range.start))?;
+                w.write_str(", ")?;
             }
             w.write_str("error offset: ")?;
             w.write_usize(span_range.start)?;
