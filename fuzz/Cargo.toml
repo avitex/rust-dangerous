@@ -8,8 +8,7 @@ publish = false
 cargo-fuzz = true
 
 [dependencies]
-rand = { version = "0.8", default-features = false, features = ["small_rng"] }
-libfuzzer-sys = "0.3"
+libfuzzer-sys = "0.4"
 
 [dependencies.dangerous]
 path = ".."
@@ -21,5 +20,17 @@ members = ["."]
 [[bin]]
 name = "general"
 path = "fuzz_targets/general.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "string"
+path = "fuzz_targets/string.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "display"
+path = "fuzz_targets/display.rs"
 test = false
 doc = false
