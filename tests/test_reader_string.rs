@@ -81,13 +81,12 @@ fn test_consume_opt_char_false() {
 
 #[test]
 fn test_peek_char() {
-    assert_eq!(
+    assert!(
         read_all_ok!("hello", |r| {
             let v = r.peek_char()? == 'h';
             r.skip(5)?;
             Ok(v)
-        }),
-        true
+        })
     );
 }
 
@@ -96,12 +95,11 @@ fn test_peek_char() {
 
 #[test]
 fn test_peek_char_opt() {
-    assert_eq!(
+    assert!(
         read_all_ok!("hello", |r| {
             let v = r.peek_char_opt().map_or(false, |v| v == 'h');
             r.skip(5)?;
             Ok(v)
-        }),
-        true
+        })
     );
 }

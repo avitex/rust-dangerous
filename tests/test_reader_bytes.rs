@@ -81,13 +81,12 @@ fn test_consume_opt_u8_false() {
 
 #[test]
 fn test_peek_u8() {
-    assert_eq!(
+    assert!(
         read_all_ok!(b"hello", |r| {
             let v = r.peek_u8()? == b'h';
             r.skip(5)?;
             Ok(v)
-        }),
-        true
+        })
     );
 }
 
@@ -96,13 +95,12 @@ fn test_peek_u8() {
 
 #[test]
 fn test_peek_u8_opt() {
-    assert_eq!(
+    assert!(
         read_all_ok!(b"hello", |r| {
             let v = r.peek_u8_opt().map_or(false, |v| v == b'h');
             r.skip(5)?;
             Ok(v)
-        }),
-        true
+        })
     );
 }
 

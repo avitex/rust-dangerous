@@ -153,7 +153,7 @@ fn test_expected_valid_variant() {
         ExpectedKind::Valid(error) => error,
         _ => unreachable!(),
     };
-    assert_eq!(error.input().is_string(), false);
+    assert!(!error.input().is_string());
     assert_eq!(error.input().into_bytes(), b"hello world\xC2 "[..]);
     assert_eq!(error.to_retry_requirement(), None);
     assert_str_eq!(
@@ -243,7 +243,7 @@ fn test_expected_length_variant() {
         ExpectedKind::Length(error) => error,
         _ => unreachable!(),
     };
-    assert_eq!(error.input().is_string(), false);
+    assert!(!error.input().is_string());
     assert_eq!(error.input().into_bytes(), b"hello world"[..]);
     assert_eq!(error.len(), Length::AtLeast(13));
     assert_eq!(error.to_retry_requirement(), RetryRequirement::new(2));
@@ -363,7 +363,7 @@ fn test_expected_value_variant() {
         ExpectedKind::Value(error) => error,
         _ => unreachable!(),
     };
-    assert_eq!(error.input().is_string(), false);
+    assert!(!error.input().is_string());
     assert_eq!(error.input().into_bytes(), b"hello world"[..]);
     assert_eq!(error.expected().as_bytes(), &b"123"[..]);
     assert_eq!(error.to_retry_requirement(), None);
