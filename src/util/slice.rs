@@ -49,3 +49,15 @@ pub(crate) unsafe fn split_str_at_unchecked(slice: &str, mid: usize) -> (&str, &
     debug_assert!(slice.is_char_boundary(mid));
     (slice.get_unchecked(..mid), slice.get_unchecked(mid..))
 }
+
+/// Returns the slice as a reference to an array.
+///
+/// # Safety
+///
+/// Caller has to check that `slice.len() == N`.
+#[inline(always)]
+pub(crate) unsafe fn slice_to_array_unchecked<T, const N: usize>(slice: &[T]) -> &[T; N] {
+    debug_assert!(slice.len() == N);
+    // Cast the slice pointer to an array pointer and reborrow.
+    &*slice.as_ptr().cast::<[T; N]>()
+}
