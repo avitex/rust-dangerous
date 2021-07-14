@@ -11,13 +11,10 @@ use std::any::Any;
 
 #[test]
 fn test_at_end_true() {
-    assert_eq!(
-        read_all_ok!(b"hello", |r| {
-            r.consume(b"hello")?;
-            Ok(r.at_end())
-        }),
-        true
-    );
+    assert!(read_all_ok!(b"hello", |r| {
+        r.consume(b"hello")?;
+        Ok(r.at_end())
+    }));
 }
 
 #[test]
@@ -277,14 +274,11 @@ fn test_try_take_consumed_partial_bound() {
 
 #[test]
 fn test_peek_enough() {
-    assert_eq!(
-        read_all_ok!(b"hello", |r| {
-            let v = *r.peek(4)? == b"hell"[..];
-            r.skip(5)?;
-            Ok(v)
-        }),
-        true
-    );
+    assert!(read_all_ok!(b"hello", |r| {
+        let v = *r.peek(4)? == b"hell"[..];
+        r.skip(5)?;
+        Ok(v)
+    }));
 }
 
 #[test]
@@ -300,26 +294,20 @@ fn test_peek_too_much() {
 
 #[test]
 fn test_peek_opt_enough() {
-    assert_eq!(
-        read_all_ok!(b"hello", |r| {
-            let v = r.peek_opt(4).map_or(false, |v| *v == b"hell"[..]);
-            r.skip(5)?;
-            Ok(v)
-        }),
-        true
-    );
+    assert!(read_all_ok!(b"hello", |r| {
+        let v = r.peek_opt(4).map_or(false, |v| *v == b"hell"[..]);
+        r.skip(5)?;
+        Ok(v)
+    }));
 }
 
 #[test]
 fn test_peek_opt_too_much() {
-    assert_eq!(
-        read_all_ok!(b"hello", |r| {
-            let v = r.peek_opt(10).map_or(false, |v| *v == b"hell"[..]);
-            r.skip(5)?;
-            Ok(v)
-        }),
-        false
-    );
+    assert!(!read_all_ok!(b"hello", |r| {
+        let v = r.peek_opt(10).map_or(false, |v| *v == b"hell"[..]);
+        r.skip(5)?;
+        Ok(v)
+    }));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -474,7 +462,7 @@ fn test_try_expect_none() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Reader::try_expect_external
+// Reader::try_external
 
 struct ExternalError(Option<RetryRequirement>);
 
@@ -485,44 +473,44 @@ impl<'i> External<'i> for ExternalError {
 }
 
 #[test]
-fn try_expect_external_ok() {
+fn try_external_ok() {
     read_all_ok!(b"", |r| {
-        r.try_expect_external("value", |i| Result::<_, ExternalError>::Ok((i.len(), ())))
+        r.try_external("value", |i| Result::<_, ExternalError>::Ok((i.len(), ())))
     });
 }
 
 #[test]
-fn try_expect_external_unconsumed() {
+fn try_external_unconsumed() {
     let _ = read_all_err!(b"abc", |r| {
-        r.try_expect_external("value", |i| {
+        r.try_external("value", |i| {
             Result::<_, ExternalError>::Ok((i.len() - 1, ()))
         })
     });
 }
 
 #[test]
-fn try_expect_external_read_too_much() {
+fn try_external_read_too_much() {
     let _ = read_all_err!(b"abc", |r| {
-        r.try_expect_external("value", |i| {
+        r.try_external("value", |i| {
             Result::<_, ExternalError>::Ok((i.len() + 1, ()))
         })
     });
 }
 
 #[test]
-fn try_expect_external_read_invalid_boundary() {
+fn try_external_read_invalid_boundary() {
     assert_eq!('♥'.len_utf8(), 3);
     let _ = read_all_err!("♥", |r| {
-        r.try_expect_external("value", |i| {
+        r.try_external("value", |i| {
             Result::<_, ExternalError>::Ok((i.byte_len() - 1, ()))
         })
     });
 }
 
 #[test]
-fn try_expect_external_err() {
+fn try_external_err() {
     let error = read_all_err!(b"", |r| {
-        r.try_expect_external("value", |_| {
+        r.try_external("value", |_| {
             Result::<(usize, ()), ExternalError>::Err(ExternalError(RetryRequirement::new(0)))
         })
     });
@@ -530,9 +518,9 @@ fn try_expect_external_err() {
 }
 
 #[test]
-fn try_expect_external_err_retry() {
+fn try_external_err_retry() {
     let error = read_all_err!(b"", |r| {
-        r.try_expect_external("value", |_| {
+        r.try_external("value", |_| {
             Result::<(usize, ()), ExternalError>::Err(ExternalError(RetryRequirement::new(1)))
         })
     });

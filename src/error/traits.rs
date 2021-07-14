@@ -85,10 +85,10 @@ pub trait Details<'i> {
 /// wish to add additional information.
 ///
 /// External errors are consumed with [`Input::into_external()`] or
-/// [`Reader::try_expect_external()`].
+/// [`Reader::try_external()`].
 ///
 /// [`Input::into_external()`]: crate::Input::into_external()
-/// [`Reader::try_expect_external()`]: crate::Reader::try_expect_external()
+/// [`Reader::try_external()`]: crate::Reader::try_external()
 pub trait External<'i>: Sized {
     /// The specific section of input that caused an error.
     fn span(&self) -> Option<Span> {

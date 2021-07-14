@@ -63,7 +63,7 @@ where
     E: Error<'i>,
 {
     r.take_remaining().read_all(|r| {
-        r.try_expect_external("hex color", |i| {
+        r.try_external("hex color", |i| {
             color::parse(i.as_dangerous())
                 .map(|(remaining, response)| (i.byte_len() - remaining.len(), response))
         })
@@ -75,7 +75,7 @@ where
     E: Error<'i>,
 {
     r.take_remaining().read_all(|r| {
-        r.try_expect_external("value", |i| {
+        r.try_external("value", |i| {
             verbose::parse(i.as_dangerous())
                 .map(|(remaining, response)| (i.byte_len() - remaining.len(), response))
         })

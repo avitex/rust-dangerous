@@ -102,7 +102,7 @@ impl BacktraceBuilder for FullBacktrace {
     }
 
     fn push(&mut self, context: impl Context) {
-        self.stack.push(Box::new(context))
+        self.stack.push(Box::new(context));
     }
 }
 

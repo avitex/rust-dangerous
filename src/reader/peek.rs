@@ -31,6 +31,13 @@ impl<'p, I> Peek<'p, I> {
             lifetime: PhantomData,
         }
     }
+
+    /// An escape hatch to persist the input beyond the peek lifetime `'p`,
+    /// instead falling back to the lifetime associated with `I`.
+    #[inline(always)]
+    pub fn persist(self) -> I {
+        self.input
+    }
 }
 
 impl<'p, I> AsRef<I> for Peek<'p, I>
