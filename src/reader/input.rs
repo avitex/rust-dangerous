@@ -31,7 +31,7 @@ where
         self.advance(|input| (input.clone(), input.end()))
     }
 
-    /// Mutably use the `Reader` with a given context.
+    /// Use the `Reader` in a mutable context.
     ///
     /// # Errors
     ///
@@ -46,7 +46,7 @@ where
         with_context(context, self.input.clone(), || f(self))
     }
 
-    /// Immutably use the `Reader` with a given context.
+    /// Use the `Reader` in an immutable context.
     ///
     /// # Errors
     ///
