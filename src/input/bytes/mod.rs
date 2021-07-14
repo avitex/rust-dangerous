@@ -1,3 +1,6 @@
+mod pattern;
+mod prefix;
+
 use core::slice::Iter as SliceIter;
 use core::{iter, str};
 

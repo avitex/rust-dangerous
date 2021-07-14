@@ -9,7 +9,7 @@ use crate::fmt::{Debug, Display, DisplayBase};
 use crate::input::pattern::Pattern;
 use crate::reader::Reader;
 
-use super::{Bound, Bytes, MaybeString, Prefix, Span, String};
+use super::{Bound, ByteLength, Bytes, MaybeString, Prefix, Span, String};
 
 /// Implemented for immutable wrappers around bytes to be processed ([`Bytes`]/[`String`]).
 ///
@@ -243,7 +243,7 @@ pub trait Input<'i>: Private<'i> {
 
 pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
     /// Smallest unit that can be consumed.
-    type Token: BytesLength + Copy + 'static;
+    type Token: ByteLength + Copy + 'static;
 
     /// Iterator of tokens.
     type TokenIter: DoubleEndedIterator<Item = Self::Token>;
@@ -771,108 +771,3 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
 }
 
 impl<'i, T> PrivateExt<'i> for T where T: Input<'i> {}
-
-///////////////////////////////////////////////////////////////////////////////
-// BytesLength
-
-/// Implemented for types that return a guaranteed byte length.
-///
-/// # Safety
-///
-/// The implementor must guarantee the returned byte length valid is valid.
-pub unsafe trait BytesLength: Copy {
-    fn byte_len(self) -> usize;
-}
-
-unsafe impl<T> BytesLength for &T
-where
-    T: BytesLength,
-{
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        (*self).byte_len()
-    }
-}
-
-unsafe impl BytesLength for u8 {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        1
-    }
-}
-
-unsafe impl BytesLength for char {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len_utf8()
-    }
-}
-
-unsafe impl BytesLength for &[u8] {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len()
-    }
-}
-
-unsafe impl BytesLength for &str {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.as_bytes().len()
-    }
-}
-
-unsafe impl<const N: usize> BytesLength for &[u8; N] {
-    #[inline(always)]
-    fn byte_len(self) -> usize {
-        self.len()
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// IntoInput
-
-pub trait IntoInput<'i>: Copy {
-    type Input: Input<'i>;
-
-    fn into_input(self) -> Self::Input;
-}
-
-impl<'i, T> IntoInput<'i> for &T
-where
-    T: IntoInput<'i>,
-{
-    type Input = T::Input;
-
-    #[inline(always)]
-    fn into_input(self) -> Self::Input {
-        (*self).into_input()
-    }
-}
-
-impl<'i> IntoInput<'i> for &'i [u8] {
-    type Input = Bytes<'i>;
-
-    #[inline(always)]
-    fn into_input(self) -> Self::Input {
-        Bytes::new(self, Bound::Start)
-    }
-}
-
-impl<'i> IntoInput<'i> for &'i str {
-    type Input = String<'i>;
-
-    #[inline(always)]
-    fn into_input(self) -> Self::Input {
-        String::new(self, Bound::Start)
-    }
-}
-
-impl<'i, const N: usize> IntoInput<'i> for &'i [u8; N] {
-    type Input = Bytes<'i>;
-
-    #[inline(always)]
-    fn into_input(self) -> Self::Input {
-        Bytes::new(self, Bound::Start)
-    }
-}

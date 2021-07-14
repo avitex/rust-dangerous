@@ -69,16 +69,16 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-mod input;
 mod reader;
 mod support;
 mod util;
 
 pub mod display;
 pub mod error;
+pub mod input;
 
 pub use self::error::{Error, Expected, Fatal, Invalid, ToRetryRequirement};
-pub use self::input::{input, Bound, Bytes, Input, MaybeString, Pattern, Span, String};
+pub use self::input::{Bound, Bytes, Input, MaybeString, Span, String};
 pub use self::reader::{BytesReader, Peek, Reader, StringReader};
 
 // Re-exported types from core::fmt along with `DisplayBase` and `Write`.
@@ -86,4 +86,24 @@ pub use self::reader::{BytesReader, Peek, Reader, StringReader};
 pub(crate) mod fmt {
     pub(crate) use crate::display::{DisplayBase, Write};
     pub(crate) use core::fmt::{Debug, Display, Error, Formatter, Result};
+}
+
+use crate::input::IntoInput;
+
+/// Creates a new `Input` from a byte or string slice.
+///
+/// It is recommended to use this directly from the crate as `dangerous::input()`,
+/// not as an import via `use` as shown below, as you lose the discoverability.
+///
+/// ```
+/// use dangerous::input; // bad
+///
+/// dangerous::input(b"hello"); // do this instead
+/// ```
+#[inline(always)]
+pub fn input<'i, I>(input: I) -> I::Input
+where
+    I: IntoInput<'i>,
+{
+    input.into_input()
 }

@@ -1,3 +1,7 @@
+mod maybe;
+mod pattern;
+mod prefix;
+
 use core::str;
 
 use crate::display::InputDisplay;
@@ -7,7 +11,9 @@ use crate::error::{
 use crate::fmt;
 use crate::util::{fast, slice, utf8};
 
-use super::{Bound, Bytes, Input, MaybeString, Private};
+pub use self::maybe::MaybeString;
+
+use super::{Bound, Bytes, Input, Private};
 
 /// UTF-8 [`Input`].
 #[derive(Clone)]

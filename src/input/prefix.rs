@@ -1,14 +1,14 @@
-use super::{Bytes, BytesLength, String};
+use super::ByteLength;
 
-use crate::util::utf8::CharBytes;
-
-/// Implemented for types that are an input prefix.
-///
+/// Implemented for types that can be a prefix for a given input.
+/// 
 /// # Safety
 ///
-/// The implementor must guarantee the value returned from `is_prefix_of` is
-/// valid.
-pub unsafe trait Prefix<I>: BytesLength {
+/// The implementation **must** guarantee that the value returned is correct as
+/// it is used for unchecked memory operations and an incorrect implementation
+/// would introduce invalid memory access.
+pub unsafe trait Prefix<I>: ByteLength + Copy {
+    /// Returns `true` if `self` is a prefix of the given input.
     fn is_prefix_of(self, input: &I) -> bool;
 }
 
@@ -19,58 +19,5 @@ where
     #[inline(always)]
     fn is_prefix_of(self, input: &I) -> bool {
         (*self).is_prefix_of(input)
-    }
-}
-
-unsafe impl<'i> Prefix<Bytes<'i>> for u8 {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-        input.as_dangerous().starts_with(&[self])
-    }
-}
-
-unsafe impl<'i> Prefix<String<'i>> for char {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &String<'i>) -> bool {
-        match input.as_dangerous().chars().next() {
-            Some(c) => c == self,
-            None => false,
-        }
-    }
-}
-
-unsafe impl<'i> Prefix<Bytes<'i>> for char {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-        let bytes = CharBytes::from(self);
-        input.as_dangerous().starts_with(bytes.as_bytes())
-    }
-}
-
-unsafe impl<'i> Prefix<Bytes<'i>> for &[u8] {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-        input.as_dangerous().starts_with(self)
-    }
-}
-
-unsafe impl<'i> Prefix<String<'i>> for &str {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &String<'i>) -> bool {
-        input.as_dangerous().starts_with(self)
-    }
-}
-
-unsafe impl<'i> Prefix<Bytes<'i>> for &str {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-        input.as_dangerous().starts_with(self.as_bytes())
-    }
-}
-
-unsafe impl<'i, const N: usize> Prefix<Bytes<'i>> for &[u8; N] {
-    #[inline(always)]
-    fn is_prefix_of(self, input: &Bytes<'i>) -> bool {
-        input.as_dangerous().starts_with(&self[..])
     }
 }

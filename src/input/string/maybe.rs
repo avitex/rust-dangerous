@@ -1,7 +1,6 @@
 use crate::display::InputDisplay;
 use crate::fmt;
-
-use super::{Bound, Bytes, Input, Span, String};
+use crate::input::{Bound, Bytes, Input, Span, String};
 
 /// [`String`] if known UTF-8, [`Bytes`] if not.
 #[derive(Clone)]
