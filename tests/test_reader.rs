@@ -11,12 +11,10 @@ use std::any::Any;
 
 #[test]
 fn test_at_end_true() {
-    assert!(
-        read_all_ok!(b"hello", |r| {
-            r.consume(b"hello")?;
-            Ok(r.at_end())
-        })
-    );
+    assert!(read_all_ok!(b"hello", |r| {
+        r.consume(b"hello")?;
+        Ok(r.at_end())
+    }));
 }
 
 #[test]
@@ -276,13 +274,11 @@ fn test_try_take_consumed_partial_bound() {
 
 #[test]
 fn test_peek_enough() {
-    assert!(
-        read_all_ok!(b"hello", |r| {
-            let v = *r.peek(4)? == b"hell"[..];
-            r.skip(5)?;
-            Ok(v)
-        })
-    );
+    assert!(read_all_ok!(b"hello", |r| {
+        let v = *r.peek(4)? == b"hell"[..];
+        r.skip(5)?;
+        Ok(v)
+    }));
 }
 
 #[test]
@@ -298,24 +294,20 @@ fn test_peek_too_much() {
 
 #[test]
 fn test_peek_opt_enough() {
-    assert!(
-        read_all_ok!(b"hello", |r| {
-            let v = r.peek_opt(4).map_or(false, |v| *v == b"hell"[..]);
-            r.skip(5)?;
-            Ok(v)
-        })
-    );
+    assert!(read_all_ok!(b"hello", |r| {
+        let v = r.peek_opt(4).map_or(false, |v| *v == b"hell"[..]);
+        r.skip(5)?;
+        Ok(v)
+    }));
 }
 
 #[test]
 fn test_peek_opt_too_much() {
-    assert!(
-        !read_all_ok!(b"hello", |r| {
-            let v = r.peek_opt(10).map_or(false, |v| *v == b"hell"[..]);
-            r.skip(5)?;
-            Ok(v)
-        })
-    );
+    assert!(!read_all_ok!(b"hello", |r| {
+        let v = r.peek_opt(10).map_or(false, |v| *v == b"hell"[..]);
+        r.skip(5)?;
+        Ok(v)
+    }));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
