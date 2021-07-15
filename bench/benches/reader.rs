@@ -37,7 +37,7 @@ fn bench_read_num(c: &mut Criterion) {
     c.bench_function("read_u16_le", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 2]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_u16_le())
+                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_array().map(u16::from_le_bytes))
                 .unwrap();
         })
     });
@@ -45,7 +45,7 @@ fn bench_read_num(c: &mut Criterion) {
     c.bench_function("read_u32_le", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 4]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_u32_le())
+                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_array().map(u32::from_le_bytes))
                 .unwrap();
         })
     });
@@ -53,7 +53,7 @@ fn bench_read_num(c: &mut Criterion) {
     c.bench_function("read_u64_le", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 8]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_u64_le())
+                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_array().map(u64::from_le_bytes))
                 .unwrap();
         })
     });
