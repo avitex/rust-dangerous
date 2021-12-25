@@ -723,7 +723,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
     /// - the provided function returns an amount of input read that is greater
     ///   than the actual length
     #[inline(always)]
-    fn try_split_expect_external<F, T, E, Ex>(
+    fn try_split_external<F, T, E, Ex>(
         self,
         f: F,
         expected: &'static str,

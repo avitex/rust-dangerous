@@ -248,7 +248,7 @@ where
         R: External<'i>,
     {
         self.try_advance(|input| {
-            input.try_split_expect_external(f, expected, CoreOperation::ExpectExternal)
+            input.try_split_external(f, expected, CoreOperation::ExpectExternal)
         })
     }
 
