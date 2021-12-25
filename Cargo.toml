@@ -29,7 +29,7 @@ full-backtrace = ["alloc"]
 
 [dependencies]
 zc = { version = "0.4", optional = true, default-features = false }
-nom = { version = "6", features = ["alloc"], optional = true, default-features = false }
+nom = { version = "7", features = ["alloc"], optional = true, default-features = false }
 regex = { version = "1.4", optional = true }
 memchr = { version = "2.4", optional = true, default-features = false }
 bytecount = { version = "0.6", optional = true }
@@ -40,7 +40,7 @@ zc = "0.4"
 paste = "1.0"
 indoc = "1.0"
 anyhow = "1.0"
-imap-proto = "0.14"
+imap-proto = "0.15"
 colored-diff = "0.2.2"
 
 [[example]]
