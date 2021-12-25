@@ -1,7 +1,7 @@
 use super::ByteLength;
 
 /// Implemented for types that can be a prefix for a given input.
-/// 
+///
 /// # Safety
 ///
 /// The implementation **must** guarantee that the value returned is correct as
