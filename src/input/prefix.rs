@@ -2,6 +2,12 @@ use super::{Bytes, BytesLength, String};
 
 use crate::util::utf8::CharBytes;
 
+/// Implemented for types that are an input prefix.
+///
+/// # Safety
+///
+/// The implementor must guarantee the value returned from `is_prefix_of` is
+/// valid.
 pub unsafe trait Prefix<I>: BytesLength {
     fn is_prefix_of(self, input: &I) -> bool;
 }

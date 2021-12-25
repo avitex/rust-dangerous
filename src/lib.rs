@@ -62,6 +62,8 @@
 #![allow(
     // https://github.com/rust-lang/rust/issues/72081
     rustdoc::private_doc_tests,
+    // https://github.com/rust-lang/rust-clippy/issues/8140
+    clippy::return_self_not_must_use,
 )]
 
 #[cfg(feature = "alloc")]

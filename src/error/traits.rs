@@ -38,11 +38,13 @@ pub trait WithContext<'i>: Sized {
     const PASSTHROUGH: bool = false;
 
     /// Returns `Self` with a parent [`Input`].
+    #[must_use]
     fn with_input(self, input: impl Input<'i>) -> Self;
 
     /// Return `Self` with a context.
     ///
     /// This method is used for adding contexts to errors bubbling up.
+    #[must_use]
     fn with_context(self, context: impl Context) -> Self;
 }
 

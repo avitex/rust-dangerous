@@ -543,7 +543,7 @@ fn test_invalid_error_details_span() {
     let error_message = format!("{}", error.display());
     assert_str_eq!(
         // We split the end off as pointers change
-        error_message.splitn(2, "additional:").next().unwrap(),
+        error_message.split_once("additional:").unwrap().0,
         indoc! {r#"
             error attempting to read and expect an external value: expected value
             note: error span is not within the error input indicating the

@@ -432,7 +432,7 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
                 let actual = if bytes.len() > prefix_len {
                     &bytes[..prefix_len]
                 } else {
-                    &bytes
+                    bytes
                 };
                 Err(E::from(ExpectedValue {
                     expected: prefix.into(),
@@ -775,6 +775,11 @@ impl<'i, T> PrivateExt<'i> for T where T: Input<'i> {}
 ///////////////////////////////////////////////////////////////////////////////
 // BytesLength
 
+/// Implemented for types that return a guaranteed byte length.
+///
+/// # Safety
+///
+/// The implementor must guarantee the returned byte length valid is valid.
 pub unsafe trait BytesLength: Copy {
     fn byte_len(self) -> usize;
 }
