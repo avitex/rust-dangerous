@@ -60,10 +60,8 @@
 )]
 // FIXME: remove false positives
 #![allow(
-    // https://github.com/rust-lang/rust-clippy/issues/5822
-    clippy::option_if_let_else,
     // https://github.com/rust-lang/rust/issues/72081
-    private_doc_tests,
+    rustdoc::private_doc_tests,
 )]
 
 #[cfg(feature = "alloc")]

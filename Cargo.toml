@@ -2,7 +2,8 @@
 name = "dangerous"
 version = "0.10.0"
 authors = ["avitex <avitex@wfxlabs.com>"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.57"
 description = "Safely and explicitly parse untrusted / dangerous data"
 categories = ["no-std", "parsing"]
 documentation = "https://docs.rs/dangerous"
