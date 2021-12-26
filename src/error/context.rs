@@ -229,6 +229,9 @@ pub enum CoreOperation {
     SkipStrWhile,
     SkipUntil,
     SkipUntilConsume,
+    // Splitting
+    SplitAt,
+    SplitAtByte,
     // Taking
     Take,
     TakeArray,
@@ -292,6 +295,8 @@ impl CoreOperation {
             Self::SkipUntil => "skip input until a pattern matches",
             Self::SkipUntilConsume => "skip input until a pattern matches and consume it",
             Self::SkipStrWhile => "skip UTF-8 input while a condition remains true",
+            Self::SplitAt => "split input at a token index",
+            Self::SplitAtByte => "split input at a byte index",
             Self::Take => "take a length of input",
             Self::TakeArray => "take an array of bytes",
             Self::TakeWhile => "take input while a pattern matches",

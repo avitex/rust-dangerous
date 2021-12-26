@@ -126,6 +126,18 @@ impl<'i> Input<'i> for Bytes<'i> {
     fn display(&self) -> InputDisplay<'i> {
         InputDisplay::new(self)
     }
+
+    #[inline(always)]
+    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
+        slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
+            // We split at a known length making the head input bound.
+            let head = Bytes::new(head, self.bound().close_end());
+            // For the tail we derive the bound constraint from self.
+            let tail = Bytes::new(tail, self.bound());
+            // Return the split input parts.
+            (head, tail)
+        })
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -231,7 +243,7 @@ impl<'i> Bytes<'i> {
     where
         E: From<ExpectedLength<'i>>,
     {
-        match self.split_at(N, operation) {
+        match self.split_at_for(N, operation) {
             Ok((head, tail)) => {
                 // SAFETY: safe as we took only N amount.
                 let arr = unsafe { slice::slice_to_array_unchecked(head.as_dangerous()) };
@@ -326,18 +338,6 @@ impl<'i> Private<'i, u8> for Bytes<'i> {
         } else {
             Ok(())
         }
-    }
-
-    #[inline(always)]
-    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
-        slice::split_at_opt(self.as_dangerous(), mid).map(|(head, tail)| {
-            // We split at a known length making the head input bound.
-            let head = Bytes::new(head, self.bound().close_end());
-            // For the tail we derive the bound constraint from self.
-            let tail = Bytes::new(tail, self.bound());
-            // Return the split input parts.
-            (head, tail)
-        })
     }
 
     #[inline(always)]

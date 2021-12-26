@@ -144,6 +144,22 @@ impl<'i> Input<'i> for String<'i> {
     fn display(&self) -> InputDisplay<'i> {
         InputDisplay::new(self).str_hint()
     }
+
+    #[inline(always)]
+    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
+        let string = self.as_dangerous();
+        let iter = &mut string.chars();
+        if iter.nth(mid.saturating_sub(1)).is_some() {
+            let byte_mid = string.as_bytes().len() - iter.as_str().as_bytes().len();
+            // SAFETY: we take byte_mid as the difference between the parent
+            // string and the remaining string left over from the char iterator.
+            // This means both the index can only ever be valid and the bytes in
+            // between are valid UTF-8.
+            Some(unsafe { self.split_at_byte_unchecked(byte_mid) })
+        } else {
+            None
+        }
+    }
 }
 
 impl<'i> Private<'i, char> for String<'i> {
@@ -181,22 +197,6 @@ impl<'i> Private<'i, char> for String<'i> {
             Ok(())
         } else {
             Err(CoreExpected::Valid("char index"))
-        }
-    }
-
-    #[inline(always)]
-    fn split_at_opt(self, mid: usize) -> Option<(Self, Self)> {
-        let string = self.as_dangerous();
-        let iter = &mut string.chars();
-        if iter.nth(mid.saturating_sub(1)).is_some() {
-            let byte_mid = string.as_bytes().len() - iter.as_str().as_bytes().len();
-            // SAFETY: we take byte_mid as the difference between the parent
-            // string and the remaining string left over from the char iterator.
-            // This means both the index can only ever be valid and the bytes in
-            // between are valid UTF-8.
-            Some(unsafe { self.split_at_byte_unchecked(byte_mid) })
-        } else {
-            None
         }
     }
 
