@@ -77,6 +77,37 @@ fn test_consume_opt_u8_false() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Reader::read_array
+
+#[test]
+fn test_array() {
+    assert_eq!(
+        read_all_ok!(&[0, 1, 2], |r| { r.read_array::<3>() }),
+        [0, 1, 2]
+    );
+}
+
+#[test]
+fn test_array_err() {
+    let _ = read_all_err!(&[0, 1], |r| { r.read_array::<3>() });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Reader::read_array_ref
+
+#[test]
+fn test_array_ref() {
+    assert_eq!(
+        read_all_ok!(&[0, 1, 2], |r| { r.read_array_ref::<3>() }),
+        &[0, 1, 2]
+    );
+}
+
+#[test]
+fn test_array_ref_err() {
+    let _ = read_all_err!(&[0, 1], |r| { r.read_array_ref::<3>() });
+}
+///////////////////////////////////////////////////////////////////////////////
 // Reader::peek_u8
 
 #[test]
