@@ -311,7 +311,7 @@ impl<'a> InputWriter<'a> {
     fn write_byte(&mut self, byte: u8, remaining: &[u8], show_ascii: bool) -> fmt::Result {
         if self.underline {
             let byte_display_width = byte_display_width(byte, show_ascii);
-            if is_section_start_within_span(remaining, self.span) {
+            if is_section_start_span_or_within(remaining, self.span) {
                 self.write_underline(byte_display_width)
             } else {
                 self.write_space(byte_display_width)
@@ -371,7 +371,7 @@ impl<'a> InputWriter<'a> {
                 let mut offset = 0;
                 for c in s.chars() {
                     let char_display_width = char_display_width(c, cjk);
-                    if is_section_start_within_span(&bytes[offset..], self.span) {
+                    if is_section_start_span_or_within(&bytes[offset..], self.span) {
                         self.write_underline(char_display_width)?;
                     } else {
                         self.write_space(char_display_width)?;
@@ -446,8 +446,11 @@ fn is_span_start_within_section(bytes: &[u8], span: Option<Span>) -> bool {
     span.map_or(false, |span| span.is_start_within(bytes.into()))
 }
 
-fn is_section_start_within_span(bytes: &[u8], span: Option<Span>) -> bool {
-    span.map_or(false, |span| Span::from(bytes).is_start_within(span))
+fn is_section_start_span_or_within(bytes: &[u8], span: Option<Span>) -> bool {
+    span.map_or(false, |span| {
+        let parent = Span::from(bytes);
+        span.is_start_of(parent) || parent.is_start_within(span)
+    })
 }
 
 fn is_span_overlapping_end(bytes: &[u8], span: Option<Span>) -> bool {
