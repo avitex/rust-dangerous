@@ -107,6 +107,45 @@ fn test_array_ref() {
 fn test_array_ref_err() {
     let _ = read_all_err!(&[0, 1], |r| { r.read_array_ref::<3>() });
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Reader::read_array_opt
+
+#[test]
+fn test_array_opt() {
+    assert_eq!(
+        read_all_ok!(&[0, 1, 2], |r| { Ok(r.read_array_opt::<3>()) }),
+        Some([0, 1, 2])
+    );
+}
+
+#[test]
+fn test_array_opt_none() {
+    assert_eq!(
+        read_partial_ok!(&[0, 1], |r| { Ok(r.read_array_opt::<3>()) }),
+        (None, input(&[0, 1]))
+    );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Reader::read_array_ref_opt
+
+#[test]
+fn test_array_ref_opt() {
+    assert_eq!(
+        read_all_ok!(&[0, 1, 2], |r| { Ok(r.read_array_ref_opt::<3>()) }),
+        Some(&[0, 1, 2])
+    );
+}
+
+#[test]
+fn test_array_ref_opt_none() {
+    assert_eq!(
+        read_partial_ok!(&[0, 1], |r| { Ok(r.read_array_ref_opt::<3>()) }),
+        (None, input(&[0, 1]))
+    );
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Reader::peek_u8
 
