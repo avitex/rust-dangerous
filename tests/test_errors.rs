@@ -125,6 +125,18 @@ fn trigger_expected_valid<E: Error<'static>>() -> E {
         .unwrap_err()
 }
 
+#[cfg(feature = "full-backtrace")]
+fn trigger_expected_valid_with_empty_span<E: Error<'static>>() -> E {
+    input!(b"hello world")
+        .read_all(|r| {
+            r.context("hi", |r| {
+                r.consume(b"hello")?;
+                r.expect("value", |_| None::<()>)
+            })
+        })
+        .unwrap_err()
+}
+
 fn trigger_expected_length<E: Error<'static>>() -> E {
     input!(b"hello world")
         .read_all(|r| r.context("hi", |r| r.take(b"hello world".len() + 2)))
@@ -219,6 +231,30 @@ fn test_expected_valid_full() {
               1. `read all input`
               2. `<context>` (expected hi)
               3. `take UTF-8 input while a condition remains true` (expected utf-8 code point)
+        "#}
+    );
+}
+
+#[test]
+#[cfg(feature = "full-backtrace")]
+fn test_expected_valid_with_empty_span_full() {
+    let error: Expected = trigger_expected_valid_with_empty_span();
+
+    assert!(error.is_fatal());
+    assert_eq!(error.to_retry_requirement(), None);
+    println!("{}\n", error);
+    assert_str_eq!(
+        format!("{}\n", error),
+        indoc! {r#"
+            error attempting to read and expect a value: expected value
+            > [68 65 6c 6c 6f 20 77 6f 72 6c 64]
+                              ^^                
+            additional:
+              error offset: 5, input length: 11
+            backtrace:
+              1. `read all input`
+              2. `<context>` (expected hi)
+              3. `read and expect a value` (expected value)
         "#}
     );
 }

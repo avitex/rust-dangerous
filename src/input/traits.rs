@@ -695,6 +695,10 @@ pub(crate) trait PrivateExt<'i>: Input<'i> {
             Ok(Some(ok)) => Ok((ok, reader.take_remaining())),
             Ok(None) => {
                 let tail = reader.take_remaining();
+                // We update the span to reflect the amount the reader consumed.
+                // Note if the reader did not consume anything, this will return
+                // an empty span pointing to the start input passed to the
+                // operation.
                 context.span =
                     self.as_dangerous_bytes()[..self.byte_len() - tail.byte_len()].into();
                 Err(E::from(ExpectedValid {
