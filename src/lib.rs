@@ -37,13 +37,13 @@
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(doc, deny(rustdoc::all))]
 #![forbid(trivial_casts, trivial_numeric_casts, unstable_features)]
 #![deny(
     unused,
     missing_docs,
     rust_2018_idioms,
     future_incompatible,
-    rustdoc::all,
     clippy::all,
     clippy::correctness,
     clippy::style,
@@ -58,11 +58,9 @@
     clippy::inline_always,
     rustdoc::missing_doc_code_examples
 )]
-// FIXME: remove false positives
-#![allow(
-    // https://github.com/rust-lang/rust/issues/72081
-    rustdoc::private_doc_tests,
-)]
+// FIXME: remove false positive
+// https://github.com/rust-lang/rust/issues/72081
+#![cfg_attr(doc, allow(rustdoc::private_doc_tests))]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
