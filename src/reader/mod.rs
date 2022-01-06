@@ -93,10 +93,7 @@ pub type StringReader<'i, E> = Reader<'i, String<'i>, E>;
 /// [`recover()`]: Reader::recover()  
 /// [`recover_if()`]: Reader::recover_if()  
 /// [`RetryRequirement`]: crate::error::RetryRequirement  
-pub struct Reader<'i, I, E>
-where
-    I: Input<'i>,
-{
+pub struct Reader<'i, I, E> {
     input: I,
     types: PhantomData<(&'i (), E)>,
 }
