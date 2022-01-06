@@ -23,8 +23,7 @@ pub struct String<'i> {
 }
 
 impl<'i> String<'i> {
-    #[inline(always)]
-    pub(crate) fn new(s: &'i str, bound: Bound) -> Self {
+    pub(crate) const fn new(s: &'i str, bound: Bound) -> Self {
         Self {
             utf8: Bytes::new(s.as_bytes(), bound),
         }

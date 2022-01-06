@@ -1,3 +1,4 @@
+mod array;
 mod pattern;
 mod prefix;
 
@@ -14,6 +15,8 @@ use crate::util::{fast, slice, utf8};
 
 use super::{Bound, Input, MaybeString, Private, PrivateExt, String};
 
+pub use self::array::ByteArray;
+
 /// Raw [`Input`].
 #[derive(Clone)]
 #[must_use = "input must be consumed"]
@@ -23,8 +26,7 @@ pub struct Bytes<'i> {
 }
 
 impl<'i> Bytes<'i> {
-    #[inline(always)]
-    pub(crate) fn new(value: &'i [u8], bound: Bound) -> Self {
+    pub(crate) const fn new(value: &'i [u8], bound: Bound) -> Self {
         Self { value, bound }
     }
 
@@ -225,19 +227,7 @@ impl<'i> Bytes<'i> {
     pub(crate) fn split_array<E, const N: usize>(
         self,
         operation: CoreOperation,
-    ) -> Result<([u8; N], Bytes<'i>), E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.split_array_ref(operation)
-            .map(|(arr, tail)| (*arr, tail))
-    }
-
-    #[inline(always)]
-    pub(crate) fn split_array_ref<E, const N: usize>(
-        self,
-        operation: CoreOperation,
-    ) -> Result<(&'i [u8; N], Bytes<'i>), E>
+    ) -> Result<(ByteArray<'i, N>, Bytes<'i>), E>
     where
         E: From<ExpectedLength<'i>>,
     {
@@ -245,23 +235,18 @@ impl<'i> Bytes<'i> {
             Ok((head, tail)) => {
                 // SAFETY: safe as we took only N amount.
                 let arr = unsafe { slice::slice_to_array_unchecked(head.as_dangerous()) };
-                Ok((arr, tail))
+                Ok((ByteArray::new(arr), tail))
             }
             Err(err) => Err(err),
         }
     }
 
     #[inline(always)]
-    pub(crate) fn split_array_opt<const N: usize>(self) -> Option<([u8; N], Bytes<'i>)> {
-        self.split_array_ref_opt().map(|(arr, tail)| (*arr, tail))
-    }
-
-    #[inline(always)]
-    pub(crate) fn split_array_ref_opt<const N: usize>(self) -> Option<(&'i [u8; N], Bytes<'i>)> {
+    pub(crate) fn split_array_opt<const N: usize>(self) -> Option<(ByteArray<'i, N>, Bytes<'i>)> {
         self.split_at_opt(N).map(|(head, tail)| {
             // SAFETY: safe as we took only N amount.
             let arr = unsafe { slice::slice_to_array_unchecked(head.as_dangerous()) };
-            (arr, tail)
+            (ByteArray::new(arr), tail)
         })
     }
 

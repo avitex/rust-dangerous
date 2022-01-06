@@ -74,7 +74,7 @@ pub mod error;
 pub mod input;
 
 pub use self::error::{Error, Expected, Fatal, Invalid, ToRetryRequirement};
-pub use self::input::{Bound, Bytes, Input, MaybeString, Span, String};
+pub use self::input::{Bound, ByteArray, Bytes, Input, MaybeString, Span, String};
 pub use self::reader::{BytesReader, Peek, Reader, StringReader};
 
 // Re-exported types from core::fmt along with `DisplayBase` and `Write`.

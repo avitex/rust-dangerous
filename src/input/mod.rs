@@ -13,7 +13,7 @@ mod traits;
 
 pub use self::bound::Bound;
 pub use self::byte_len::ByteLength;
-pub use self::bytes::Bytes;
+pub use self::bytes::{ByteArray, Bytes};
 pub use self::pattern::Pattern;
 pub use self::prefix::Prefix;
 pub use self::span::Span;

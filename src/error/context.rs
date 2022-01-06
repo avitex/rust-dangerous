@@ -231,6 +231,7 @@ pub enum CoreOperation {
     SkipUntilConsume,
     // Taking
     Take,
+    TakeArray,
     TakeUntil,
     TakeUntilConsume,
     TakeWhile,
@@ -244,7 +245,6 @@ pub enum CoreOperation {
     // Reading
     ReadByte,
     ReadChar,
-    ReadArray,
     // Errors
     RecoverIf,
     Verify,
@@ -293,6 +293,7 @@ impl CoreOperation {
             Self::SkipUntilConsume => "skip input until a pattern matches and consume it",
             Self::SkipStrWhile => "skip UTF-8 input while a condition remains true",
             Self::Take => "take a length of input",
+            Self::TakeArray => "take an array of bytes",
             Self::TakeWhile => "take input while a pattern matches",
             Self::TakeUntil => "take input until a pattern matches",
             Self::TakeUntilConsume => "take input until a pattern matches and consume it",
@@ -304,7 +305,6 @@ impl CoreOperation {
             Self::PeekChar => "peek a char",
             Self::ReadByte => "read a byte",
             Self::ReadChar => "read a char",
-            Self::ReadArray => "read an array of bytes",
             Self::RecoverIf => "recover if a condition returns true",
             Self::Verify => "read and verify input",
             Self::Expect => "read and expect a value",

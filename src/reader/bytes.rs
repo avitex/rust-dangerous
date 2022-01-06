@@ -1,5 +1,5 @@
 use crate::error::{CoreOperation, ExpectedLength, ExpectedValid, WithContext};
-use crate::input::{Bytes, String};
+use crate::input::{ByteArray, Bytes, String};
 
 use super::BytesReader;
 
@@ -11,10 +11,10 @@ impl<'i, E> BytesReader<'i, E> {
     /// This function can be used to read integers like so:
     ///
     /// ```
-    /// use dangerous::{Input, Invalid};
+    /// use dangerous::{Input, ByteArray, Invalid};
     ///
     /// let result: Result<_, Invalid> = dangerous::input(&[1, 0, 0, 0]).read_all(|r| {
-    ///     r.read_array().map(u32::from_le_bytes)
+    ///     r.take_array().map(ByteArray::into_dangerous).map(u32::from_le_bytes)
     /// });
     ///
     /// assert_eq!(result.unwrap(), 1);
@@ -24,40 +24,19 @@ impl<'i, E> BytesReader<'i, E> {
     ///
     /// Returns an error if the length requirement to read could not be met.
     #[inline]
-    pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], E>
+    pub fn take_array<const N: usize>(&mut self) -> Result<ByteArray<'i, N>, E>
     where
         E: From<ExpectedLength<'i>>,
     {
-        self.try_advance(|input| input.split_array(CoreOperation::ReadArray))
-    }
-
-    /// Read a reference to an array from input.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the length requirement to read could not be met.
-    #[inline]
-    pub fn read_array_ref<const N: usize>(&mut self) -> Result<&'i [u8; N], E>
-    where
-        E: From<ExpectedLength<'i>>,
-    {
-        self.try_advance(|input| input.split_array_ref(CoreOperation::ReadArray))
+        self.try_advance(|input| input.split_array(CoreOperation::TakeArray))
     }
 
     /// Read an optional array.
     ///
-    /// Returns `Some([u8; N])` if there was enough input, `None` if not.
+    /// Returns `Some(ByteArray)` if there was enough input, `None` if not.
     #[inline]
-    pub fn read_array_opt<const N: usize>(&mut self) -> Option<[u8; N]> {
+    pub fn take_array_opt<const N: usize>(&mut self) -> Option<ByteArray<'i, N>> {
         self.advance_opt(Bytes::split_array_opt)
-    }
-
-    /// Read an optional reference to an array.
-    ///
-    /// Returns `Some(&[u8; N])` if there was enough input, `None` if not.
-    #[inline]
-    pub fn read_array_ref_opt<const N: usize>(&mut self) -> Option<&'i [u8; N]> {
-        self.advance_opt(Bytes::split_array_ref_opt)
     }
 
     /// Read the remaining string input.

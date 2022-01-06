@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use dangerous::{input, BytesReader, Input, Invalid};
+use dangerous::{input, ByteArray, BytesReader, Input, Invalid};
 
 fn bench_consume(c: &mut Criterion) {
     c.bench_function("consume_u8_ok", |b| {
@@ -37,7 +37,11 @@ fn bench_read_num(c: &mut Criterion) {
     c.bench_function("read_u16_le", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 2]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_array().map(u16::from_le_bytes))
+                .read_all(|r: &mut BytesReader<'_, Invalid>| {
+                    r.take_array()
+                        .map(ByteArray::into_dangerous)
+                        .map(u16::from_le_bytes)
+                })
                 .unwrap();
         })
     });
@@ -45,7 +49,11 @@ fn bench_read_num(c: &mut Criterion) {
     c.bench_function("read_u32_le", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 4]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_array().map(u32::from_le_bytes))
+                .read_all(|r: &mut BytesReader<'_, Invalid>| {
+                    r.take_array()
+                        .map(ByteArray::into_dangerous)
+                        .map(u32::from_le_bytes)
+                })
                 .unwrap();
         })
     });
@@ -53,7 +61,11 @@ fn bench_read_num(c: &mut Criterion) {
     c.bench_function("read_u64_le", |b| {
         b.iter(|| {
             input(black_box(&[1u8; 8]))
-                .read_all(|r: &mut BytesReader<'_, Invalid>| r.read_array().map(u64::from_le_bytes))
+                .read_all(|r: &mut BytesReader<'_, Invalid>| {
+                    r.take_array()
+                        .map(ByteArray::into_dangerous)
+                        .map(u64::from_le_bytes)
+                })
                 .unwrap();
         })
     });
