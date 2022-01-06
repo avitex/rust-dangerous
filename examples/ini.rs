@@ -43,7 +43,7 @@ where
     E: Error<'i>,
 {
     skip_whitespace_or_comment(r, ConsumeTo::NextToken);
-    Ok(match r.peek_u8_opt() {
+    Ok(match r.peek_read_opt() {
         None => Document::default(),
         Some(b'[') => Document {
             globals: vec![],

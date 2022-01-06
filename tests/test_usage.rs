@@ -6,9 +6,9 @@ fn test_usage_with_fn() {
     let input = dangerous::input(b"a");
 
     fn do_thing<'i>(r: &mut BytesReader<'i, Expected<'i>>) -> Result<(), Expected<'i>> {
-        let a = r.read_u8()?;
+        let a = r.read()?;
         assert_eq!(a, b'a');
-        r.read_u8()?;
+        r.read()?;
         Ok(())
     }
 

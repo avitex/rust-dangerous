@@ -14,9 +14,9 @@ fuzz_target!(|data_length_and_patterns: (&[u8], usize, u8, &[u8])| {
     let input = dangerous::input(data);
 
     // read
-    read_partial!(input.clone(), |r| r.read_u8());
+    read_partial!(input.clone(), |r| r.read());
     // peek
-    read_partial!(input.clone(), |r| r.peek_u8());
+    read_partial!(input.clone(), |r| r.peek_read());
     read_partial!(input.clone(), |r| r.peek(len).map(drop));
     read_partial!(input.clone(), |r| Ok(r.peek_eq(slice_pattern)));
     // consume

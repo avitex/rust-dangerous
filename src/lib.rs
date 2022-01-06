@@ -7,7 +7,7 @@
 //!
 //! let input = dangerous::input(b"hello");
 //! let result: Result<_, Invalid> = input.read_partial(|r| {
-//!     r.read_u8()
+//!     r.read()
 //! });
 //!
 //! assert_eq!(result, Ok((b'h', dangerous::input(b"ello"))));

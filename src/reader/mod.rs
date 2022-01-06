@@ -1,7 +1,6 @@
 mod bytes;
 mod input;
 mod peek;
-mod string;
 
 use core::marker::PhantomData;
 
@@ -64,12 +63,12 @@ pub type StringReader<'i, E> = Reader<'i, String<'i>, E>;
 ///
 /// let input = dangerous::input(b"true");
 /// let result: Result<_, Invalid> = input.read_all(|r| {
-///     // We use `peek_u8` here because we expect at least one byte.
+///     // We use `peek_read` here because we expect at least one byte.
 ///     // If we wanted to handle the case when there is no more input left,
-///     // for example to provide a default, we would use `peek_u8_opt`.
+///     // for example to provide a default, we would use `peek_read_opt`.
 ///     // The below allows us to handle a `RetryRequirement` if the
 ///     // `Reader` is at the end of the input.
-///     r.try_expect("boolean", |r| match r.peek_u8()? {
+///     r.try_expect("boolean", |r| match r.peek_read()? {
 ///         b't' => r.consume(b"true").map(|()| Some(true)),
 ///         b'f' => r.consume(b"false").map(|()| Some(false)),
 ///         _ => Ok(None),

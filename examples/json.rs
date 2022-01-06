@@ -36,7 +36,7 @@ where
 {
     skip_whitespace(r);
     let value = r.try_expect("json value", |r| {
-        let value = match r.peek_u8()? {
+        let value = match r.peek_read()? {
             b'"' => Value::Str(read_str(r)?),
             b'{' => Value::Object(read_map(r)?),
             b'[' => Value::Array(read_arr(r)?),
@@ -154,7 +154,7 @@ where
     E: Error<'i>,
 {
     skip_whitespace(r);
-    r.try_expect("json boolean", |r| match r.peek_u8()? {
+    r.try_expect("json boolean", |r| match r.peek_read()? {
         b't' => r.consume(b"true").map(|()| Some(true)),
         b'f' => r.consume(b"false").map(|()| Some(false)),
         _ => Ok(None),
@@ -169,7 +169,7 @@ where
     r.context("json number", |r| {
         r.try_take_consumed(|r| {
             r.try_verify("first byte is digit", |r| {
-                r.read_u8().map(|c| c.is_ascii_digit())
+                r.read().map(|c| c.is_ascii_digit())
             })?;
             r.skip_while(|c: u8| c.is_ascii_digit() || c == b'.');
             Ok(())

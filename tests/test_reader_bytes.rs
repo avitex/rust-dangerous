@@ -147,24 +147,24 @@ fn test_array_ref_opt_none() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Reader::peek_u8
+// Reader::peek_read
 
 #[test]
-fn test_peek_u8() {
+fn test_peek_read() {
     assert!(read_all_ok!(b"hello", |r| {
-        let v = r.peek_u8()? == b'h';
+        let v = r.peek_read()? == b'h';
         r.skip(5)?;
         Ok(v)
     }));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Reader::peek_u8_opt
+// Reader::peek_read_opt
 
 #[test]
-fn test_peek_u8_opt() {
+fn test_peek_read_opt() {
     assert!(read_all_ok!(b"hello", |r| {
-        let v = r.peek_u8_opt().map_or(false, |v| v == b'h');
+        let v = r.peek_read_opt().map_or(false, |v| v == b'h');
         r.skip(5)?;
         Ok(v)
     }));

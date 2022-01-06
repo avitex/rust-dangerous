@@ -20,7 +20,7 @@ use super::{
 /// use dangerous::{Input, Fatal};
 ///
 /// let error: Fatal = dangerous::input(b"").read_all(|r| {
-///     r.read_u8()
+///     r.read()
 /// }).unwrap_err();
 ///
 /// assert_eq!(

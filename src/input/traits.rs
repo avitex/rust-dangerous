@@ -9,7 +9,7 @@ use crate::fmt::{Debug, Display, DisplayBase};
 use crate::input::pattern::Pattern;
 use crate::reader::Reader;
 
-use super::{Bound, ByteLength, Bytes, MaybeString, Prefix, Span, String};
+use super::{Bound, ByteLength, Bytes, MaybeString, Prefix, Span, String, Token};
 
 /// Implemented for immutable wrappers around bytes to be processed ([`Bytes`]/[`String`]).
 ///
@@ -26,7 +26,10 @@ use super::{Bound, ByteLength, Bytes, MaybeString, Prefix, Span, String};
 ///
 /// [`dangerous::input()`]: crate::input()
 #[must_use = "input must be consumed"]
-pub trait Input<'i>: Private<'i> {
+pub trait Input<'i>: Private<'i, Self::Token> {
+    /// Smallest unit that can be consumed.
+    type Token: Token;
+
     /// Returns the [`Input`] [`Bound`].
     fn bound(&self) -> Bound;
 
@@ -241,15 +244,12 @@ pub trait Input<'i>: Private<'i> {
 ///////////////////////////////////////////////////////////////////////////////
 // Private requirements for any `Input`
 
-pub trait Private<'i>: Sized + Clone + DisplayBase + Debug + Display {
-    /// Smallest unit that can be consumed.
-    type Token: ByteLength + Copy + 'static;
-
+pub trait Private<'i, Token>: Sized + Clone + DisplayBase + Debug + Display {
     /// Iterator of tokens.
-    type TokenIter: DoubleEndedIterator<Item = Self::Token>;
+    type TokenIter: DoubleEndedIterator<Item = Token>;
 
     /// Iterator of tokens and their associated byte indices.
-    type TokenIndicesIter: DoubleEndedIterator<Item = (usize, Self::Token)>;
+    type TokenIndicesIter: DoubleEndedIterator<Item = (usize, Token)>;
 
     /// Returns an empty `Input` pointing the end of `self`.
     fn end(self) -> Self;

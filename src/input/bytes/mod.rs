@@ -88,6 +88,8 @@ impl<'i> Bytes<'i> {
 }
 
 impl<'i> Input<'i> for Bytes<'i> {
+    type Token = u8;
+
     #[inline(always)]
     fn bound(&self) -> Bound {
         self.bound
@@ -307,8 +309,7 @@ impl<'i> Bytes<'i> {
     }
 }
 
-impl<'i> Private<'i> for Bytes<'i> {
-    type Token = u8;
+impl<'i> Private<'i, u8> for Bytes<'i> {
     type TokenIter = iter::Copied<SliceIter<'i, u8>>;
     type TokenIndicesIter = iter::Enumerate<iter::Copied<SliceIter<'i, u8>>>;
 

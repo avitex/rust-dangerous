@@ -110,6 +110,8 @@ impl<'i> String<'i> {
 }
 
 impl<'i> Input<'i> for String<'i> {
+    type Token = char;
+
     #[inline(always)]
     fn bound(&self) -> Bound {
         self.utf8.bound()
@@ -145,8 +147,7 @@ impl<'i> Input<'i> for String<'i> {
     }
 }
 
-impl<'i> Private<'i> for String<'i> {
-    type Token = char;
+impl<'i> Private<'i, char> for String<'i> {
     type TokenIter = str::Chars<'i>;
     type TokenIndicesIter = str::CharIndices<'i>;
 

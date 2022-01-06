@@ -77,24 +77,24 @@ fn test_consume_opt_char_false() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Reader::peek_char
+// Reader::peek_read
 
 #[test]
-fn test_peek_char() {
+fn test_peek_read() {
     assert!(read_all_ok!("hello", |r| {
-        let v = r.peek_char()? == 'h';
+        let v = r.peek_read()? == 'h';
         r.skip(5)?;
         Ok(v)
     }));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Reader::peek_char_opt
+// Reader::peek_read_opt
 
 #[test]
-fn test_peek_char_opt() {
+fn test_peek_read_opt() {
     assert!(read_all_ok!("hello", |r| {
-        let v = r.peek_char_opt().map_or(false, |v| v == 'h');
+        let v = r.peek_read_opt().map_or(false, |v| v == 'h');
         r.skip(5)?;
         Ok(v)
     }));

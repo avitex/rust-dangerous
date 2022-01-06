@@ -354,6 +354,27 @@ where
         })
     }
 
+    /// Read a token.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there is no more input.
+    #[inline]
+    pub fn read(&mut self) -> Result<I::Token, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.try_advance(|input| input.split_token(CoreOperation::read_token::<I::Token>()))
+    }
+
+    /// Read an optional token.
+    ///
+    /// Returns `Some(I::Token)` if there was enough input, `None` if not.
+    #[inline]
+    pub fn read_opt(&mut self) -> Option<I::Token> {
+        self.advance_opt(PrivateExt::split_token_opt)
+    }
+
     /// Read a length of input.
     ///
     /// # Errors
@@ -682,5 +703,31 @@ where
         P: Prefix<I>,
     {
         prefix.is_prefix_of(&self.input)
+    }
+
+    /// Peek the next token in the input without mutating the `Reader`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `Reader` has no more input.
+    #[inline]
+    pub fn peek_read(&self) -> Result<I::Token, E>
+    where
+        E: From<ExpectedLength<'i>>,
+    {
+        self.input
+            .clone()
+            .split_token(CoreOperation::peek_read::<I::Token>())
+            .map(|(token, _)| token)
+    }
+
+    /// Peek the next token in the input without mutating the `Reader`.
+    ///
+    /// This is equivalent to `peek_read` but does not return an error. Don't use
+    /// this function if you want an error if there isn't enough input.
+    #[inline]
+    #[must_use = "peek result must be used"]
+    pub fn peek_read_opt(&self) -> Option<I::Token> {
+        self.input.clone().split_token_opt().map(|(token, _)| token)
     }
 }

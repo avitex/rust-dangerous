@@ -1,7 +1,7 @@
 use core::any::Any;
 
 use crate::fmt;
-use crate::input::{Input, MaybeString, Span};
+use crate::input::{Input, MaybeString, Span, Token, TokenType};
 
 use super::WithContext;
 
@@ -239,10 +239,10 @@ pub enum CoreOperation {
     TakeRemainingStr,
     // Peeking
     Peek,
-    PeekU8,
+    PeekByte,
     PeekChar,
     // Reading
-    ReadU8,
+    ReadByte,
     ReadChar,
     ReadArray,
     // Errors
@@ -267,6 +267,20 @@ impl Operation for CoreOperation {
 }
 
 impl CoreOperation {
+    pub(crate) fn read_token<T: Token>() -> Self {
+        match T::TYPE {
+            TokenType::Char => Self::ReadChar,
+            TokenType::Byte => Self::ReadByte,
+        }
+    }
+
+    pub(crate) fn peek_read<T: Token>() -> Self {
+        match T::TYPE {
+            TokenType::Char => Self::PeekChar,
+            TokenType::Byte => Self::PeekByte,
+        }
+    }
+
     fn description(self) -> &'static str {
         match self {
             Self::Context => "<context>",
@@ -286,9 +300,9 @@ impl CoreOperation {
             Self::TakeStrWhile => "take UTF-8 input while a condition remains true",
             Self::TakeRemainingStr => "take remaining string within bytes",
             Self::Peek => "peek a length of input",
-            Self::PeekU8 => "peek a u8",
+            Self::PeekByte => "peek a byte",
             Self::PeekChar => "peek a char",
-            Self::ReadU8 => "read a u8",
+            Self::ReadByte => "read a byte",
             Self::ReadChar => "read a char",
             Self::ReadArray => "read an array of bytes",
             Self::RecoverIf => "recover if a condition returns true",
