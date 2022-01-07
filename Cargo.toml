@@ -26,6 +26,8 @@ simd = ["std", "memchr/std", "bytecount/runtime-dispatch-simd"]
 unicode = ["unicode-width"]
 # Enables full context backtraces.
 full-backtrace = ["alloc"]
+# Enables the guide module.
+guide = []
 
 [dependencies]
 zc = { version = "0.4", optional = true, default-features = false }
