@@ -81,7 +81,7 @@ where
         let input = self.error.input();
         let root = self.error.backtrace().root();
         // Write description
-        w.write_str("error attempting to ")?;
+        w.write_str("failed to ")?;
         root.operation().description(w)?;
         w.write_str(": ")?;
         self.error.description(w)?;

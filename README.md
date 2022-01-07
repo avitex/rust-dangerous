@@ -91,7 +91,7 @@ Ever tried working backwards from something like this?
 Wouldn't it be better if this was the alternative?
 
 ```
-[ERRO]: ahhh!: error reading message: error attempting to convert input into string: expected utf-8 code point
+[ERRO]: ahhh!: error reading message: failed to convert input into string: expected utf-8 code point
 > [01 05 68 65 ff 6c 6f]
                ^^       
 additional:

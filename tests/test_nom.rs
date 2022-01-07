@@ -114,7 +114,7 @@ fn test_parse_color_too_short() {
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r##"
-            error attempting to read and expect an external value: expected hex color
+            failed to read and expect an external value: expected hex color
             > "#2F14D"
                     ^ 
             additional:
@@ -135,7 +135,7 @@ fn test_parse_verbose_err() {
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r##"
-            error attempting to read and expect an external value: expected value
+            failed to read and expect an external value: expected value
             > "err"
                ^^^ 
             additional:
@@ -159,7 +159,7 @@ fn test_parse_verbose_err_retry() {
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r##"
-            error attempting to read and expect an external value: expected value
+            failed to read and expect an external value: expected value
             > "f"
                ^ 
             additional:

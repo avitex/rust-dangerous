@@ -46,7 +46,7 @@ pub trait Operation: Any + Send + Sync {
     /// to substitute it:
     ///
     /// ```text
-    /// error attempting to <operation>.
+    /// failed to <operation>.
     /// ```
     ///
     /// # Errors

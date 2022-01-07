@@ -200,7 +200,7 @@ fn test_expected_valid_root() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to take UTF-8 input while a condition remains true: expected utf-8 code point
+            failed to take UTF-8 input while a condition remains true: expected utf-8 code point
             > [68 65 6c 6c 6f 20 77 6f 72 6c 64 c2 20]
                                                 ^^    
             additional:
@@ -222,7 +222,7 @@ fn test_expected_valid_full() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to take UTF-8 input while a condition remains true: expected utf-8 code point
+            failed to take UTF-8 input while a condition remains true: expected utf-8 code point
             > [68 65 6c 6c 6f 20 77 6f 72 6c 64 c2 20]
                                                 ^^    
             additional:
@@ -246,7 +246,7 @@ fn test_expected_valid_with_empty_span_full() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to read and expect a value: expected value
+            failed to read and expect a value: expected value
             > [68 65 6c 6c 6f 20 77 6f 72 6c 64]
                               ^^                
             additional:
@@ -332,7 +332,7 @@ fn test_external_error_deep_child() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to read and expect an external value: expected value
+            failed to read and expect an external value: expected value
             > "hello world"
                ^^^^^^^^^^^ 
             additional:
@@ -356,7 +356,7 @@ fn test_expected_length_root() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to take a length of input: found 11 bytes when at least 13 bytes was expected
+            failed to take a length of input: found 11 bytes when at least 13 bytes was expected
             > [68 65 6c 6c 6f 20 77 6f 72 6c 64]
                ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ 
             additional:
@@ -377,7 +377,7 @@ fn test_expected_length_full() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to take a length of input: found 11 bytes when at least 13 bytes was expected
+            failed to take a length of input: found 11 bytes when at least 13 bytes was expected
             > [68 65 6c 6c 6f 20 77 6f 72 6c 64]
                ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ ^^ 
             additional:
@@ -436,7 +436,7 @@ fn test_expected_value_root() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to consume input: found a different value to the exact expected
+            failed to consume input: found a different value to the exact expected
             expected:
             > [31 32 33]
             in:
@@ -460,7 +460,7 @@ fn test_expected_value_full() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to consume input: found a different value to the exact expected
+            failed to consume input: found a different value to the exact expected
             expected:
             > [31 32 33]
             in:
@@ -489,7 +489,7 @@ fn test_error_max_input_len() {
     assert_str_eq!(
         format!("{}\n", error.display().input_max_width(20)),
         indoc! {r#"
-            error attempting to consume input: found a different value to the exact expected
+            failed to consume input: found a different value to the exact expected
             expected:
             > [31 32 33]
             in:
@@ -515,7 +515,7 @@ fn test_error_display_str() {
     assert_str_eq!(
         format!("{}\n", error),
         indoc! {r#"
-            error attempting to consume input: found a different value to the exact expected
+            failed to consume input: found a different value to the exact expected
             expected:
             > "123"
             in:
@@ -541,7 +541,7 @@ fn test_error_display_str_hint() {
     assert_str_eq!(
         format!("{:#}\n", error),
         indoc! {r#"
-            error attempting to consume input: found a different value to the exact expected
+            failed to consume input: found a different value to the exact expected
             expected:
             > "123"
             in:
@@ -581,7 +581,7 @@ fn test_invalid_error_details_span() {
         // We split the end off as pointers change
         error_message.split_once("additional:").unwrap().0,
         indoc! {r#"
-            error attempting to read and expect an external value: expected value
+            failed to read and expect an external value: expected value
             note: error span is not within the error input indicating the
                   concrete error being used has a bug. Consider raising an
                   issue with the maintainer!
