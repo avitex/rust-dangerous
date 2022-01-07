@@ -58,8 +58,7 @@
     clippy::inline_always,
     rustdoc::missing_doc_code_examples
 )]
-// FIXME: remove false positive
-// https://github.com/rust-lang/rust/issues/72081
+// FIXME: remove false positive, fixed in v1.59
 #![cfg_attr(doc, allow(rustdoc::private_doc_tests))]
 
 #[cfg(feature = "alloc")]
