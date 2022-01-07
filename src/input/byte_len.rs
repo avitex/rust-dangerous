@@ -10,7 +10,7 @@ pub unsafe trait ByteLength {
     fn byte_len(&self) -> usize;
 }
 
-unsafe impl<T> ByteLength for &T
+unsafe impl<T: ?Sized> ByteLength for &T
 where
     T: ByteLength,
 {
@@ -36,7 +36,7 @@ unsafe impl ByteLength for char {
     }
 }
 
-unsafe impl ByteLength for &[u8] {
+unsafe impl ByteLength for [u8] {
     /// Returns the length of the byte slice.
     #[inline(always)]
     fn byte_len(&self) -> usize {
@@ -44,7 +44,7 @@ unsafe impl ByteLength for &[u8] {
     }
 }
 
-unsafe impl ByteLength for &str {
+unsafe impl ByteLength for str {
     /// Returns the length of the underlying byte slice for the UTF-8 string.
     #[inline(always)]
     fn byte_len(&self) -> usize {
@@ -52,7 +52,7 @@ unsafe impl ByteLength for &str {
     }
 }
 
-unsafe impl<const N: usize> ByteLength for &[u8; N] {
+unsafe impl<const N: usize> ByteLength for [u8; N] {
     /// Returns the length (`N`) of the byte array.
     #[inline(always)]
     fn byte_len(&self) -> usize {
