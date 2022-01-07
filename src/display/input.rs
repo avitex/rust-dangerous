@@ -1,6 +1,7 @@
 use crate::fmt::{self, Write};
 use crate::input::{Input, PrivateExt, Span};
 
+use super::ansi;
 use super::section::{Section, SectionOpt};
 use super::unit::{byte_display_width, byte_display_write, char_display_width, char_display_write};
 
@@ -49,6 +50,7 @@ pub enum PreferredFormat {
 #[must_use = "input displays must be written"]
 pub struct InputDisplay<'i> {
     input: &'i [u8],
+    color: bool,
     underline: bool,
     format: PreferredFormat,
     section: Option<Section<'i>>,
@@ -66,6 +68,7 @@ impl<'i> InputDisplay<'i> {
         Self {
             input,
             format: PreferredFormat::Bytes,
+            color: false,
             underline: false,
             section: None,
             section_opt: DEFAULT_SECTION_OPTION,
@@ -82,6 +85,12 @@ impl<'i> InputDisplay<'i> {
             Some(width) => format.head_tail(width),
             None => format,
         }
+    }
+
+    /// Print the input with ansi color support.
+    pub fn color(mut self) -> Self {
+        self.color = true;
+        self
     }
 
     /// Print the input underline for any provided span.
@@ -211,7 +220,7 @@ impl<'i> fmt::DisplayBase for InputDisplay<'i> {
     fn fmt(&self, w: &mut dyn Write) -> fmt::Result {
         match &self.section {
             None => self.clone().prepare().fmt(w),
-            Some(section) => section.write(w, self.underline),
+            Some(section) => section.write(w, self.color, self.underline),
         }
     }
 }
@@ -232,6 +241,7 @@ impl<'i> fmt::Display for InputDisplay<'i> {
 
 pub(super) struct InputWriter<'a> {
     w: &'a mut dyn Write,
+    color: bool,
     underline: bool,
     full: &'a [u8],
     span: Option<Span>,
@@ -242,10 +252,12 @@ impl<'a> InputWriter<'a> {
         w: &'a mut dyn Write,
         full: &'a [u8],
         span: Option<Span>,
+        color: bool,
         underline: bool,
     ) -> Self {
         Self {
             w,
+            color,
             underline,
             full,
             span,
@@ -401,20 +413,28 @@ impl<'a> InputWriter<'a> {
             } else {
                 self.write_space(2)
             }
+        } else if highlight {
+            self.write_ansi(ansi::STYLE_BOLD)?;
+            self.w.write_str("..")?;
+            self.write_ansi(ansi::STYLE_END)
         } else {
-            self.w.write_str("..")
+            self.write_ansi(ansi::STYLE_DIM)?;
+            self.w.write_str("..")?;
+            self.write_ansi(ansi::STYLE_END)
         }
     }
 
-    fn write_delim(&mut self, delim: char, highlighted: bool) -> fmt::Result {
+    fn write_delim(&mut self, delim: char, highlight: bool) -> fmt::Result {
         if self.underline {
-            if highlighted {
+            if highlight {
                 self.write_underline(1)
             } else {
                 self.write_space(1)
             }
         } else {
-            self.w.write_char(delim)
+            self.write_ansi(ansi::STYLE_DIM)?;
+            self.w.write_char(delim)?;
+            self.write_ansi(ansi::STYLE_END)
         }
     }
 
@@ -423,7 +443,11 @@ impl<'a> InputWriter<'a> {
     }
 
     fn write_underline(&mut self, len: usize) -> fmt::Result {
-        self.write_char_len('^', len)
+        self.write_ansi(ansi::STYLE_BOLD)?;
+        self.write_ansi(ansi::FG_RED)?;
+        self.write_char_len('^', len)?;
+        self.write_ansi(ansi::FG_DEFAULT)?;
+        self.write_ansi(ansi::STYLE_END)
     }
 
     fn write_char_len(&mut self, c: char, len: usize) -> fmt::Result {
@@ -431,6 +455,14 @@ impl<'a> InputWriter<'a> {
             self.w.write_char(c)?;
         }
         Ok(())
+    }
+
+    fn write_ansi(&mut self, code: &str) -> fmt::Result {
+        if self.color {
+            self.w.write_str(code)
+        } else {
+            Ok(())
+        }
     }
 }
 

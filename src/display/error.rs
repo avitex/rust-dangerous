@@ -2,7 +2,7 @@ use crate::error::{self, Context};
 use crate::fmt::{self, Write};
 use crate::input::{Bytes, Input};
 
-use super::{DisplayBase, InputDisplay, PreferredFormat};
+use super::{ansi, DisplayBase, InputDisplay, PreferredFormat};
 
 const DEFAULT_MAX_WIDTH: usize = 80;
 const INVALID_SPAN_ERROR: &str = "\
@@ -16,6 +16,7 @@ note: error span is not within the error input indicating the
 #[must_use = "error displays must be written"]
 pub struct ErrorDisplay<'a, T> {
     error: &'a T,
+    color: bool,
     banner: bool,
     format: PreferredFormat,
     input_max_width: usize,
@@ -35,6 +36,7 @@ where
         Self {
             error,
             format,
+            color: true,
             banner: false,
             input_max_width: DEFAULT_MAX_WIDTH,
         }
@@ -47,6 +49,12 @@ where
         } else {
             Self::new(error)
         }
+    }
+
+    /// Set whether or not the error should print with colors.
+    pub fn color(mut self, value: bool) -> Self {
+        self.color = value;
+        self
     }
 
     /// Set whether or not a banner should printed around the error.
@@ -81,42 +89,46 @@ where
         let input = self.error.input();
         let root = self.error.backtrace().root();
         // Write description
+        self.write_ansi(w, ansi::STYLE_BOLD)?;
+        self.write_ansi(w, ansi::FG_RED)?;
         w.write_str("failed to ")?;
         root.operation().description(w)?;
         w.write_str(": ")?;
+        self.write_ansi(w, ansi::FG_DEFAULT)?;
         self.error.description(w)?;
-        w.write_char('\n')?;
+        self.write_ansi(w, ansi::STYLE_END)?;
+        w.write_str("\n\n")?;
         // Write inputs
         let input_display = self.configure_input_display(input.display());
         let input = input.into_bytes();
         if let Some(expected_value) = self.error.expected() {
             let expected_display = self.configure_input_display(expected_value.display());
-            w.write_str("expected:\n")?;
-            write_input(w, expected_display, false)?;
-            w.write_str("in:\n")?;
+            self.write_bold(w, "expected:\n")?;
+            self.write_input(w, expected_display, false)?;
+            self.write_bold(w, "in:\n")?;
         }
         if root.span.is_within(input.span()) {
-            write_input(w, input_display.span(root.span, self.input_max_width), true)?;
+            self.write_input(w, input_display.span(root.span, self.input_max_width), true)?;
         } else {
             w.write_str(INVALID_SPAN_ERROR)?;
             w.write_str("input:\n")?;
-            write_input(w, input_display, false)?;
+            self.write_input(w, input_display, false)?;
         }
         // Write additional
-        w.write_str("additional:\n  ")?;
+        self.write_bold(w, "additional:\n  ")?;
         if let Some(span_range) = root.span.range_of(input.span()) {
             if matches!(
                 self.format,
                 PreferredFormat::Str | PreferredFormat::StrCjk | PreferredFormat::BytesAscii
             ) {
                 w.write_str("error line: ")?;
-                w.write_usize(line_offset(&input, span_range.start))?;
+                self.write_usize(w, line_offset(&input, span_range.start))?;
                 w.write_str(", ")?;
             }
             w.write_str("error offset: ")?;
-            w.write_usize(span_range.start)?;
+            self.write_usize(w, span_range.start)?;
             w.write_str(", input length: ")?;
-            w.write_usize(input.len())?;
+            self.write_usize(w, input.len())?;
         } else {
             w.write_str("error: ")?;
             DisplayBase::fmt(&root.span, w)?;
@@ -125,12 +137,13 @@ where
         }
         w.write_char('\n')?;
         // Write context backtrace
-        w.write_str("backtrace:")?;
+        self.write_bold(w, "backtrace:")?;
         let mut child_index = 1;
         let mut last_parent_depth = 0;
         let write_success = self.error.backtrace().walk(&mut |parent_depth, context| {
             let mut write = || {
                 w.write_str("\n  ")?;
+                self.write_ansi(w, ansi::STYLE_DIM)?;
                 if parent_depth == last_parent_depth {
                     w.write_str("  ")?;
                     w.write_usize(child_index)?;
@@ -140,13 +153,19 @@ where
                     last_parent_depth = parent_depth;
                     w.write_usize(parent_depth)?;
                 }
-                w.write_str(". `")?;
+                w.write_str(". ")?;
+                self.write_ansi(w, ansi::STYLE_END)?;
+                //w.write_char('`')?;
                 context.operation().description(w)?;
-                w.write_char('`')?;
+                //w.write_char('`')?;
                 if context.has_expected() {
+                    self.write_ansi(w, ansi::STYLE_BOLD)?;
+                    self.write_ansi(w, ansi::FG_RED)?;
                     w.write_str(" (expected ")?;
                     context.expected(w)?;
                     w.write_char(')')?;
+                    self.write_ansi(w, ansi::FG_DEFAULT)?;
+                    self.write_ansi(w, ansi::STYLE_END)?;
                 }
                 fmt::Result::Ok(())
             };
@@ -159,8 +178,54 @@ where
         }
     }
 
+    fn write_input(&self, w: &mut dyn Write, input: InputDisplay<'_>, underline: bool) -> fmt::Result {
+        let input = input.prepare();
+        self.write_dim(w, "  ")?;
+        fmt::DisplayBase::fmt(&input, w)?;
+        w.write_char('\n')?;
+        if underline {
+            w.write_str("  ")?;
+            fmt::DisplayBase::fmt(&input.underline(), w)?;
+            w.write_char('\n')?;
+        }
+        Ok(())
+    }  
+    
+    fn write_usize(&self, w: &mut dyn Write, value: usize) -> fmt::Result {
+        self.write_ansi(w, ansi::STYLE_BOLD)?;
+        self.write_ansi(w, ansi::FG_BLUE)?;
+        w.write_usize(value)?;
+        self.write_ansi(w, ansi::FG_DEFAULT)?;
+        self.write_ansi(w, ansi::STYLE_END)
+    }
+
+    fn write_dim(&self, w: &mut dyn Write, s: &str) -> fmt::Result {
+        self.write_ansi(w, ansi::STYLE_DIM)?;
+        w.write_str(s)?;
+        self.write_ansi(w, ansi::STYLE_END)
+    }
+
+    fn write_bold(&self, w: &mut dyn Write, s: &str) -> fmt::Result {
+        self.write_ansi(w, ansi::STYLE_BOLD)?;
+        w.write_str(s)?;
+        self.write_ansi(w, ansi::STYLE_END)
+    }
+
+    fn write_ansi(&self, w: &mut dyn Write, code: &str) -> fmt::Result {
+        if self.color {
+            w.write_str(code)
+        } else {
+            Ok(())
+        }
+    }
+
     fn configure_input_display<'b>(&self, display: InputDisplay<'b>) -> InputDisplay<'b> {
-        display.format(self.format)
+        let display = display.format(self.format);
+        if self.color {
+            display.color()
+        } else {
+            display
+        }
     }
 }
 
@@ -204,17 +269,4 @@ fn line_offset(input: &Bytes<'_>, span_offset: usize) -> usize {
         // unwrapping.
         None => 0,
     }
-}
-
-fn write_input(w: &mut dyn Write, input: InputDisplay<'_>, underline: bool) -> fmt::Result {
-    let input = input.prepare();
-    w.write_str("> ")?;
-    fmt::DisplayBase::fmt(&input, w)?;
-    w.write_char('\n')?;
-    if underline {
-        w.write_str("  ")?;
-        fmt::DisplayBase::fmt(&input.underline(), w)?;
-        w.write_char('\n')?;
-    }
-    Ok(())
 }

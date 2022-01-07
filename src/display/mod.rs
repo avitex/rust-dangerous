@@ -1,5 +1,6 @@
 //! Display support.
 
+mod ansi;
 mod error;
 mod input;
 mod section;

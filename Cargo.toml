@@ -27,7 +27,7 @@ unicode = ["unicode-width"]
 # Enables full context backtraces.
 full-backtrace = ["alloc"]
 # Enables error terminal printing support.
-terminal = ["std", "termcolor", "unicode"]
+terminal = ["std", "owo-colors", "unicode"]
 
 [dependencies]
 zc = { version = "0.4", optional = true, default-features = false }
@@ -36,7 +36,7 @@ regex = { version = "1.4", optional = true }
 memchr = { version = "2.4", optional = true, default-features = false }
 bytecount = { version = "0.6", optional = true }
 unicode-width = { version = "0.1", optional = true }
-termcolor = { version = "1", optional = true }
+owo-colors = { version = "3", optional = true }
 
 [dev-dependencies]
 zc = "0.4"

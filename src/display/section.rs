@@ -207,8 +207,8 @@ impl<'a> Section<'a> {
         }
     }
 
-    pub(super) fn write(&self, w: &mut dyn Write, underline: bool) -> fmt::Result {
-        let mut writer = InputWriter::new(w, self.full, self.span, underline);
+    pub(super) fn write(&self, w: &mut dyn Write, color: bool, underline: bool) -> fmt::Result {
+        let mut writer = InputWriter::new(w, self.full, self.span, color, underline);
         match self.visible {
             Visible::Bytes(bytes) => writer.write_bytes_side(bytes, false),
             Visible::BytesAscii(bytes) => writer.write_bytes_side(bytes, true),
